@@ -20,7 +20,7 @@ export function WhatsAppButton({ lang }: WhatsAppButtonProps) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 end-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl shadow-[#25D366]/30 transition-all duration-300 hover:scale-110 hover:shadow-[#25D366]/50 animate-float"
+      className="fixed bottom-6 end-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl shadow-[#25D366]/30 transition-all duration-300 hover:scale-110 hover:shadow-[#25D366]/50 sm:bottom-8 sm:end-8 sm:h-16 sm:w-16 animate-float"
       aria-label={t("orderVia", lang)}
       title={t("orderVia", lang)}
     >

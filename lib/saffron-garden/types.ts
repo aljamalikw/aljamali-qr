@@ -28,3 +28,26 @@ export interface CategoryMeta {
   label: { en: string; ar: string };
   icon: string;
 }
+
+export interface OpeningHoursEntry {
+  days: string;
+  hours: string;
+}
+
+export interface SocialLinks {
+  instagram: string;
+  facebook: string;
+  twitter: string;
+}
+
+export interface RestaurantInfo {
+  name: { en: string; ar: string };
+  tagline: { en: string; ar: string };
+  coverImage: string;
+  whatsapp: string;
+  phone: string;
+  email: string;
+  address: { en: string; ar: string };
+  openingHours: Record<Language, OpeningHoursEntry[]>;
+  social: SocialLinks;
+}
