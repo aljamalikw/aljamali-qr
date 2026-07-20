@@ -296,3 +296,102 @@ body {
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(212, 175, 55, 0.1);
 }
+
+.menu-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  background: linear-gradient(135deg, #e8c547 0%, #d4af37 50%, #b8942e 100%);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #050505;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.25);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.menu-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.35);
+}
+
+.dashboard-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+  border-radius: 0.875rem;
+  border: none;
+  background: linear-gradient(135deg, #f0d050 0%, #e8c547 30%, #d4af37 60%, #b8942e 100%);
+  padding: 0.75rem 1.625rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #050505;
+  box-shadow:
+    0 4px 20px rgba(212, 175, 55, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+  cursor: pointer;
+}
+
+.dashboard-cta-primary:hover {
+  background: linear-gradient(135deg, #f5da5a 0%, #ecd055 30%, #dbb83f 60%, #c49a32 100%);
+  box-shadow:
+    0 10px 32px rgba(212, 175, 55, 0.48),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+}
+
+.menu-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: transparent;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.menu-btn-secondary:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.05);
+  color: var(--gold);
+}
+
+.menu-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(252, 165, 165);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.menu-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+select option {
+  background: #111111;
+  color: #f5f5f5;
+}
