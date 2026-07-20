@@ -21,10 +21,10 @@ export function CategoryFilter({
       <button
         type="button"
         onClick={() => onChange("all")}
-        className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ${
+        className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
           active === "all"
-            ? "bg-gold text-black shadow-lg shadow-gold/20"
-            : "border border-white/10 bg-surface text-white/70 hover:border-gold/30 hover:text-gold"
+            ? "bg-gold text-black shadow-lg shadow-gold/25 scale-[1.02]"
+            : "border border-white/10 bg-surface text-white/70 hover:border-gold/30 hover:text-gold hover:scale-[1.02]"
         }`}
       >
         {t("allCategories", lang)} ({counts.all})
@@ -35,10 +35,10 @@ export function CategoryFilter({
           key={cat.id}
           type="button"
           onClick={() => onChange(cat.id)}
-          className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ${
+          className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
             active === cat.id
-              ? "bg-gold text-black shadow-lg shadow-gold/20"
-              : "border border-white/10 bg-surface text-white/70 hover:border-gold/30 hover:text-gold"
+              ? "bg-gold text-black shadow-lg shadow-gold/25 scale-[1.02]"
+              : "border border-white/10 bg-surface text-white/70 hover:border-gold/30 hover:text-gold hover:scale-[1.02]"
           }`}
         >
           <span className="me-1.5">{cat.icon}</span>

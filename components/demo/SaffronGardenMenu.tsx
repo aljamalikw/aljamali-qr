@@ -15,6 +15,8 @@ import { DemoSearch } from "./DemoSearch";
 import { CategoryFilter } from "./CategoryFilter";
 import { FoodCard } from "./FoodCard";
 import { WhatsAppButton } from "./WhatsAppButton";
+import { DemoQrSection } from "./DemoQrSection";
+import { DemoFooter } from "./DemoFooter";
 
 function MenuGrid({
   items,
@@ -24,11 +26,38 @@ function MenuGrid({
   lang: Language;
 }) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3 xl:gap-8">
       {items.map((item, index) => (
         <FoodCard key={item.id} item={item} lang={lang} index={index} />
       ))}
     </div>
+  );
+}
+
+function HeroCover({ alt }: { alt: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="absolute inset-0 bg-gradient-to-br from-surface-elevated via-black to-surface">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.12)_0%,transparent_70%)]" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-serif text-6xl text-gold/20 sm:text-8xl">✦</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={RESTAURANT.coverImage}
+      alt={alt}
+      fill
+      priority
+      sizes="100vw"
+      className="object-cover"
+      onError={() => setHasError(true)}
+    />
   );
 }
 
@@ -83,7 +112,7 @@ export function SaffronGardenMenu() {
       className={`min-h-screen bg-background ${lang === "ar" ? "font-arabic" : ""}`}
     >
       <header className="sticky top-0 z-40 border-b border-gold/10 bg-black/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <Link
             href="/"
             className="flex items-center gap-2 text-white/60 transition-colors hover:text-gold"
@@ -93,6 +122,7 @@ export function SaffronGardenMenu() {
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -104,11 +134,11 @@ export function SaffronGardenMenu() {
             <span className="hidden text-xs sm:inline">{t("backToHome", lang)}</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="font-serif text-sm font-bold text-white sm:text-base">
               {RESTAURANT.name[lang]}
             </span>
-            <span className="hidden rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold sm:inline">
+            <span className="hidden rounded-full border border-gold/25 bg-gold/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold sm:inline">
               Demo
             </span>
           </div>
@@ -117,35 +147,43 @@ export function SaffronGardenMenu() {
         </div>
       </header>
 
-      <section className="relative h-56 sm:h-72">
-        <Image
-          src={RESTAURANT.coverImage}
-          alt={RESTAURANT.name[lang]}
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
+      <section className="relative h-64 sm:h-80 lg:h-96">
+        <HeroCover alt={RESTAURANT.name[lang]} />
         <div className="hero-overlay absolute inset-0" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(212,175,55,0.08)_0%,transparent_60%)]" />
 
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-4 pb-6">
+        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-4 pb-8 sm:px-6 sm:pb-10">
           <div className="animate-fade-in-up opacity-0">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-gold sm:text-xs">
               {t("poweredBy", lang)}
             </p>
-            <h1 className="font-serif text-3xl font-bold text-white sm:text-4xl">
+            <h1 className="font-serif text-3xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
               {RESTAURANT.name[lang]}
             </h1>
-            <p className="mt-1 text-sm text-white/70 sm:text-base">
+            <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/70 sm:mt-3 sm:text-base lg:text-lg">
               {RESTAURANT.tagline[lang]}
             </p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-gold/20 bg-black/40 px-3.5 py-1.5 text-xs text-white/60 backdrop-blur-sm">
+                {menuItems.length} {t("dishesCount", lang)}
+              </span>
+              <a
+                href="#menu"
+                className="rounded-full bg-gold px-5 py-1.5 text-xs font-semibold text-black transition-all duration-300 hover:bg-gold-light hover:shadow-lg hover:shadow-gold/20"
+              >
+                {t("viewMenu", lang)}
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="sticky top-[57px] z-30 border-b border-gold/10 bg-background/95 backdrop-blur-xl">
-        <div className="mx-auto max-w-6xl space-y-4 px-4 py-4">
+      <section
+        id="menu"
+        className="sticky top-[57px] z-30 border-b border-gold/10 bg-background/95 backdrop-blur-xl"
+      >
+        <div className="mx-auto max-w-6xl space-y-4 px-4 py-5 sm:px-6 sm:py-6">
           <DemoSearch lang={lang} value={search} onChange={setSearch} />
           <CategoryFilter
             lang={lang}
@@ -156,21 +194,29 @@ export function SaffronGardenMenu() {
         </div>
       </section>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 pb-28">
+      <main className="mx-auto max-w-6xl px-4 py-10 pb-32 sm:px-6 sm:py-12 sm:pb-36">
         {filteredItems.length === 0 ? (
-          <div className="animate-fade-in py-16 text-center opacity-0">
-            <p className="text-white/50">{t("noResults", lang)}</p>
+          <div className="animate-fade-in py-20 text-center opacity-0">
+            <p className="text-4xl opacity-30">🍽️</p>
+            <p className="mt-4 text-white/50">{t("noResults", lang)}</p>
           </div>
         ) : category === "all" && !search.trim() ? (
-          <div className="space-y-12">
+          <div className="space-y-14 sm:space-y-16">
             {groupedCategories.map((group) => (
               <section key={group.id} id={group.id}>
-                <div className="mb-6 flex items-center gap-3">
-                  <span className="text-2xl">{group.icon}</span>
-                  <h2 className="font-serif text-2xl font-bold text-white">
-                    {group.label[lang]}
-                  </h2>
-                  <div className="h-px flex-1 bg-gradient-to-r from-gold/30 to-transparent" />
+                <div className="mb-7 flex items-center gap-4 sm:mb-8">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gold/15 bg-surface text-xl sm:h-12 sm:w-12 sm:text-2xl">
+                    {group.icon}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-serif text-2xl font-bold text-white sm:text-3xl">
+                      {group.label[lang]}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-white/40">
+                      {group.items.length} {t("items", lang)}
+                    </p>
+                  </div>
+                  <div className="hidden h-px flex-1 bg-gradient-to-r from-gold/25 to-transparent sm:block" />
                 </div>
                 <MenuGrid items={group.items} lang={lang} />
               </section>
@@ -178,7 +224,7 @@ export function SaffronGardenMenu() {
           </div>
         ) : (
           <>
-            <p className="mb-6 text-sm text-white/40">
+            <p className="mb-7 text-sm text-white/40">
               {filteredItems.length} {t("items", lang)}
             </p>
             <MenuGrid items={filteredItems} lang={lang} />
@@ -186,16 +232,8 @@ export function SaffronGardenMenu() {
         )}
       </main>
 
-      <footer className="border-t border-gold/10 bg-surface py-6 text-center">
-        <p className="text-xs text-white/40">{t("poweredBy", lang)}</p>
-        <Link
-          href="/"
-          className="mt-2 inline-block text-xs text-gold hover:underline"
-        >
-          aljamaliqr.com
-        </Link>
-      </footer>
-
+      <DemoQrSection lang={lang} />
+      <DemoFooter lang={lang} />
       <WhatsAppButton lang={lang} />
     </div>
   );

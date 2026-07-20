@@ -1,15 +1,36 @@
-import type { CategoryMeta, Language, MenuItem } from "./types";
+import type { CategoryMeta, Language, MenuItem, RestaurantInfo } from "./types";
 
-export const RESTAURANT = {
+export const RESTAURANT: RestaurantInfo = {
   name: { en: "Saffron Garden", ar: "حديقة الزعفران" },
   tagline: {
     en: "Fine Mediterranean & Gulf Cuisine",
     ar: "مطبخ متوسطي وخليجي فاخر",
   },
   coverImage:
-    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80",
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1600&q=85&auto=format&fit=crop",
   whatsapp: "96550000000",
-} as const;
+  phone: "+965 2222 3344",
+  email: "hello@saffrongarden.com",
+  address: {
+    en: "Salem Al Mubarak St, Salmiya, Kuwait City",
+    ar: "شارع سالم المبارك، السالمية، مدينة الكويت",
+  },
+  openingHours: {
+    en: [
+      { days: "Sunday – Thursday", hours: "12:00 PM – 11:00 PM" },
+      { days: "Friday – Saturday", hours: "1:00 PM – 12:00 AM" },
+    ],
+    ar: [
+      { days: "الأحد – الخميس", hours: "12:00 م – 11:00 م" },
+      { days: "الجمعة – السبت", hours: "1:00 م – 12:00 ص" },
+    ],
+  },
+  social: {
+    instagram: "https://instagram.com/saffrongarden",
+    facebook: "https://facebook.com/saffrongarden",
+    twitter: "https://x.com/saffrongarden",
+  },
+};
 
 export const categories: CategoryMeta[] = [
   { id: "starters", label: { en: "Starters", ar: "المقبلات" }, icon: "🥗" },
@@ -37,7 +58,7 @@ export const menuItems: MenuItem[] = [
       ar: "حمص كريمي مع الطحينة وزيت الزيتون والصنوبر",
     },
     price: 2.75,
-    image: "https://images.unsplash.com/photo-1668236540534-995f3a0d4a2a?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -49,7 +70,7 @@ export const menuItems: MenuItem[] = [
       ar: "قشرة برغل مقرمشة محشوة بلحم الغنم المتبل",
     },
     price: 3.5,
-    image: "https://images.unsplash.com/photo-1601050690597-df0568fa7098?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1601050690597-df0568fa7098?w=800&q=85&auto=format&fit=crop",
     spicy: true,
     chefSpecial: true,
   },
@@ -62,7 +83,7 @@ export const menuItems: MenuItem[] = [
       ar: "ورق عنب ملفوف يدوياً مع الأرز والأعشاب والليمون",
     },
     price: 2.95,
-    image: "https://images.unsplash.com/photo-1625944236921-2b879f03698c?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1625944236921-2b879f03698c?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -74,7 +95,7 @@ export const menuItems: MenuItem[] = [
       ar: "شوربة عدس تقليدية مع الكمون والليمون الطازج",
     },
     price: 1.85,
-    image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -86,7 +107,7 @@ export const menuItems: MenuItem[] = [
       ar: "شوربة كريمية غنية بالروبيان والسمك ومرق الزعفران",
     },
     price: 3.25,
-    image: "https://images.unsplash.com/photo-1626200419199-3912954a2c5b?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1559847844-d7243894f8c2?w=800&q=85&auto=format&fit=crop",
     chefSpecial: true,
   },
   {
@@ -98,7 +119,7 @@ export const menuItems: MenuItem[] = [
       ar: "شوربة طماطم مشوية مع ريحان طازج ولمسة من الكريمة",
     },
     price: 2.15,
-    image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -110,7 +131,7 @@ export const menuItems: MenuItem[] = [
       ar: "خضار مشكلة، طماطم، فجل، ورقائق خبز مقرمشة",
     },
     price: 2.65,
-    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -122,7 +143,7 @@ export const menuItems: MenuItem[] = [
       ar: "كينوا، أفوكado، حمص محمّص، وصلصة طحينة",
     },
     price: 3.15,
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
     chefSpecial: true,
   },
@@ -135,7 +156,7 @@ export const menuItems: MenuItem[] = [
       ar: "خس رومaine مع جبنة بارمezan مقرمشة وصلصة سيزر منزلية",
     },
     price: 2.85,
-    image: "https://images.unsplash.com/photo-1550304943-4f24f11dd0f0?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1551248429-4096920f4720?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -147,7 +168,7 @@ export const menuItems: MenuItem[] = [
       ar: "فillet سمك همور طازج من الخليج مع زبدة الأعشاب وخضار مشوية",
     },
     price: 8.95,
-    image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=85&auto=format&fit=crop",
     chefSpecial: true,
   },
   {
@@ -159,7 +180,7 @@ export const menuItems: MenuItem[] = [
       ar: "كتف غنم مشوي ببطء على أرز متبل مع مكسرات محمصة",
     },
     price: 9.5,
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=85&auto=format&fit=crop",
   },
   {
     id: "mc-3",
@@ -170,7 +191,7 @@ export const menuItems: MenuItem[] = [
       ar: "أرز بسمتي عطري مع دجاج طري وبهارات مشكلة",
     },
     price: 5.75,
-    image: "https://images.unsplash.com/photo-1603133872878-684f208fb589?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&q=85&auto=format&fit=crop",
     spicy: true,
   },
   {
@@ -182,7 +203,7 @@ export const menuItems: MenuItem[] = [
       ar: "قطعة لحم وagyu فاخرة، شيدر معتق، مايونيز زعفران، خبز brioche",
     },
     price: 6.25,
-    image: "https://images.unsplash.com/photo-1568901347635-c5570a71a092?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1568901347635-c5570a71a092?w=800&q=85&auto=format&fit=crop",
     chefSpecial: true,
   },
   {
@@ -194,7 +215,7 @@ export const menuItems: MenuItem[] = [
       ar: "بورتobello مشوي، حلوم، فلفل محمص، وبستو",
     },
     price: 4.5,
-    image: "https://images.unsplash.com/photo-1520072959219-c595dc870360?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1520072959219-c595dc870360?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -206,7 +227,7 @@ export const menuItems: MenuItem[] = [
       ar: "دجاج مقرمش، مايونيز هرissa، مخلل، وslaw على خبز brioche",
     },
     price: 4.95,
-    image: "https://images.unsplash.com/photo-1572802419224-296b0a5650de?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1572802419224-296b0a5650de?w=800&q=85&auto=format&fit=crop",
     spicy: true,
   },
   {
@@ -218,7 +239,7 @@ export const menuItems: MenuItem[] = [
       ar: "طماطم San Marzano، موزارella جاموس، ريحان طازج، زيت ترuffle",
     },
     price: 5.5,
-    image: "https://images.unsplash.com/photo-1574071318508-1cdbab80a002?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1574071318508-1cdbab80a002?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
     chefSpecial: true,
   },
@@ -231,7 +252,7 @@ export const menuItems: MenuItem[] = [
       ar: "سالami حار، فلفل حار، موزارella، وصلصة طماطم",
     },
     price: 5.25,
-    image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=800&q=85&auto=format&fit=crop",
     spicy: true,
   },
   {
@@ -243,7 +264,7 @@ export const menuItems: MenuItem[] = [
       ar: "موزارella، gorgonzola، بارmesan، وricotta على عجينة رقيقة",
     },
     price: 5.75,
-    image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -255,7 +276,7 @@ export const menuItems: MenuItem[] = [
       ar: "linguine طازجة بصلصة كريمة الزعفران مع كركند أطلسي",
     },
     price: 7.85,
-    image: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&q=85&auto=format&fit=crop",
     chefSpecial: true,
   },
   {
@@ -267,7 +288,7 @@ export const menuItems: MenuItem[] = [
       ar: "penne بصلصة طماطم حارة مع الثوم والبقدونس الطازج",
     },
     price: 4.25,
-    image: "https://images.unsplash.com/photo-1563379926898-05f4575a58d5?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1563379926898-05f4575a58d5?w=800&q=85&auto=format&fit=crop",
     spicy: true,
     vegetarian: true,
   },
@@ -280,7 +301,7 @@ export const menuItems: MenuItem[] = [
       ar: "فطر بري، صلصة كريمة بالثوم، وترuffle مبشور",
     },
     price: 4.75,
-    image: "https://images.unsplash.com/photo-1645112411341-6c4fd023714a?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1645112411341-6c4fd023714a?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -292,7 +313,7 @@ export const menuItems: MenuItem[] = [
       ar: "كنافة ساخنة مع جبنة عكawi، فستق، وشراب الورد",
     },
     price: 2.95,
-    image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=800&q=85&auto=format&fit=crop",
     chefSpecial: true,
   },
   {
@@ -304,7 +325,7 @@ export const menuItems: MenuItem[] = [
       ar: "قلب شوكolade داكنة ذائبة مع آيس كريم فانيلia",
     },
     price: 3.35,
-    image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -316,7 +337,7 @@ export const menuItems: MenuItem[] = [
       ar: "حلوى أم علي تقليدية مع المكسرات والكريمة",
     },
     price: 2.65,
-    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -328,7 +349,7 @@ export const menuItems: MenuItem[] = [
       ar: "إسpresso مع حليب مبخر منقوع بالزعفرan الكويتي",
     },
     price: 1.75,
-    image: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
     chefSpecial: true,
   },
@@ -341,7 +362,7 @@ export const menuItems: MenuItem[] = [
       ar: "ليمonada منزلية مع نعnaع طازج وثلج مجروش",
     },
     price: 1.45,
-    image: "https://images.unsplash.com/photo-1523677011781-c91e1a2a325a?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1523677011781-c91e1a2a325a?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
   {
@@ -353,7 +374,7 @@ export const menuItems: MenuItem[] = [
       ar: "مزيج زبادي كريمي مع مانgo Alphonso والهيل",
     },
     price: 1.65,
-    image: "https://images.unsplash.com/photo-1623065424887-8af8182a8ec8?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1623065424887-8af8182a8ec8?w=800&q=85&auto=format&fit=crop",
     vegetarian: true,
   },
 ];
@@ -376,6 +397,22 @@ export const uiStrings = {
   backToHome: { en: "Back to Home", ar: "العودة للرئيسية" },
   items: { en: "items", ar: "طبق" },
   clearSearch: { en: "Clear", ar: "مسح" },
+  qrEyebrow: { en: "Digital Menu", ar: "القائمة الرقمية" },
+  qrTitle: { en: "Scan to View Our Menu", ar: "امسح لعرض قائمتنا" },
+  qrDescription: {
+    en: "Point your camera at the QR code to instantly access our full menu on any device — no app download required.",
+    ar: "وجّه كاميرا هاتفك نحو رمز QR للوصول الفوري إلى قائمتنا الكاملة على أي جهاز — دون الحاجة لتحميل تطبيق.",
+  },
+  qrFeature1: { en: "Instant access", ar: "وصول فوري" },
+  qrFeature2: { en: "Bilingual menu", ar: "قائمة ثنائية اللغة" },
+  qrFeature3: { en: "Always updated", ar: "محدّثة دائماً" },
+  contactUs: { en: "Contact", ar: "تواصل معنا" },
+  openingHours: { en: "Opening Hours", ar: "ساعات العمل" },
+  quickLinks: { en: "Quick Links", ar: "روابط سريعة" },
+  scanMenu: { en: "Scan QR Menu", ar: "مسح قائمة QR" },
+  allRights: { en: "All rights reserved.", ar: "جميع الحقوق محفوظة." },
+  viewMenu: { en: "View Menu", ar: "عرض القائمة" },
+  dishesCount: { en: "dishes available", ar: "طبق متاح" },
 } as const;
 
 export function formatPrice(price: number, lang: Language): string {

@@ -31,7 +31,7 @@ export function DemoSearch({ lang, value, onChange }: DemoSearchProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t("searchPlaceholder", lang)}
-        className="w-full rounded-2xl border border-gold/15 bg-surface py-3.5 pe-12 ps-12 text-sm text-white placeholder:text-white/40 transition-all duration-300 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/20"
+        className="w-full rounded-2xl border border-gold/15 bg-surface py-4 pe-12 ps-12 text-sm text-white placeholder:text-white/35 transition-all duration-300 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/20 sm:text-base"
         aria-label={t("searchPlaceholder", lang)}
       />
       {value && (
