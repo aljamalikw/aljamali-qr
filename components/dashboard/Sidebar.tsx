@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { dashboardNavItems } from "@/lib/dashboard/nav-items";
 import { restaurantProfile } from "@/lib/dashboard/mock-data";
@@ -22,6 +22,7 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
@@ -85,7 +86,7 @@ export function Sidebar({
       <div className="space-y-1 border-t border-gold/10 p-3">
         <button
           type="button"
-          onClick={() => signOut()}
+          onClick={() => signOut(router)}
           title={collapsed ? "Sign Out" : undefined}
           className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/60 transition-all duration-300 hover:bg-white/5 hover:text-white ${
             collapsed ? "justify-center" : ""

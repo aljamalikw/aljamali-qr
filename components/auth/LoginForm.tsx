@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthCard } from "./AuthCard";
@@ -19,13 +19,17 @@ import {
   REMEMBER_EMAIL_KEY,
 } from "@/lib/auth/errors";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/ToastProvider";
+import { AuthCardSkeleton } from "@/components/ui/Skeleton";
 
 export function LoginForm() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [formError, setFormError] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
@@ -41,7 +45,10 @@ export function LoginForm() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user && isEmailVerified(session.user)) {
         router.replace("/dashboard");
+        return;
       }
+
+      setAuthChecking(false);
     });
   }, [router]);
 
@@ -55,6 +62,14 @@ export function LoginForm() {
     return Object.keys(next).length === 0;
   };
 
+  const reportError = useCallback(
+    (message: string) => {
+      setFormError(message);
+      showToast(message, "error");
+    },
+    [showToast],
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -62,34 +77,41 @@ export function LoginForm() {
     setLoading(true);
     setFormError("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    if (error) {
+      if (error) {
+        reportError(getAuthErrorMessage(error));
+        return;
+      }
+
+      if (data.user && !isEmailVerified(data.user)) {
+        await supabase.auth.signOut();
+        reportError("Please verify your email before signing in.");
+        return;
+      }
+
+      if (remember) {
+        localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
+      } else {
+        localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      reportError("Network error. Please check your connection and try again.");
+    } finally {
       setLoading(false);
-      setFormError(getAuthErrorMessage(error));
-      return;
     }
-
-    if (data.user && !isEmailVerified(data.user)) {
-      await supabase.auth.signOut();
-      setLoading(false);
-      setFormError("Please verify your email before signing in.");
-      return;
-    }
-
-    if (remember) {
-      localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
-    } else {
-      localStorage.removeItem(REMEMBER_EMAIL_KEY);
-    }
-
-    setLoading(false);
-    router.push("/dashboard");
-    router.refresh();
   };
+
+  if (authChecking) {
+    return <AuthCardSkeleton />;
+  }
 
   return (
     <AuthCard>

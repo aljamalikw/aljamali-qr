@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { InputHTMLAttributes } from "react";
+import { usePlaceholderFocus } from "./usePlaceholderFocus";
 
 interface PasswordInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label: string;
@@ -14,10 +15,14 @@ export function PasswordInput({
   error,
   id,
   className = "",
+  placeholder,
+  onFocus,
+  onBlur,
   ...props
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
   const inputId = id ?? label.toLowerCase().replace(/\s+/g, "-");
+  const placeholderProps = usePlaceholderFocus(placeholder, onFocus, onBlur);
 
   return (
     <div className="space-y-1.5">
@@ -35,6 +40,7 @@ export function PasswordInput({
           aria-describedby={error ? `${inputId}-error` : undefined}
           className={`auth-input w-full pe-12 ${error ? "border-red-500/40 focus:border-red-500/50 focus:ring-red-500/20" : ""} ${className}`}
           {...props}
+          {...placeholderProps}
         />
         <button
           type="button"

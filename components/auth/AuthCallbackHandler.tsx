@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthPageSkeleton } from "@/components/ui/Skeleton";
 import { supabase } from "@/lib/supabase";
 
 export function AuthCallbackHandler() {
@@ -54,9 +55,5 @@ export function AuthCallbackHandler() {
     };
   }, [router, searchParams]);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="h-10 w-10 animate-spin rounded-full border-2 border-gold/20 border-t-gold" />
-    </div>
-  );
+  return <AuthPageSkeleton />;
 }

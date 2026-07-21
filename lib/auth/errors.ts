@@ -21,6 +21,14 @@ export function getAuthErrorMessage(error: AuthError | Error): string {
   if (message.includes("rate limit") || message.includes("too many requests")) {
     return "Too many attempts. Please wait a moment and try again.";
   }
+  if (
+    message.includes("fetch") ||
+    message.includes("network") ||
+    message.includes("failed to fetch") ||
+    message.includes("networkerror")
+  ) {
+    return "Network error. Please check your connection and try again.";
+  }
   if (message.includes("signup is disabled")) {
     return "Account registration is temporarily unavailable. Please try again later.";
   }

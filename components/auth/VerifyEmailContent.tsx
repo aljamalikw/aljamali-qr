@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/errors";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/ToastProvider";
+import { AuthCardSkeleton } from "@/components/ui/Skeleton";
 
 const RESEND_COOLDOWN = 60;
 
@@ -20,6 +21,7 @@ export function VerifyEmailContent() {
   const router = useRouter();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [countdown, setCountdown] = useState(0);
   const [pendingEmail, setPendingEmail] = useState("");
 
@@ -38,7 +40,10 @@ export function VerifyEmailContent() {
         await supabase.auth.signOut();
         sessionStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
         router.replace("/login");
+        return;
       }
+
+      setAuthChecking(false);
     }
 
     checkVerified();
@@ -94,6 +99,10 @@ export function VerifyEmailContent() {
     setCountdown(RESEND_COOLDOWN);
     showToast("Verification email sent — check your inbox", "success");
   };
+
+  if (authChecking) {
+    return <AuthCardSkeleton />;
+  }
 
   return (
     <AuthCard>

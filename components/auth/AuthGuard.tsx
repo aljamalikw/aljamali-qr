@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DashboardShellSkeleton } from "@/components/ui/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { isEmailVerified } from "@/lib/auth/errors";
 
@@ -59,11 +60,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }, [router]);
 
   if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-gold/20 border-t-gold" />
-      </div>
-    );
+    return <DashboardShellSkeleton />;
   }
 
   return <>{children}</>;

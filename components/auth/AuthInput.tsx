@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import type { InputHTMLAttributes } from "react";
+import { usePlaceholderFocus } from "./usePlaceholderFocus";
 
 interface AuthInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -13,9 +14,13 @@ export function AuthInput({
   error,
   id,
   className = "",
+  placeholder,
+  onFocus,
+  onBlur,
   ...props
 }: AuthInputProps) {
   const inputId = id ?? label.toLowerCase().replace(/\s+/g, "-");
+  const placeholderProps = usePlaceholderFocus(placeholder, onFocus, onBlur);
 
   return (
     <div className="space-y-1.5">
@@ -31,6 +36,7 @@ export function AuthInput({
         aria-describedby={error ? `${inputId}-error` : undefined}
         className={`auth-input w-full ${error ? "border-red-500/40 focus:border-red-500/50 focus:ring-red-500/20" : ""} ${className}`}
         {...props}
+        {...placeholderProps}
       />
       <AnimatePresence mode="wait">
         {error && (

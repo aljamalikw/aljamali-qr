@@ -19,6 +19,7 @@ import {
   PENDING_VERIFICATION_EMAIL_KEY,
 } from "@/lib/auth/errors";
 import { supabase } from "@/lib/supabase";
+import { createRestaurantForOwner } from "@/lib/restaurants/create-restaurant";
 
 export function RegisterForm() {
   const [loading, setLoading] = useState(false);
@@ -81,6 +82,23 @@ export function RegisterForm() {
     if (error) {
       setLoading(false);
       setFormError(getAuthErrorMessage(error));
+      return;
+    }
+
+    if (!data.user) {
+      setLoading(false);
+      setFormError("Registration completed, but we couldn't verify your account. Please try again.");
+      return;
+    }
+
+    const restaurantResult = await createRestaurantForOwner(
+      data.user.id,
+      form.email.trim(),
+    );
+
+    if (!restaurantResult.ok) {
+      setLoading(false);
+      setFormError(restaurantResult.message);
       return;
     }
 

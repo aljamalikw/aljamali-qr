@@ -13,6 +13,7 @@ import { PasswordStrength } from "./PasswordStrength";
 import { PasswordRequirements, meetsPasswordRequirements } from "./PasswordRequirements";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { supabase } from "@/lib/supabase";
+import { AuthCardSkeleton } from "@/components/ui/Skeleton";
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -80,6 +81,10 @@ export function ResetPasswordForm() {
     setLoading(false);
     setSuccess(true);
   };
+
+  if (!sessionReady) {
+    return <AuthCardSkeleton />;
+  }
 
   return (
     <AuthCard>

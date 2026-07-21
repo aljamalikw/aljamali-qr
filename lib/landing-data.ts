@@ -2,7 +2,7 @@ export const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
   { label: "Demo", href: "/demo" },
-  { label: "Why Aljamali", href: "#testimonials" },
+  { label: "Why Choose Us", href: "#testimonials" },
   { label: "Contact", href: "#contact" },
 ] as const;
 
