@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { dashboardNavItems } from "@/lib/dashboard/nav-items";
 import { restaurantProfile } from "@/lib/dashboard/mock-data";
+import { signOut } from "@/lib/auth/sign-out";
 import { DashboardIcon, getNavIcon } from "./icons/DashboardIcons";
 
 interface SidebarProps {
@@ -81,7 +82,19 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-gold/10 p-3">
+      <div className="space-y-1 border-t border-gold/10 p-3">
+        <button
+          type="button"
+          onClick={() => signOut()}
+          title={collapsed ? "Sign Out" : undefined}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/60 transition-all duration-300 hover:bg-white/5 hover:text-white ${
+            collapsed ? "justify-center" : ""
+          }`}
+        >
+          <DashboardIcon name="close" className="h-5 w-5 shrink-0 text-white/50" />
+          {!collapsed && <span className="truncate">Sign Out</span>}
+        </button>
+
         <button
           type="button"
           onClick={onToggleCollapse}

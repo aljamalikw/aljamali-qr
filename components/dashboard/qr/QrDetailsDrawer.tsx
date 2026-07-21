@@ -14,7 +14,7 @@ interface QrDetailsDrawerProps {
   item: QrCodeItem | null;
   onClose: () => void;
   onDownloadPng: (item: QrCodeItem) => void;
-  onDownloadPdf: (item: QrCodeItem) => void;
+  onDownloadSvg: (item: QrCodeItem) => void;
   onPrint: (item: QrCodeItem) => void;
   onCopyLink: (item: QrCodeItem) => void;
 }
@@ -23,7 +23,7 @@ export function QrDetailsDrawer({
   item,
   onClose,
   onDownloadPng,
-  onDownloadPdf,
+  onDownloadSvg,
   onPrint,
   onCopyLink,
 }: QrDetailsDrawerProps) {
@@ -40,9 +40,9 @@ export function QrDetailsDrawer({
             aria-hidden="true"
           />
           <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
+            initial={{ opacity: 0, x: "100%", scale: 0.98 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: "100%", scale: 0.98 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="menu-drawer fixed inset-y-0 end-0 z-50 flex w-full max-w-md flex-col border-s border-gold/10 shadow-2xl"
             role="dialog"
@@ -88,11 +88,11 @@ export function QrDetailsDrawer({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDownloadPdf(item)}
-                  className="menu-btn-secondary text-xs"
+                  onClick={() => onDownloadSvg(item)}
+                  className="menu-btn-secondary text-xs transition-transform hover:-translate-y-0.5"
                 >
                   <QrIcon name="download" className="h-4 w-4" />
-                  PDF
+                  SVG
                 </button>
                 <button
                   type="button"

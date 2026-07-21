@@ -98,6 +98,10 @@ body {
   animation-delay: 300ms;
 }
 
+.animation-delay-350 {
+  animation-delay: 350ms;
+}
+
 .animation-delay-400 {
   animation-delay: 400ms;
 }
@@ -281,6 +285,15 @@ body {
     0 0 0 1px rgba(212, 175, 55, 0.08) inset;
 }
 
+.menu-drawer {
+  background: linear-gradient(
+    180deg,
+    rgba(14, 14, 14, 0.99) 0%,
+    rgba(8, 8, 8, 0.99) 100%
+  );
+  backdrop-filter: blur(20px);
+}
+
 .dashboard-sidebar {
   background: linear-gradient(
     180deg,
@@ -394,4 +407,134 @@ body {
 select option {
   background: #111111;
   color: #f5f5f5;
+}
+
+.auth-glass-card {
+  background: linear-gradient(
+    145deg,
+    rgba(22, 22, 22, 0.92) 0%,
+    rgba(14, 14, 14, 0.96) 100%
+  );
+  border: 1px solid rgba(212, 175, 55, 0.12);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(212, 175, 55, 0.04) inset;
+  backdrop-filter: blur(12px);
+}
+
+.auth-input {
+  border-radius: 0.875rem;
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #f5f5f5;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+}
+
+.auth-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  border: none;
+  background: linear-gradient(135deg, #e8c547 0%, #d4af37 50%, #b8942e 100%);
+  padding: 0.8125rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #050505;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+  cursor: pointer;
+}
+
+.auth-btn-primary:hover {
+  background: linear-gradient(135deg, #f0d050 0%, #dbb83f 50%, #c49a32 100%);
+  box-shadow: 0 8px 28px rgba(212, 175, 55, 0.42);
+}
+
+.auth-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.8125rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.auth-btn-secondary:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.06);
+  color: var(--gold);
+}
+
+.auth-btn-social {
+  border-radius: 0.875rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.25s ease;
+}
+
+@keyframes landing-ripple {
+  to {
+    width: 280px;
+    height: 280px;
+    margin-left: -140px;
+    margin-top: -140px;
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer-slide {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(212, 175, 55, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-slide 1.8s ease-in-out infinite;
+}
+
+.table-row-hover {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.table-row-hover:hover {
+  background-color: rgba(212, 175, 55, 0.03);
 }

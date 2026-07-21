@@ -2,6 +2,12 @@ import Link from "next/link";
 import { navLinks, socialLinks } from "@/lib/landing-data";
 import { Icon } from "./Icons";
 
+const accountLinks = [
+  { label: "Restaurant Login", href: "/login" },
+  { label: "Create Account", href: "/register" },
+  { label: "Forgot Password", href: "/forgot-password" },
+];
+
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
@@ -12,9 +18,12 @@ export function Footer() {
       aria-label="Site footer"
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            >
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold/10 text-gold">
                 <Icon name="qr" className="h-5 w-5" />
               </span>
@@ -33,7 +42,7 @@ export function Footer() {
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-all hover:border-gold/30 hover:text-gold"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/30 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
                   aria-label={link.label}
                 >
                   <Icon
@@ -54,10 +63,28 @@ export function Footer() {
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="text-sm text-white/50 transition-colors hover:text-gold"
+                    className="text-sm text-white/50 transition-colors duration-300 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:rounded-sm"
                   >
                     {link.label}
                   </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
+              Account
+            </h3>
+            <ul className="space-y-3">
+              {accountLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-white/50 transition-colors duration-300 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:rounded-sm"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -71,7 +98,7 @@ export function Footer() {
               <li>
                 <a
                   href="mailto:hello@aljamaliqr.com"
-                  className="transition-colors hover:text-gold"
+                  className="transition-colors duration-300 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:rounded-sm"
                 >
                   hello@aljamaliqr.com
                 </a>
@@ -87,10 +114,16 @@ export function Footer() {
             &copy; {currentYear} Aljamali QR. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-white/40">
-            <a href="#" className="transition-colors hover:text-gold">
+            <a
+              href="#"
+              className="transition-colors duration-300 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:rounded-sm"
+            >
               Privacy Policy
             </a>
-            <a href="#" className="transition-colors hover:text-gold">
+            <a
+              href="#"
+              className="transition-colors duration-300 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:rounded-sm"
+            >
               Terms of Service
             </a>
           </div>

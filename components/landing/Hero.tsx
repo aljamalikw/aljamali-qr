@@ -1,5 +1,11 @@
 import { Button } from "./Button";
 
+const heroBenefits = [
+  "No credit card required",
+  "Setup in under 5 minutes",
+  "Cancel anytime",
+];
+
 export function Hero() {
   return (
     <section
@@ -26,7 +32,7 @@ export function Hero() {
       <div className="relative z-10 mx-auto max-w-7xl px-6 py-32 text-center lg:px-8">
         <div className="animate-fade-in-up opacity-0">
           <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-gold">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
             Digital Menus for Modern Restaurants
           </span>
         </div>
@@ -46,17 +52,28 @@ export function Hero() {
         </p>
 
         <div className="animate-fade-in-up animation-delay-300 opacity-0 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Button href="/demo" className="min-w-[160px] px-8 py-3.5 text-base">
-            View Demo
+          <Button href="/register" className="min-w-[200px] px-8 py-3.5 text-base">
+            Start Free Trial
           </Button>
           <Button
-            href="#pricing"
+            href="/demo"
             variant="secondary"
-            className="min-w-[160px] px-8 py-3.5 text-base"
+            className="min-w-[180px] px-8 py-3.5 text-base"
           >
-            Get Started
+            View Live Demo
           </Button>
         </div>
+
+        <ul className="animate-fade-in-up animation-delay-350 opacity-0 mt-6 flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-2">
+          {heroBenefits.map((benefit) => (
+            <li key={benefit} className="flex items-center gap-2 text-sm text-white/50">
+              <span className="text-gold" aria-hidden="true">
+                ✓
+              </span>
+              {benefit}
+            </li>
+          ))}
+        </ul>
 
         <div className="animate-fade-in-up animation-delay-400 opacity-0 mt-16 flex flex-wrap items-center justify-center gap-8 text-sm text-white/40">
           <span>Trusted by 500+ restaurants</span>
@@ -69,7 +86,7 @@ export function Hero() {
 
       <a
         href="#features"
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float text-gold/60 transition-colors hover:text-gold"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float cursor-pointer text-gold/60 transition-colors duration-200 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
         aria-label="Scroll to features"
       >
         <svg

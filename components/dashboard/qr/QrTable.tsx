@@ -70,7 +70,7 @@ export function QrTable({ items, onAction }: QrTableProps) {
               {items.map((item) => (
                 <tr
                   key={item.id}
-                  className="group border-b border-white/5 transition-colors last:border-0 hover:bg-gold/[0.03]"
+                  className="table-row-hover group border-b border-white/5 last:border-0"
                 >
                   <td className="px-4 py-3">
                     <QrPreview value={item.url} size={40} className="h-11 w-11 border border-gold/10" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { initialQrCodes } from "@/lib/dashboard/qr/seed-data";
 import type {
@@ -17,33 +17,21 @@ import {
   filterAndSortQrCodes,
   formToQrItem,
 } from "@/lib/dashboard/qr/utils";
+import { downloadQrSvg, printQrPage } from "@/lib/dashboard/qr/download-utils";
+import { useToast } from "@/components/ui/ToastProvider";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { QrStatsOverview } from "./QrStatsOverview";
 import { QrToolbar } from "./QrToolbar";
 import { QrTable } from "./QrTable";
-import { CreateQrModal } from "./CreateQrModal";
+import { CreateQrWizard } from "./CreateQrWizard";
 import { QrDetailsDrawer } from "./QrDetailsDrawer";
 import { DeleteQrModal } from "./DeleteQrModal";
 import { RenameQrModal } from "./RenameQrModal";
-import { QrToast } from "./QrToast";
+import { QrEmptyState } from "./QrEmptyState";
 import type { QrAction } from "./QrActionsMenu";
 
-function QrTableSkeleton() {
-  return (
-    <div className="animate-pulse space-y-3 p-4">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex gap-4 rounded-xl border border-white/5 bg-black/20 p-4">
-          <div className="h-11 w-11 rounded-lg bg-white/5" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-1/3 rounded bg-white/5" />
-            <div className="h-3 w-1/4 rounded bg-white/5" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function QrManagement() {
+  const { showToast } = useToast();
   const [items, setItems] = useState<QrCodeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -55,8 +43,6 @@ export function QrManagement() {
   const [viewItem, setViewItem] = useState<QrCodeItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<QrCodeItem | null>(null);
   const [renameTarget, setRenameTarget] = useState<QrCodeItem | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -66,12 +52,6 @@ export function QrManagement() {
     return () => clearTimeout(t);
   }, []);
 
-  const showToast = useCallback((message: string) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast(message);
-    toastTimer.current = setTimeout(() => setToast(null), 2800);
-  }, []);
-
   const filtered = useMemo(
     () => filterAndSortQrCodes(items, { search, status, type, sort }),
     [items, search, status, type, sort],
@@ -79,54 +59,61 @@ export function QrManagement() {
 
   const stats = useMemo(() => computeOverviewStats(items), [items]);
 
-  const handleCreate = (data: QrCreateFormData) => {
-    const newItem = formToQrItem(data);
-    setItems((prev) => [newItem, ...prev]);
-    showToast(`QR code "${newItem.name}" created`);
-  };
+  const handleCreate = useCallback(
+    (data: QrCreateFormData) => {
+      const newItem = formToQrItem(data);
+      setItems((prev) => [newItem, ...prev]);
+    },
+    [],
+  );
 
-  const handleAction = (action: QrAction, item: QrCodeItem) => {
-    switch (action) {
-      case "view":
-        setViewItem(item);
-        break;
-      case "rename":
-        setRenameTarget(item);
-        break;
-      case "duplicate":
-        setItems((prev) => [duplicateQrItem(item), ...prev]);
-        showToast(`Duplicated "${item.name}"`);
-        break;
-      case "download-png":
-        showToast(`Downloading PNG for "${item.name}"...`);
-        break;
-      case "download-pdf":
-        showToast(`Downloading PDF for "${item.name}"...`);
-        break;
-      case "print":
-        showToast(`Opening print dialog for "${item.name}"...`);
-        break;
-      case "copy-link":
-        navigator.clipboard.writeText(item.url).then(() => {
-          showToast("Link copied to clipboard");
-        });
-        break;
-      case "toggle-status": {
-        const next = item.status === "active" ? "inactive" : "active";
-        setItems((prev) =>
-          prev.map((i) => (i.id === item.id ? { ...i, status: next } : i)),
-        );
-        if (viewItem?.id === item.id) {
-          setViewItem({ ...item, status: next });
+  const handleAction = useCallback(
+    (action: QrAction, item: QrCodeItem) => {
+      switch (action) {
+        case "view":
+          setViewItem(item);
+          break;
+        case "rename":
+          setRenameTarget(item);
+          break;
+        case "duplicate":
+          setItems((prev) => [duplicateQrItem(item), ...prev]);
+          showToast(`Duplicated "${item.name}"`);
+          break;
+        case "download-png":
+          showToast(`Downloading PNG for "${item.name}"...`);
+          break;
+        case "download-pdf":
+          downloadQrSvg(item.url, item.name);
+          showToast("SVG downloaded");
+          break;
+        case "print":
+          printQrPage(item.name, item.url);
+          showToast("Opening print dialog...");
+          break;
+        case "copy-link":
+          navigator.clipboard.writeText(item.url).then(() => {
+            showToast("URL copied to clipboard");
+          });
+          break;
+        case "toggle-status": {
+          const next = item.status === "active" ? "inactive" : "active";
+          setItems((prev) =>
+            prev.map((i) => (i.id === item.id ? { ...i, status: next } : i)),
+          );
+          if (viewItem?.id === item.id) {
+            setViewItem({ ...item, status: next });
+          }
+          showToast(`QR code ${next === "active" ? "enabled" : "disabled"}`);
+          break;
         }
-        showToast(`QR code ${next === "active" ? "enabled" : "disabled"}`);
-        break;
+        case "delete":
+          setDeleteTarget(item);
+          break;
       }
-      case "delete":
-        setDeleteTarget(item);
-        break;
-    }
-  };
+    },
+    [showToast, viewItem],
+  );
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
@@ -146,33 +133,48 @@ export function QrManagement() {
       ),
     );
     if (viewItem?.id === renameTarget.id) {
-      setViewItem({ ...renameTarget, name, url: buildQrUrl(name, renameTarget.type, renameTarget.tableNumber) });
+      setViewItem({
+        ...renameTarget,
+        name,
+        url: buildQrUrl(name, renameTarget.type, renameTarget.tableNumber),
+      });
     }
     showToast(`Renamed to "${name}"`);
     setRenameTarget(null);
   };
 
+  const showEmpty = !loading && items.length === 0;
+  const showFilteredEmpty = !loading && items.length > 0 && filtered.length === 0;
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <QrStatsOverview stats={stats} />
 
-      <QrToolbar
-        search={search}
-        status={status}
-        type={type}
-        sort={sort}
-        filteredCount={filtered.length}
-        totalCount={items.length}
-        onSearchChange={setSearch}
-        onStatusChange={setStatus}
-        onTypeChange={setType}
-        onSortChange={setSort}
-        onCreate={() => setCreateOpen(true)}
-      />
+      {!showEmpty && (
+        <QrToolbar
+          search={search}
+          status={status}
+          type={type}
+          sort={sort}
+          filteredCount={filtered.length}
+          totalCount={items.length}
+          onSearchChange={setSearch}
+          onStatusChange={setStatus}
+          onTypeChange={setType}
+          onSortChange={setSort}
+          onCreate={() => setCreateOpen(true)}
+        />
+      )}
 
       {loading ? (
         <div className="dashboard-card overflow-hidden rounded-2xl">
-          <QrTableSkeleton />
+          <TableSkeleton rows={5} />
+        </div>
+      ) : showEmpty ? (
+        <QrEmptyState onCreate={() => setCreateOpen(true)} />
+      ) : showFilteredEmpty ? (
+        <div className="dashboard-card rounded-2xl p-10 text-center transition-all hover:border-gold/15">
+          <p className="text-white/45">No QR codes match your filters.</p>
         </div>
       ) : (
         <motion.div
@@ -184,19 +186,17 @@ export function QrManagement() {
         </motion.div>
       )}
 
-      <CreateQrModal
+      <CreateQrWizard
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onGenerate={(data) => {
-          handleCreate(data);
-        }}
+        onComplete={handleCreate}
       />
 
       <QrDetailsDrawer
         item={viewItem}
         onClose={() => setViewItem(null)}
         onDownloadPng={(item) => handleAction("download-png", item)}
-        onDownloadPdf={(item) => handleAction("download-pdf", item)}
+        onDownloadSvg={(item) => handleAction("download-pdf", item)}
         onPrint={(item) => handleAction("print", item)}
         onCopyLink={(item) => handleAction("copy-link", item)}
       />
@@ -214,8 +214,6 @@ export function QrManagement() {
         onConfirm={confirmRename}
         onCancel={() => setRenameTarget(null)}
       />
-
-      <QrToast message={toast ?? ""} visible={toast !== null} />
     </div>
   );
 }
