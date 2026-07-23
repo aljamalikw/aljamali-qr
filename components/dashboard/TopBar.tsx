@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { getUserDisplayName, getUserInitials } from "@/lib/auth/user-display";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { restaurantProfile } from "@/lib/dashboard/mock-data";
-import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardIcon } from "./icons/DashboardIcons";
 
@@ -13,19 +12,13 @@ interface TopBarProps {
 }
 
 export function TopBar({ onOpenMobileMenu }: TopBarProps) {
-  const [displayName, setDisplayName] = useState("");
-  const [userLoading, setUserLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setDisplayName(getUserDisplayName(session.user));
-      }
-      setUserLoading(false);
-    });
-  }, []);
-
-  const userInitials = getUserInitials(displayName);
+  const { displayName, initials, roleLabel, loading: userLoading } = useAuthUser();
+  const {
+    displayName: restaurantName,
+    initials: restaurantInitials,
+    subtitle: restaurantSubtitle,
+    loading: restaurantLoading,
+  } = useRestaurant();
 
   return (
     <motion.header
@@ -45,17 +38,29 @@ export function TopBar({ onOpenMobileMenu }: TopBarProps) {
         </button>
 
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gold/20 bg-gold/10 font-serif text-sm font-bold text-gold">
-            {restaurantProfile.initials}
-          </span>
-          <div className="min-w-0">
-            <h1 className="truncate font-serif text-base font-bold text-white sm:text-lg">
-              {restaurantProfile.name}
-            </h1>
-            <p className="hidden truncate text-xs text-white/40 sm:block">
-              {restaurantProfile.plan} · Digital Menu
-            </p>
-          </div>
+          {restaurantLoading ? (
+            <>
+              <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
+              <div className="min-w-0 space-y-2">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="hidden h-3 w-44 sm:block" />
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gold/20 bg-gold/10 font-serif text-sm font-bold text-gold">
+                {restaurantInitials}
+              </span>
+              <div className="min-w-0">
+                <h1 className="truncate font-serif text-base font-bold text-white sm:text-lg">
+                  {restaurantName}
+                </h1>
+                <p className="hidden truncate text-xs text-white/40 sm:block">
+                  {restaurantSubtitle}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -85,14 +90,14 @@ export function TopBar({ onOpenMobileMenu }: TopBarProps) {
           ) : (
             <>
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold/30 to-gold/10 font-serif text-sm font-bold text-gold">
-                {userInitials}
+                {initials}
               </div>
               <div className="hidden min-w-0 md:block">
                 <p className="truncate text-sm font-medium text-white">
                   {displayName}
                 </p>
                 <p className="truncate text-xs text-white/40">
-                  {restaurantProfile.userRole}
+                  {roleLabel}
                 </p>
               </div>
             </>
@@ -103,7 +108,7 @@ export function TopBar({ onOpenMobileMenu }: TopBarProps) {
           <Skeleton className="h-9 w-9 rounded-full sm:hidden" />
         ) : (
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold/30 to-gold/10 font-serif text-xs font-bold text-gold sm:hidden">
-            {userInitials}
+            {initials}
           </div>
         )}
       </div>

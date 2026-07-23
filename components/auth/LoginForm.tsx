@@ -19,6 +19,7 @@ import {
   REMEMBER_EMAIL_KEY,
 } from "@/lib/auth/errors";
 import { supabase } from "@/lib/supabase";
+import { resolveAuthenticatedRedirect } from "@/lib/restaurants/setup";
 import { useToast } from "@/components/ui/ToastProvider";
 import { AuthCardSkeleton } from "@/components/ui/Skeleton";
 
@@ -42,9 +43,9 @@ export function LoginForm() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user && isEmailVerified(session.user)) {
-        router.replace("/dashboard");
+        router.replace(await resolveAuthenticatedRedirect());
         return;
       }
 
@@ -100,7 +101,7 @@ export function LoginForm() {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
       }
 
-      router.push("/dashboard");
+      router.push(await resolveAuthenticatedRedirect());
       router.refresh();
     } catch {
       reportError("Network error. Please check your connection and try again.");

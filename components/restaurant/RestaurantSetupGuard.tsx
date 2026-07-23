@@ -2,26 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardShellSkeleton } from "@/components/ui/Skeleton";
 import { isEmailVerified } from "@/lib/auth/errors";
 import {
   fetchUserRestaurant,
   isRestaurantSetupComplete,
 } from "@/lib/restaurants/setup";
 import { supabase } from "@/lib/supabase";
+import { AuthCardSkeleton } from "@/components/ui/Skeleton";
 
-interface AuthGuardProps {
+interface RestaurantSetupGuardProps {
   children: React.ReactNode;
 }
 
-export function AuthGuard({ children }: AuthGuardProps) {
+export function RestaurantSetupGuard({ children }: RestaurantSetupGuardProps) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    async function verifySession() {
+    async function verifyAccess() {
       const {
         data: { session },
         error,
@@ -42,36 +42,23 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
       const restaurant = await fetchUserRestaurant();
 
-      if (!isRestaurantSetupComplete(restaurant)) {
-        router.replace("/restaurant/setup");
+      if (isRestaurantSetupComplete(restaurant)) {
+        router.replace("/dashboard");
         return;
       }
 
       setReady(true);
     }
 
-    verifySession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        router.replace("/login");
-        return;
-      }
-      if (!isEmailVerified(session.user)) {
-        supabase.auth.signOut().then(() => router.replace("/verify-email"));
-      }
-    });
+    verifyAccess();
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
   }, [router]);
 
   if (!ready) {
-    return <DashboardShellSkeleton />;
+    return <AuthCardSkeleton />;
   }
 
   return <>{children}</>;

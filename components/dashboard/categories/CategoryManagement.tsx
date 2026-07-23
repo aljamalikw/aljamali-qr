@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { initialCategories, createEmptyCategoryForm, validateCategoryForm } from "@/lib/dashboard/categories/seed-data";
+import { createEmptyCategoryForm, validateCategoryForm } from "@/lib/dashboard/categories/seed-data";
 import type { DashboardCategory } from "@/lib/dashboard/categories/types";
+import { createCategory } from "@/lib/categories/createCategory";
+import { deleteCategory } from "@/lib/categories/deleteCategory";
+import { fetchCategories } from "@/lib/categories/fetchCategories";
+import { updateCategory } from "@/lib/categories/updateCategory";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -22,15 +26,26 @@ export function CategoryManagement() {
   const [form, setForm] = useState(createEmptyCategoryForm());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DashboardCategory | null>(null);
 
+  const loadCategories = useCallback(async () => {
+    setLoading(true);
+    const result = await fetchCategories();
+    setLoading(false);
+
+    if (!result.ok) {
+      showToast(result.message, "error");
+      setItems([]);
+      return;
+    }
+
+    setItems(result.data);
+  }, [showToast]);
+
   useEffect(() => {
-    const t = setTimeout(() => {
-      setItems(initialCategories);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
-  }, []);
+    loadCategories();
+  }, [loadCategories]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -52,41 +67,41 @@ export function CategoryManagement() {
       setError(err);
       return;
     }
+
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    if (editingId) {
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === editingId
-            ? { ...i, nameEn: form.nameEn.trim(), nameAr: form.nameAr.trim(), icon: form.icon, visible: form.visible }
-            : i,
-        ),
-      );
-      showToast("Category updated successfully");
-    } else {
-      setItems((prev) => [
-        ...prev,
-        {
-          id: `cat-${Date.now()}`,
-          nameEn: form.nameEn.trim(),
-          nameAr: form.nameAr.trim(),
-          icon: form.icon,
-          itemCount: 0,
-          visible: form.visible,
-          sortOrder: prev.length + 1,
-        },
-      ]);
-      showToast("Category created successfully");
-    }
+
+    const result = editingId
+      ? await updateCategory(editingId, form)
+      : await createCategory(form);
+
     setSaving(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      showToast(result.message, "error");
+      return;
+    }
+
+    showToast(editingId ? "Category updated successfully" : "Category created successfully");
     setModalOpen(false);
+    await loadCategories();
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setItems((prev) => prev.filter((i) => i.id !== deleteTarget.id));
+
+    setDeleting(true);
+    const result = await deleteCategory(deleteTarget.id);
+    setDeleting(false);
+
+    if (!result.ok) {
+      showToast(result.message, "error");
+      return;
+    }
+
     showToast(`Deleted "${deleteTarget.nameEn}"`);
     setDeleteTarget(null);
+    await loadCategories();
   };
 
   const showEmpty = !loading && items.length === 0;
@@ -183,6 +198,7 @@ export function CategoryManagement() {
         description={<>Delete <span className="font-medium text-white">{deleteTarget?.nameEn}</span>? Items in this category will need reassignment.</>}
         confirmLabel="Delete"
         variant="danger"
+        loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />

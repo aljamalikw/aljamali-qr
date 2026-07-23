@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { menuCategories } from "@/lib/dashboard/menu/seed-data";
+import type { MenuCategoryOption } from "@/lib/categories/menu-options";
 import type { MenuFormData } from "@/lib/dashboard/menu/types";
 
 interface MenuFormDrawerProps {
@@ -10,6 +10,7 @@ interface MenuFormDrawerProps {
   editing: boolean;
   saving: boolean;
   error: string | null;
+  categories: MenuCategoryOption[];
   onChange: (form: MenuFormData) => void;
   onSave: () => void;
   onClose: () => void;
@@ -24,6 +25,7 @@ export function MenuFormDrawer({
   editing,
   saving,
   error,
+  categories,
   onChange,
   onSave,
   onClose,
@@ -72,9 +74,13 @@ export function MenuFormDrawer({
                 <div>
                   <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Category</label>
                   <select value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)} className={inputClass}>
-                    {menuCategories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
+                    {categories.length === 0 ? (
+                      <option value="">No categories available</option>
+                    ) : (
+                      categories.map((category) => (
+                        <option key={category.id} value={category.id}>{category.label}</option>
+                      ))
+                    )}
                   </select>
                 </div>
                 <div>

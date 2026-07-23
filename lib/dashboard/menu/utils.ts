@@ -9,7 +9,7 @@ export function createEmptyMenuForm(): MenuFormData {
   return {
     nameEn: "",
     nameAr: "",
-    categoryId: "starters",
+    categoryId: "",
     price: "",
     descriptionEn: "",
     descriptionAr: "",

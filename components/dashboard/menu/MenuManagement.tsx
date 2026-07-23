@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { initialMenuItems, getCategoryLabel } from "@/lib/dashboard/menu/seed-data";
+import { getCategoryLabel } from "@/lib/dashboard/menu/seed-data";
 import type { DashboardMenuItem, MenuFormData, MenuSortOption, MenuStatusFilter } from "@/lib/dashboard/menu/types";
+import { useMenuCategoryOptions } from "@/lib/categories/useMenuCategoryOptions";
+import { createMenuItem } from "@/lib/menu-items/createMenuItem";
+import { deleteMenuItem } from "@/lib/menu-items/deleteMenuItem";
+import { fetchMenuItems } from "@/lib/menu-items/fetchMenuItems";
+import { updateMenuItem } from "@/lib/menu-items/updateMenuItem";
 import {
   createEmptyMenuForm,
   filterAndSortMenuItems,
-  formToMenuItem,
   formatPrice,
   menuItemToForm,
   validateMenuForm,
@@ -21,6 +25,7 @@ import { MenuFormDrawer } from "./MenuFormDrawer";
 
 export function MenuManagement() {
   const { showToast } = useToast();
+  const { categories: menuCategories } = useMenuCategoryOptions();
   const [items, setItems] = useState<DashboardMenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,15 +36,26 @@ export function MenuManagement() {
   const [form, setForm] = useState<MenuFormData>(createEmptyMenuForm());
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DashboardMenuItem | null>(null);
 
+  const loadMenuItems = useCallback(async () => {
+    setLoading(true);
+    const result = await fetchMenuItems();
+    setLoading(false);
+
+    if (!result.ok) {
+      showToast(result.message, "error");
+      setItems([]);
+      return;
+    }
+
+    setItems(result.data);
+  }, [showToast]);
+
   useEffect(() => {
-    const t = setTimeout(() => {
-      setItems(initialMenuItems);
-      setLoading(false);
-    }, 650);
-    return () => clearTimeout(t);
-  }, []);
+    loadMenuItems();
+  }, [loadMenuItems]);
 
   const filtered = useMemo(
     () => filterAndSortMenuItems(items, { search, status, sort }),
@@ -48,10 +64,13 @@ export function MenuManagement() {
 
   const openCreate = useCallback(() => {
     setEditingId(null);
-    setForm(createEmptyMenuForm());
+    setForm({
+      ...createEmptyMenuForm(),
+      categoryId: menuCategories[0]?.id ?? "",
+    });
     setFormError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [menuCategories]);
 
   const openEdit = useCallback((item: DashboardMenuItem) => {
     setEditingId(item.id);
@@ -66,26 +85,41 @@ export function MenuManagement() {
       setFormError(err);
       return;
     }
+
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 700));
-    if (editingId) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === editingId ? formToMenuItem(form, editingId) : i)),
-      );
-      showToast("Menu item updated successfully");
-    } else {
-      setItems((prev) => [formToMenuItem(form), ...prev]);
-      showToast("Menu item added successfully");
-    }
+
+    const result = editingId
+      ? await updateMenuItem(editingId, form)
+      : await createMenuItem(form);
+
     setSaving(false);
+
+    if (!result.ok) {
+      setFormError(result.message);
+      showToast(result.message, "error");
+      return;
+    }
+
+    showToast(editingId ? "Menu item updated successfully" : "Menu item added successfully");
     setDrawerOpen(false);
+    await loadMenuItems();
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setItems((prev) => prev.filter((i) => i.id !== deleteTarget.id));
+
+    setDeleting(true);
+    const result = await deleteMenuItem(deleteTarget.id);
+    setDeleting(false);
+
+    if (!result.ok) {
+      showToast(result.message, "error");
+      return;
+    }
+
     showToast(`Deleted "${deleteTarget.nameEn}"`);
     setDeleteTarget(null);
+    await loadMenuItems();
   };
 
   const showEmpty = !loading && items.length === 0;
@@ -156,7 +190,7 @@ export function MenuManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-white/60">{getCategoryLabel(item.categoryId)}</td>
+                    <td className="px-4 py-3 text-sm text-white/60">{getCategoryLabel(item.categoryId, menuCategories)}</td>
                     <td className="px-4 py-3 font-serif text-gold">{formatPrice(item.price)}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs capitalize ${item.status === "published" ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border border-white/10 bg-white/5 text-white/45"}`}>
@@ -183,6 +217,7 @@ export function MenuManagement() {
         editing={editingId !== null}
         saving={saving}
         error={formError}
+        categories={menuCategories}
         onChange={setForm}
         onSave={handleSave}
         onClose={() => setDrawerOpen(false)}
@@ -194,6 +229,7 @@ export function MenuManagement() {
         description={<>Are you sure you want to delete <span className="font-medium text-white">{deleteTarget?.nameEn}</span>? This cannot be undone.</>}
         confirmLabel="Delete"
         variant="danger"
+        loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />

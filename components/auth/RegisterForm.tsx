@@ -79,6 +79,13 @@ export function RegisterForm() {
       },
     });
 
+    console.log("[RegisterForm] signUp response", {
+      hasUser: Boolean(data.user),
+      userId: data.user?.id,
+      hasSession: Boolean(data.session),
+      error,
+    });
+
     if (error) {
       setLoading(false);
       setFormError(getAuthErrorMessage(error));
@@ -86,15 +93,28 @@ export function RegisterForm() {
     }
 
     if (!data.user) {
+      console.warn("[RegisterForm] signUp succeeded but data.user is missing", { data });
       setLoading(false);
       setFormError("Registration completed, but we couldn't verify your account. Please try again.");
       return;
     }
 
+    console.log("[RegisterForm] calling createRestaurantForOwner", {
+      userId: data.user.id,
+      email: form.email.trim(),
+      hasSession: Boolean(data.session),
+    });
+
     const restaurantResult = await createRestaurantForOwner(
       data.user.id,
       form.email.trim(),
     );
+
+    console.log("[RegisterForm] createRestaurantForOwner result", {
+      userId: data.user.id,
+      email: form.email.trim(),
+      result: restaurantResult,
+    });
 
     if (!restaurantResult.ok) {
       setLoading(false);
