@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
-import { restaurantProfile } from "@/lib/dashboard/mock-data";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardIcon } from "./icons/DashboardIcons";
 
@@ -65,18 +65,7 @@ export function TopBar({ onOpenMobileMenu }: TopBarProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          className="relative rounded-xl border border-gold/15 p-2.5 text-white/70 transition-all duration-300 hover:border-gold/30 hover:bg-gold/5 hover:text-gold"
-          aria-label={`${restaurantProfile.notificationCount} notifications`}
-        >
-          <DashboardIcon name="bell" className="h-5 w-5" />
-          {restaurantProfile.notificationCount > 0 && (
-            <span className="absolute -end-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-bold text-black">
-              {restaurantProfile.notificationCount}
-            </span>
-          )}
-        </button>
+        <NotificationCenter />
 
         <div className="hidden items-center gap-3 rounded-xl border border-gold/15 bg-surface-elevated/80 px-3 py-1.5 sm:flex">
           {userLoading ? (

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { DashboardShellSkeleton } from "@/components/ui/Skeleton";
 import { isEmailVerified } from "@/lib/auth/errors";
+import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
 import {
   fetchUserRestaurant,
   isRestaurantSetupComplete,
@@ -14,8 +15,10 @@ interface AuthGuardProps {
   children: React.ReactNode;
 }
 
+/** Protects restaurant-owner dashboard routes. Admins are redirected to /admin. */
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -37,6 +40,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
       if (!isEmailVerified(session.user)) {
         await supabase.auth.signOut();
         router.replace("/verify-email");
+        return;
+      }
+
+      if (await fetchIsPlatformAdmin(session.user)) {
+        if (pathname.startsWith("/dashboard/demo-requests")) {
+          router.replace("/admin/demo-requests");
+          return;
+        }
+        router.replace("/admin/dashboard");
         return;
       }
 
@@ -68,7 +80,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, pathname]);
 
   if (!ready) {
     return <DashboardShellSkeleton />;

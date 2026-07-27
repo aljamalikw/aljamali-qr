@@ -17,6 +17,7 @@ interface QrDetailsDrawerProps {
   onDownloadSvg: (item: QrCodeItem) => void;
   onPrint: (item: QrCodeItem) => void;
   onCopyLink: (item: QrCodeItem) => void;
+  onToggleArchive: (item: QrCodeItem) => void;
 }
 
 export function QrDetailsDrawer({
@@ -26,6 +27,7 @@ export function QrDetailsDrawer({
   onDownloadSvg,
   onPrint,
   onCopyLink,
+  onToggleArchive,
 }: QrDetailsDrawerProps) {
   return (
     <AnimatePresence>
@@ -110,6 +112,13 @@ export function QrDetailsDrawer({
                   <QrIcon name="link" className="h-4 w-4" />
                   Copy Link
                 </button>
+                <button
+                  type="button"
+                  onClick={() => onToggleArchive(item)}
+                  className="menu-btn-secondary col-span-2 text-xs"
+                >
+                  {item.isArchived ? "Restore QR Code" : "Archive QR Code"}
+                </button>
               </div>
 
               <div className="mt-8 space-y-3">
@@ -120,8 +129,15 @@ export function QrDetailsDrawer({
                   { label: "Total scans", value: item.totalScans.toLocaleString() },
                   { label: "Today's scans", value: String(item.todayScans) },
                   { label: "Last scanned", value: formatLastScan(item.lastScan) },
+                  { label: "QR type", value: getQrTypeLabel(item.type) },
+                  ...(item.area ? [{ label: "Area", value: item.area }] : []),
+                  { label: "Destination URL", value: item.destinationUrl },
                   { label: "Created", value: formatQrDate(item.createdAt) },
                   { label: "Status", value: item.status === "active" ? "Active" : "Inactive" },
+                  { label: "Mode", value: item.mode === "permanent" ? "Permanent" : "Dynamic" },
+                  ...(item.expiresAt ? [{ label: "Expires", value: formatQrDate(item.expiresAt) }] : []),
+                  ...(item.scanLimit ? [{ label: "Scan limit", value: `${item.totalScans} / ${item.scanLimit}` }] : []),
+                  { label: "Password protected", value: item.passwordProtected ? "Yes" : "No" },
                 ].map((stat) => (
                   <div
                     key={stat.label}

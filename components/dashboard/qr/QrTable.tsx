@@ -12,6 +12,9 @@ import { QrActionsMenu, type QrAction } from "./QrActionsMenu";
 interface QrTableProps {
   items: QrCodeItem[];
   onAction: (action: QrAction, item: QrCodeItem) => void;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onToggleSelectAll: () => void;
 }
 
 function StatusBadge({ status }: { status: QrCodeItem["status"] }) {
@@ -30,7 +33,7 @@ function StatusBadge({ status }: { status: QrCodeItem["status"] }) {
   );
 }
 
-export function QrTable({ items, onAction }: QrTableProps) {
+export function QrTable({ items, onAction, selectedIds, onToggleSelect, onToggleSelectAll }: QrTableProps) {
   if (items.length === 0) {
     return (
       <div className="dashboard-card rounded-2xl p-10 text-center">
@@ -39,13 +42,24 @@ export function QrTable({ items, onAction }: QrTableProps) {
     );
   }
 
+  const allSelected = items.every((item) => selectedIds.has(item.id));
+
   return (
     <>
       <div className="dashboard-card hidden overflow-hidden rounded-2xl lg:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left">
+          <table className="w-full min-w-[1000px] text-left">
             <thead>
               <tr className="border-b border-gold/10 bg-black/30">
+                <th className="w-10 px-4 py-4">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={onToggleSelectAll}
+                    className="rounded border-gold/30"
+                    aria-label="Select all"
+                  />
+                </th>
                 {[
                   "QR Preview",
                   "Name",
@@ -70,15 +84,34 @@ export function QrTable({ items, onAction }: QrTableProps) {
               {items.map((item) => (
                 <tr
                   key={item.id}
-                  className="table-row-hover group border-b border-white/5 last:border-0"
+                  className={`table-row-hover group border-b border-white/5 last:border-0 ${item.isArchived ? "opacity-50" : ""}`}
                 >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => onToggleSelect(item.id)}
+                      className="rounded border-gold/30"
+                      aria-label={`Select ${item.name}`}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <QrPreview value={item.url} size={40} className="h-11 w-11 border border-gold/10" />
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-white group-hover:text-gold-light">{item.name}</p>
-                    {item.tableNumber && (
-                      <p className="text-xs text-white/40">Table {item.tableNumber}</p>
+                    <p className="font-medium text-white group-hover:text-gold-light">
+                      {item.name}
+                      {item.isArchived && (
+                        <span className="ms-2 rounded-full border border-white/15 px-1.5 py-0.5 text-[10px] uppercase text-white/40">
+                          Archived
+                        </span>
+                      )}
+                    </p>
+                    {(item.tableNumber || item.area) && (
+                      <p className="text-xs text-white/40">
+                        {item.area ? `${item.area} · ` : ""}
+                        {item.tableNumber ? `Table ${item.tableNumber}` : ""}
+                      </p>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-white/60">{getQrTypeLabel(item.type)}</td>
@@ -101,9 +134,16 @@ export function QrTable({ items, onAction }: QrTableProps) {
         {items.map((item) => (
           <div
             key={item.id}
-            className="dashboard-card rounded-2xl p-4 transition-all hover:border-gold/25"
+            className={`dashboard-card rounded-2xl p-4 transition-all hover:border-gold/25 ${item.isArchived ? "opacity-50" : ""}`}
           >
-            <div className="flex gap-4">
+            <div className="flex gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(item.id)}
+                onChange={() => onToggleSelect(item.id)}
+                className="mt-1.5 shrink-0 rounded border-gold/30"
+                aria-label={`Select ${item.name}`}
+              />
               <QrPreview value={item.url} size={56} className="h-16 w-16 shrink-0 border border-gold/10" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">

@@ -1,16 +1,76 @@
+export const PLATFORM_WHATSAPP = "96550000000";
+export const PLATFORM_EMAIL = "hello@aljamaliqr.com";
+export const PLATFORM_PHONE = "+965 5000 0000";
+
+export const whatsappPrefillMessage =
+  "Hello, I would like to know more about Aljamali QR.";
+
 export const navLinks = [
+  { label: "Home", href: "#hero" },
   { label: "Features", href: "#features" },
+  { label: "Why Us", href: "#why-us" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Demo", href: "/demo" },
-  { label: "Why Choose Us", href: "#testimonials" },
   { label: "Contact", href: "#contact" },
 ] as const;
 
 export const mobileNavLinks = [
+  { label: "Home", href: "#hero" },
   { label: "Features", href: "#features" },
+  { label: "Why Us", href: "#why-us" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Demo", href: "/demo" },
   { label: "Contact", href: "#contact" },
+  { label: "Login", href: "/login" },
+] as const;
+
+export const whyUsReasons = [
+  {
+    title: "Premium QR Experience",
+    description:
+      "A polished black-and-gold digital menu that matches the standard of fine dining and modern hospitality brands.",
+    icon: "qr",
+  },
+  {
+    title: "Instant Menu Updates",
+    description:
+      "Change prices, specials, or availability in seconds — every table sees the latest menu immediately.",
+    icon: "update",
+  },
+  {
+    title: "Unlimited Menu Changes",
+    description:
+      "Edit as often as you need with no printing costs, no delays, and no limits on everyday updates.",
+    icon: "unlimited",
+  },
+  {
+    title: "Multi-Language Menus",
+    description:
+      "Serve guests in English and Arabic with elegant bilingual layouts and proper RTL support.",
+    icon: "language",
+  },
+  {
+    title: "QR Analytics",
+    description:
+      "Understand scans, peak hours, and menu engagement so you can make sharper operational decisions.",
+    icon: "analytics",
+  },
+  {
+    title: "No App Required",
+    description:
+      "Guests open your menu instantly in the browser — no downloads, no accounts, no friction.",
+    icon: "phone",
+  },
+  {
+    title: "Secure Cloud Platform",
+    description:
+      "Your menus and data stay protected on a secure cloud foundation built for restaurant operations.",
+    icon: "shield",
+  },
+  {
+    title: "Fast Onboarding",
+    description:
+      "Go live quickly with guided setup, clear workflows, and a free trial that gets you operational fast.",
+    icon: "rocket",
+  },
 ] as const;
 
 export const features = [
@@ -73,55 +133,287 @@ export const steps = [
   },
 ] as const;
 
+export type PricingFeature = {
+  label: string;
+  comingSoon?: boolean;
+};
+
+/** Canonical marketing prices — single source of truth for landing/SEO. */
+export const PRICING_CURRENCY = "KWD";
+export const PRICING_LOW_PRICE = "0";
+export const PRICING_HIGH_PRICE = "15";
+
 export const pricingPlans = [
   {
+    id: "free",
+    name: "Free",
+    subtitle: "Best for trying Aljamali QR",
+    description: "Explore the platform before upgrading.",
+    monthlyPrice: "Free",
+    yearlyPrice: "Free",
+    monthlySuffix: "",
+    yearlySuffix: "",
+    featuresIntro: null as string | null,
+    features: [
+      { label: "1 Restaurant" },
+      { label: "1 QR Code" },
+      { label: "5 Menu Items" },
+      { label: "Basic Digital Menu" },
+      { label: "Basic QR Analytics" },
+      { label: "Aljamali Branding" },
+      { label: "Community Support" },
+    ] as PricingFeature[],
+    premiumFeaturesTitle: null as string | null,
+    premiumFeatures: null as PricingFeature[] | null,
+    highlighted: false,
+    badge: "Try Before You Buy",
+    cta: "Get Started",
+    ctaHref: "/register",
+    showYearlySavings: false,
+  },
+  {
+    id: "starter",
     name: "Starter",
-    price: "29",
-    period: "month",
-    description: "Perfect for single-location cafés and small restaurants.",
+    subtitle: "Perfect for cafés & small restaurants",
+    description: "Everything you need to digitize your menu.",
+    monthlyPrice: "8",
+    yearlyPrice: "80",
+    monthlySuffix: "KWD / month",
+    yearlySuffix: "KWD / year",
+    featuresIntro: "Everything in Free PLUS",
     features: [
-      "1 branch location",
-      "Up to 50 menu items",
-      "English & Arabic menus",
-      "Basic analytics",
-      "Email support",
-    ],
+      { label: "1 Restaurant" },
+      { label: "5 QR Codes" },
+      { label: "25 Menu Items" },
+      { label: "Unlimited Categories" },
+      { label: "Restaurant Branding" },
+      { label: "Menu Images" },
+      { label: "Instant Menu Updates" },
+      { label: "QR Scan Analytics" },
+      { label: "Priority Email Support" },
+    ] as PricingFeature[],
+    premiumFeaturesTitle: null as string | null,
+    premiumFeatures: null as PricingFeature[] | null,
     highlighted: false,
-    cta: "Get Started",
+    badge: "Best Value",
+    cta: "Start Free Trial",
+    ctaHref: "/register",
+    showYearlySavings: true,
   },
   {
-    name: "Business",
-    price: "79",
-    period: "month",
-    description: "Ideal for growing restaurants with multiple service areas.",
+    id: "professional",
+    name: "Professional",
+    subtitle: "Best for growing restaurants & multiple branches",
+    description:
+      "Advanced tools to increase sales and automate operations.",
+    monthlyPrice: "15",
+    yearlyPrice: "150",
+    monthlySuffix: "KWD / month",
+    yearlySuffix: "KWD / year",
+    featuresIntro: "Everything in Starter PLUS",
     features: [
-      "Up to 5 branch locations",
-      "Unlimited menu items",
-      "Advanced analytics",
-      "Custom branding",
-      "Priority support",
-      "Table-specific QR codes",
-    ],
+      { label: "2 Restaurants / Branches" },
+      { label: "Unlimited QR Codes" },
+      { label: "Unlimited Menu Items" },
+      { label: "Live Order Status", comingSoon: true },
+      { label: "Table Ordering", comingSoon: true },
+      { label: "Happy Hour Pricing", comingSoon: true },
+      { label: "Customer Reviews", comingSoon: true },
+      { label: "Priority Support" },
+    ] as PricingFeature[],
+    premiumFeaturesTitle: "Premium Business Tools",
+    premiumFeatures: [
+      { label: "Online Ordering", comingSoon: true },
+      { label: "Online Payments", comingSoon: true },
+      { label: "Kitchen Display", comingSoon: true },
+      { label: "Waiter Call", comingSoon: true },
+      { label: "Discount Coupons", comingSoon: true },
+      { label: "Sales Analytics" },
+      { label: "Remove Aljamali Branding" },
+    ] as PricingFeature[],
     highlighted: true,
-    cta: "Get Started",
+    badge: "Most Popular",
+    cta: "Start Free Trial",
+    ctaHref: "/register",
+    showYearlySavings: true,
   },
   {
+    id: "enterprise",
     name: "Enterprise",
-    price: "Custom",
-    period: "",
-    description: "Tailored solutions for hotel groups and restaurant chains.",
+    subtitle: "Built for restaurant chains",
+    description:
+      "Tailored solutions with dedicated support and custom integrations.",
+    monthlyPrice: "Contact Us",
+    yearlyPrice: "Contact Us",
+    monthlySuffix: "",
+    yearlySuffix: "",
+    featuresIntro: "Everything in Professional PLUS",
     features: [
-      "Unlimited branches",
-      "Dedicated account manager",
-      "API access & integrations",
-      "White-label options",
-      "SLA & onboarding",
-      "Custom analytics reports",
-    ],
+      { label: "Unlimited Restaurants" },
+      { label: "Unlimited Staff Accounts" },
+      { label: "Staff Roles & Permissions" },
+      { label: "Franchise Management" },
+      { label: "POS Integration" },
+      { label: "Custom Domain" },
+      { label: "API Access" },
+      { label: "Dedicated Account Manager" },
+      { label: "Priority SLA Support" },
+      { label: "Custom Development" },
+      { label: "On-site Training" },
+    ] as PricingFeature[],
+    premiumFeaturesTitle: null as string | null,
+    premiumFeatures: null as PricingFeature[] | null,
     highlighted: false,
+    badge: "Custom Solution",
     cta: "Contact Sales",
+    ctaHref: "#contact",
+    showYearlySavings: false,
   },
 ] as const;
+
+export const pricingTrustCards = [
+  {
+    title: "Setup in under 10 minutes",
+    description:
+      "Launch your digital menu quickly with a guided setup built for busy restaurant owners.",
+    icon: "rocket",
+  },
+  {
+    title: "Update menus instantly",
+    description:
+      "Change prices, specials, and availability in seconds — every table stays current.",
+    icon: "update",
+  },
+  {
+    title: "Customers need no app",
+    description:
+      "Guests scan and browse instantly in their browser — no downloads, no friction.",
+    icon: "phone",
+  },
+  {
+    title: "English & Arabic menus",
+    description:
+      "Serve every guest elegantly with bilingual menus and proper RTL support.",
+    icon: "language",
+  },
+] as const;
+
+/** Comparison table cells: text value, included (true), or not included (false). */
+export type PricingComparisonValue = string | boolean;
+
+export const pricingComparisonRows: ReadonlyArray<{
+  feature: string;
+  free: PricingComparisonValue;
+  starter: PricingComparisonValue;
+  professional: PricingComparisonValue;
+  enterprise: PricingComparisonValue;
+}> = [
+  {
+    feature: "Restaurants / Branches",
+    free: "1",
+    starter: "1",
+    professional: "2",
+    enterprise: "Unlimited",
+  },
+  {
+    feature: "Menu Items",
+    free: "5",
+    starter: "25",
+    professional: "Unlimited",
+    enterprise: "Unlimited",
+  },
+  {
+    feature: "QR Codes",
+    free: "1",
+    starter: "5",
+    professional: "Unlimited",
+    enterprise: "Unlimited",
+  },
+  {
+    feature: "Categories",
+    free: "Basic",
+    starter: "Unlimited",
+    professional: "Unlimited",
+    enterprise: "Unlimited",
+  },
+  {
+    feature: "Analytics",
+    free: "Basic QR",
+    starter: "QR Scan",
+    professional: "Sales Analytics",
+    enterprise: "Sales Analytics",
+  },
+  {
+    feature: "Restaurant Branding",
+    free: "Aljamali Branding",
+    starter: true,
+    professional: true,
+    enterprise: true,
+  },
+  {
+    feature: "Remove Aljamali Branding",
+    free: false,
+    starter: false,
+    professional: true,
+    enterprise: true,
+  },
+  {
+    feature: "Menu Images",
+    free: false,
+    starter: true,
+    professional: true,
+    enterprise: true,
+  },
+  {
+    feature: "Online Ordering",
+    free: false,
+    starter: false,
+    professional: "Soon",
+    enterprise: "Soon",
+  },
+  {
+    feature: "Online Payments",
+    free: false,
+    starter: false,
+    professional: "Soon",
+    enterprise: "Soon",
+  },
+  {
+    feature: "Kitchen / Table Ordering",
+    free: false,
+    starter: false,
+    professional: "Soon",
+    enterprise: "Soon",
+  },
+  {
+    feature: "Support",
+    free: "Community",
+    starter: "Priority Email",
+    professional: "Priority",
+    enterprise: "Priority SLA",
+  },
+  {
+    feature: "Staff Roles & Permissions",
+    free: false,
+    starter: false,
+    professional: false,
+    enterprise: true,
+  },
+  {
+    feature: "API / POS / Custom Domain",
+    free: false,
+    starter: false,
+    professional: false,
+    enterprise: true,
+  },
+  {
+    feature: "Dedicated Account Manager",
+    free: false,
+    starter: false,
+    professional: false,
+    enterprise: true,
+  },
+];
 
 export const testimonials = [
   {
@@ -149,29 +441,39 @@ export const testimonials = [
 
 export const faqs = [
   {
-    question: "Do customers need to download an app?",
+    question: "How long does setup take?",
+    answer:
+      "Most restaurants launch their first digital menu in under 30 minutes. Upload dishes, generate QR codes, and go live the same day.",
+  },
+  {
+    question: "Can I update my menu anytime?",
+    answer:
+      "Yes. Any change you make in the dashboard — prices, descriptions, availability — goes live immediately for every scanned menu.",
+  },
+  {
+    question: "Do customers need an app?",
     answer:
       "No. Guests simply scan the QR code with their phone camera and the menu opens instantly in their browser — no app, no sign-up.",
   },
   {
-    question: "Can I update my menu in real time?",
+    question: "How many QR codes can I create?",
     answer:
-      "Yes. Any change you make in the dashboard — prices, descriptions, availability — goes live immediately for all scanned menus.",
+      "The Free plan includes 1 QR code, Starter includes 5 QR codes, and Professional and Enterprise include unlimited QR codes.",
   },
   {
-    question: "Is Arabic RTL supported properly?",
+    question: "What is the difference between Starter and Professional?",
     answer:
-      "Absolutely. Our menus are built for true bilingual support with proper RTL layout, Arabic typography, and seamless language switching.",
+      "Starter is ideal for single-location restaurants with up to 5 QR codes and 25 menu items. Professional supports 2 restaurants/branches, unlimited QR codes and menu items, sales analytics, remove Aljamali branding, priority support, and upcoming ordering tools.",
   },
   {
-    question: "How many QR codes can I generate?",
+    question: "How much does Professional cost?",
     answer:
-      "Starter plans include table QR codes for one location. Business and Enterprise plans support unlimited QR codes across all your branches.",
+      "Professional is 15 KWD per month, or 150 KWD per year — saving the equivalent of 2 months with annual billing.",
   },
   {
-    question: "Can I try before I commit?",
+    question: "Can I upload food images?",
     answer:
-      "Yes. Click View Demo to explore a live sample menu, or start a 14-day free trial on any plan — no credit card required.",
+      "Absolutely. Upload high-quality dish photos to make your digital menu more appetizing and increase guest engagement.",
   },
 ] as const;
 

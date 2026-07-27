@@ -6,7 +6,9 @@ import { createEmptyCategoryForm, validateCategoryForm } from "@/lib/dashboard/c
 import type { DashboardCategory } from "@/lib/dashboard/categories/types";
 import { createCategory } from "@/lib/categories/createCategory";
 import { deleteCategory } from "@/lib/categories/deleteCategory";
+import { duplicateCategory } from "@/lib/categories/duplicateCategory";
 import { fetchCategories } from "@/lib/categories/fetchCategories";
+import { reorderCategories } from "@/lib/categories/reorderCategories";
 import { updateCategory } from "@/lib/categories/updateCategory";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -28,6 +30,7 @@ export function CategoryManagement() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DashboardCategory | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
@@ -104,6 +107,34 @@ export function CategoryManagement() {
     await loadCategories();
   };
 
+  const handleDuplicate = async (item: DashboardCategory) => {
+    const result = await duplicateCategory(item.id);
+    if (!result.ok) {
+      showToast(result.message, "error");
+      return;
+    }
+    showToast(`Duplicated "${item.nameEn}"`);
+    await loadCategories();
+  };
+
+  const moveCategory = async (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const next = [...items];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    setItems(next);
+
+    setReordering(true);
+    const result = await reorderCategories(next.map((c) => c.id));
+    setReordering(false);
+
+    if (!result.ok) {
+      showToast(result.message, "error");
+      await loadCategories();
+    }
+  };
+
   const showEmpty = !loading && items.length === 0;
 
   return (
@@ -128,22 +159,45 @@ export function CategoryManagement() {
         <CategoryEmptyState onAdd={openCreate} />
       ) : (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <div
               key={item.id}
               className="dashboard-card group rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:border-gold/25"
             >
               <div className="flex items-start justify-between">
                 <span className="text-3xl">{item.icon}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${item.visible ? "bg-emerald-500/10 text-emerald-300" : "bg-white/5 text-white/40"}`}>
-                  {item.visible ? "Visible" : "Hidden"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${item.visible ? "bg-emerald-500/10 text-emerald-300" : "bg-white/5 text-white/40"}`}>
+                    {item.visible ? "Visible" : "Hidden"}
+                  </span>
+                  <div className="flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => moveCategory(index, -1)}
+                      disabled={index === 0 || reordering}
+                      className="rounded p-0.5 text-white/40 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                      aria-label="Move up"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveCategory(index, 1)}
+                      disabled={index === items.length - 1 || reordering}
+                      className="rounded p-0.5 text-white/40 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                      aria-label="Move down"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                </div>
               </div>
               <h3 className="mt-4 font-serif text-lg font-bold text-white">{item.nameEn}</h3>
               <p className="text-sm text-white/45" dir="rtl">{item.nameAr}</p>
               <p className="mt-3 text-xs text-white/35">{item.itemCount} items</p>
               <div className="mt-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                 <button type="button" onClick={() => openEdit(item)} className="menu-btn-secondary flex-1 py-1.5 text-xs">Edit</button>
+                <button type="button" onClick={() => void handleDuplicate(item)} className="menu-btn-secondary flex-1 py-1.5 text-xs">Duplicate</button>
                 <button type="button" onClick={() => setDeleteTarget(item)} className="menu-btn-danger flex-1 py-1.5 text-xs">Delete</button>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import type { DashboardMenuItem, MenuFormData } from "@/lib/dashboard/menu/types";
-import { supabase } from "@/lib/supabase";
+import { updateWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { mapMenuFormToRow, mapMenuItemRowToDashboard } from "./mappers";
+import type { MenuItemRow } from "./types";
 
 const UPDATE_ERROR = "Unable to update menu item. Please try again.";
 
@@ -13,18 +14,13 @@ export async function updateMenuItem(
   try {
     const payload = mapMenuFormToRow(input);
 
-    const { data, error } = await supabase
-      .from("menu_items")
-      .update(payload)
-      .eq("id", id)
-      .select("*")
-      .single();
+    const result = await updateWithColumnFallback<MenuItemRow>("menu_items", { id }, payload);
 
-    if (error || !data) {
-      return { ok: false, message: UPDATE_ERROR };
+    if (!result.ok) {
+      return { ok: false, message: result.message === "NO_COLUMNS_AVAILABLE" ? UPDATE_ERROR : result.message };
     }
 
-    return { ok: true, data: mapMenuItemRowToDashboard(data) };
+    return { ok: true, data: mapMenuItemRowToDashboard(result.data) };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
   }

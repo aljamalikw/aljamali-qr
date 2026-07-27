@@ -60,33 +60,21 @@ export function Navbar() {
         </Link>
 
         <ul className="hidden items-center gap-8 md:flex">
-          {navLinks.map((link) => {
-            const isRoute = link.href.startsWith("/");
-            const className =
-              "rounded-md text-sm text-white/70 transition-colors duration-200 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
-
-            return (
-              <li key={link.href}>
-                {isRoute ? (
-                  <Link href={link.href} className={className}>
-                    {link.label}
-                  </Link>
-                ) : (
-                  <a href={link.href} className={className}>
-                    {link.label}
-                  </a>
-                )}
-              </li>
-            );
-          })}
+          {navLinks.map((link) => (
+            <li key={link.href}>
+              <a
+                href={link.href}
+                className="rounded-md text-sm text-white/70 transition-colors duration-200 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              >
+                {link.label}
+              </a>
+            </li>
+          ))}
         </ul>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center md:flex">
           <Button href="/login" variant="secondary" className="px-5 py-2.5">
-            Restaurant Login
-          </Button>
-          <Button href="/register" className="px-5 py-2.5">
-            Start Free Trial
+            Login
           </Button>
         </div>
 
@@ -123,17 +111,14 @@ export function Navbar() {
                 </li>
               );
             })}
-            <li className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4">
+            <li className="mt-4 border-t border-white/10 pt-4">
               <Button
                 href="/login"
                 variant="secondary"
                 className="w-full"
                 onClick={closeMobile}
               >
-                Restaurant Login
-              </Button>
-              <Button href="/register" className="w-full" onClick={closeMobile}>
-                Start Free Trial
+                Login
               </Button>
             </li>
           </ul>

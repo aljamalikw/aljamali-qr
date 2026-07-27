@@ -14,6 +14,14 @@ function parseMetadata(description: string | null): MenuItemMetadata {
     vegetarian: false,
     spicy: false,
     chefSpecial: false,
+    popular: false,
+    recommended: false,
+    vegan: false,
+    glutenFree: false,
+    halal: false,
+    preparationTime: "",
+    calories: "",
+    ingredients: "",
   };
 
   if (!description) return defaults;
@@ -35,6 +43,15 @@ function parseMetadata(description: string | null): MenuItemMetadata {
       vegetarian: Boolean(parsed.vegetarian),
       spicy: Boolean(parsed.spicy),
       chefSpecial: Boolean(parsed.chefSpecial),
+      popular: Boolean(parsed.popular),
+      recommended: Boolean(parsed.recommended),
+      vegan: Boolean(parsed.vegan),
+      glutenFree: Boolean(parsed.glutenFree),
+      halal: Boolean(parsed.halal),
+      preparationTime:
+        typeof parsed.preparationTime === "string" ? parsed.preparationTime : defaults.preparationTime,
+      calories: typeof parsed.calories === "string" ? parsed.calories : defaults.calories,
+      ingredients: typeof parsed.ingredients === "string" ? parsed.ingredients : defaults.ingredients,
     };
   } catch {
     return { ...defaults, descriptionEn: description };
@@ -50,6 +67,14 @@ function serializeMetadata(form: MenuFormData): string {
     vegetarian: form.vegetarian,
     spicy: form.spicy,
     chefSpecial: form.chefSpecial,
+    popular: form.popular,
+    recommended: form.recommended,
+    vegan: form.vegan,
+    glutenFree: form.glutenFree,
+    halal: form.halal,
+    preparationTime: form.preparationTime.trim(),
+    calories: form.calories.trim(),
+    ingredients: form.ingredients.trim(),
   };
 
   return JSON.stringify(metadata);
@@ -64,6 +89,9 @@ export function mapMenuItemRowToDashboard(row: MenuItemRow): DashboardMenuItem {
     nameAr: metadata.nameAr,
     categoryId: row.category_id ?? "",
     price: Number(row.price),
+    discountPrice: row.discount_price !== null && row.discount_price !== undefined
+      ? Number(row.discount_price)
+      : null,
     descriptionEn: metadata.descriptionEn,
     descriptionAr: metadata.descriptionAr,
     image: row.image_url?.trim() || DEFAULT_MENU_ITEM_IMAGE,
@@ -71,15 +99,27 @@ export function mapMenuItemRowToDashboard(row: MenuItemRow): DashboardMenuItem {
     vegetarian: metadata.vegetarian,
     spicy: metadata.spicy,
     chefSpecial: metadata.chefSpecial,
+    popular: metadata.popular,
+    recommended: metadata.recommended,
+    vegan: metadata.vegan,
+    glutenFree: metadata.glutenFree,
+    halal: metadata.halal,
+    preparationTime: metadata.preparationTime,
+    calories: metadata.calories,
+    ingredients: metadata.ingredients,
+    isArchived: row.is_archived ?? false,
+    deletedAt: row.deleted_at ?? null,
     updatedAt: row.updated_at.slice(0, 10),
   };
 }
 
 export function mapMenuFormToRow(form: MenuFormData) {
+  const discount = form.discountPrice.trim();
   return {
     name: form.nameEn.trim(),
     description: serializeMetadata(form),
     price: Number(form.price),
+    discount_price: discount && !Number.isNaN(Number(discount)) ? Number(discount) : null,
     image_url: form.image.trim() || null,
     category_id: form.categoryId || null,
     is_available: form.status === "published",

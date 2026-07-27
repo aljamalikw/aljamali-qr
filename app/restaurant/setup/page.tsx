@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { RestaurantSetupForm } from "@/components/restaurant/RestaurantSetupForm";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { RestaurantSetupGuard } from "@/components/restaurant/RestaurantSetupGuard";
 
 export const metadata: Metadata = {
@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 
 export default function RestaurantSetupPage() {
   return (
-    <AuthLayout wide>
+    <AuthLayout contentClassName="max-w-4xl">
       <RestaurantSetupGuard>
-        <RestaurantSetupForm />
+        <OnboardingWizard />
       </RestaurantSetupGuard>
     </AuthLayout>
   );

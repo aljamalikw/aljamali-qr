@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { qrTypes } from "@/lib/dashboard/qr/seed-data";
 import type { QrCreateFormData, QrType } from "@/lib/dashboard/qr/types";
-import { createEmptyQrForm, validateQrForm, buildQrUrl } from "@/lib/dashboard/qr/utils";
+import {
+  buildQrDestinationUrl,
+  createEmptyQrForm,
+  getAppBaseUrl,
+  validateQrForm,
+} from "@/lib/dashboard/qr/utils";
+import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { QrPreview } from "./QrPreview";
 import { QrIcon } from "./icons/QrIcons";
 
@@ -18,6 +24,7 @@ const inputClass =
   "w-full rounded-xl border border-gold/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/15";
 
 export function CreateQrModal({ open, onClose, onGenerate }: CreateQrModalProps) {
+  const { restaurant } = useRestaurant();
   const [form, setForm] = useState<QrCreateFormData>(createEmptyQrForm());
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -48,8 +55,8 @@ export function CreateQrModal({ open, onClose, onGenerate }: CreateQrModalProps)
       setError(err);
       return;
     }
-    const url = buildQrUrl(form.name, form.type, form.tableNumber);
-    setPreviewUrl(url);
+    const url = buildQrDestinationUrl(restaurant?.slug, getAppBaseUrl());
+    setPreviewUrl(url || null);
     onGenerate(form);
   };
 

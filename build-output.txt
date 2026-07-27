@@ -1,0 +1,70 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm 
+help npmrc` for supported config options.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+> aljamali-qr@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.2.10 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 9.3s
+  Running TypeScript ...
+  Finished TypeScript in 8.7s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/37) ...
+  Generating static pages using 7 workers (9/37) 
+  Generating static pages using 7 workers (18/37) 
+  Generating static pages using 7 workers (27/37) 
+Γ£ô Generating static pages using 7 workers (37/37) in 1307ms
+  Finalizing page optimization ...
+
+Route (app)
+Γöî Γùï /
+Γö£ Γùï /_not-found
+Γö£ Γùï /admin
+Γö£ Γùï /admin/analytics
+Γö£ Γùï /admin/announcements
+Γö£ Γùï /admin/dashboard
+Γö£ Γùï /admin/demo-requests
+Γö£ Γùï /admin/login
+Γö£ Γùï /admin/owners
+Γö£ Γùï /admin/payments
+Γö£ Γùï /admin/restaurants
+Γö£ Γùï /admin/settings
+Γö£ Γùï /admin/subscriptions
+Γö£ Γùï /admin/support
+Γö£ ╞Æ /api/qr/[id]
+Γö£ Γùï /auth/callback
+Γö£ Γùï /dashboard
+Γö£ Γùï /dashboard/analytics
+Γö£ Γùï /dashboard/categories
+Γö£ Γùï /dashboard/demo-requests
+Γö£ Γùï /dashboard/menu-items
+Γö£ Γùï /dashboard/qr-codes
+Γö£ Γùï /dashboard/settings
+Γö£ Γùï /dashboard/subscription
+Γö£ Γùï /dashboard/support
+Γö£ Γùï /demo
+Γö£ Γùï /forgot-password
+Γö£ Γùï /login
+Γö£ ╞Æ /menu/[slug]
+Γö£ Γùï /register
+Γö£ Γùï /registration
+Γö£ Γùï /reset-password
+Γö£ Γùï /restaurant/setup
+Γö£ Γùï /schedule-demo
+Γö£ Γùï /supabase-test
+Γö£ Γùï /unauthorized
+Γöö Γùï /verify-email
+
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

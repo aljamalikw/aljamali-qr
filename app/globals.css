@@ -538,3 +538,19 @@ select option {
 .table-row-hover:hover {
   background-color: rgba(212, 175, 55, 0.03);
 }
+
+@keyframes pricing-promo-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 28px rgba(212, 175, 55, 0.22);
+    border-color: rgba(212, 175, 55, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 48px rgba(212, 175, 55, 0.4);
+    border-color: rgba(212, 175, 55, 0.7);
+  }
+}
+
+.pricing-promo-banner {
+  animation: pricing-promo-pulse 3.6s ease-in-out infinite;
+}

@@ -14,7 +14,7 @@ function parseDescription(description: string | null): CategoryDescription {
   try {
     const parsed = JSON.parse(description) as Partial<CategoryDescription>;
     if (typeof parsed.nameAr === "string" && typeof parsed.icon === "string") {
-      return parsed;
+      return { nameAr: parsed.nameAr, icon: parsed.icon };
     }
   } catch {
     return { nameAr: description, icon: "🍽️" };

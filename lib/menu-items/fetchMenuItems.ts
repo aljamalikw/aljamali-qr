@@ -28,7 +28,9 @@ export async function fetchMenuItems(): Promise<
 
     return {
       ok: true,
-      data: (data ?? []).map((row) => mapMenuItemRowToDashboard(row)),
+      data: (data ?? [])
+        .filter((row) => !row.deleted_at)
+        .map((row) => mapMenuItemRowToDashboard(row)),
     };
   } catch {
     return { ok: false, message: FETCH_ERROR };

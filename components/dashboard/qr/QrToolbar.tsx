@@ -12,11 +12,14 @@ interface QrToolbarProps {
   sort: QrSortOption;
   filteredCount: number;
   totalCount: number;
+  showArchived: boolean;
   onSearchChange: (v: string) => void;
   onStatusChange: (v: QrStatusFilter) => void;
   onTypeChange: (v: QrTypeFilter) => void;
   onSortChange: (v: QrSortOption) => void;
+  onShowArchivedChange: (v: boolean) => void;
   onCreate: () => void;
+  onBulkGenerate: () => void;
 }
 
 const selectClass =
@@ -29,11 +32,14 @@ export function QrToolbar({
   sort,
   filteredCount,
   totalCount,
+  showArchived,
   onSearchChange,
   onStatusChange,
   onTypeChange,
   onSortChange,
+  onShowArchivedChange,
   onCreate,
+  onBulkGenerate,
 }: QrToolbarProps) {
   return (
     <div className="space-y-5">
@@ -46,18 +52,22 @@ export function QrToolbar({
             {filteredCount} of {totalCount} QR codes
           </p>
         </div>
-        <DashboardPrimaryButton
-          variant="cta"
-          onClick={onCreate}
-          className="shrink-0"
-          icon={<QrIcon name="plus" className="h-[18px] w-[18px] stroke-[2.5]" />}
-        >
-          Create QR Code
-        </DashboardPrimaryButton>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button type="button" onClick={onBulkGenerate} className="menu-btn-secondary text-xs">
+            Bulk Generate
+          </button>
+          <DashboardPrimaryButton
+            variant="cta"
+            onClick={onCreate}
+            icon={<QrIcon name="plus" className="h-[18px] w-[18px] stroke-[2.5]" />}
+          >
+            Create QR Code
+          </DashboardPrimaryButton>
+        </div>
       </div>
 
       <div className="dashboard-card rounded-2xl p-4 sm:p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto_auto_auto]">
           <div className="relative">
             <QrIcon
               name="search"
@@ -110,6 +120,16 @@ export function QrToolbar({
               <option value="name">Name</option>
             </select>
           </div>
+
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => onShowArchivedChange(e.target.checked)}
+              className="rounded border-gold/30"
+            />
+            Show archived
+          </label>
         </div>
       </div>
     </div>

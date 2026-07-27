@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { MenuCategoryOption } from "@/lib/categories/menu-options";
 import type { MenuFormData } from "@/lib/dashboard/menu/types";
+import { MenuItemImageField } from "./MenuItemImageField";
 
 interface MenuFormDrawerProps {
   open: boolean;
@@ -89,13 +90,27 @@ export function MenuFormDrawer({
                 </div>
               </div>
               <div>
+                <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
+                  Offer price (optional)
+                </label>
+                <input
+                  value={form.discountPrice}
+                  onChange={(e) => update("discountPrice", e.target.value)}
+                  type="number"
+                  step="0.001"
+                  placeholder="Leave blank for no offer"
+                  className={inputClass}
+                />
+              </div>
+              <div>
                 <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Description (English)</label>
                 <textarea value={form.descriptionEn} onChange={(e) => update("descriptionEn", e.target.value)} rows={2} className={`${inputClass} resize-none`} />
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Image URL</label>
-                <input value={form.image} onChange={(e) => update("image", e.target.value)} placeholder="https://..." className={inputClass} />
-              </div>
+              <MenuItemImageField
+                value={form.image}
+                onChange={(url) => update("image", url)}
+                disabled={saving}
+              />
               <div>
                 <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Status</label>
                 <select value={form.status} onChange={(e) => update("status", e.target.value as MenuFormData["status"])} className={inputClass}>
@@ -104,13 +119,41 @@ export function MenuFormDrawer({
                   <option value="archived">Archived</option>
                 </select>
               </div>
-              <div className="flex flex-wrap gap-3">
-                {(["vegetarian", "spicy", "chefSpecial"] as const).map((key) => (
-                  <label key={key} className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/60 transition-colors hover:border-gold/20">
-                    <input type="checkbox" checked={form[key]} onChange={(e) => update(key, e.target.checked)} className="rounded border-gold/30" />
-                    {key === "chefSpecial" ? "Chef's Special" : key.charAt(0).toUpperCase() + key.slice(1)}
-                  </label>
-                ))}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Prep time</label>
+                  <input value={form.preparationTime} onChange={(e) => update("preparationTime", e.target.value)} placeholder="e.g. 15 min" className={inputClass} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Calories</label>
+                  <input value={form.calories} onChange={(e) => update("calories", e.target.value)} placeholder="e.g. 480 kcal" className={inputClass} />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Ingredients (optional)</label>
+                <textarea value={form.ingredients} onChange={(e) => update("ingredients", e.target.value)} rows={2} className={`${inputClass} resize-none`} placeholder="Comma-separated ingredients" />
+              </div>
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-wider text-white/45">Highlights</p>
+                <div className="flex flex-wrap gap-3">
+                  {(["popular", "recommended", "chefSpecial"] as const).map((key) => (
+                    <label key={key} className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/60 transition-colors hover:border-gold/20">
+                      <input type="checkbox" checked={form[key]} onChange={(e) => update(key, e.target.checked)} className="rounded border-gold/30" />
+                      {key === "chefSpecial" ? "Chef's Special" : key.charAt(0).toUpperCase() + key.slice(1)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-wider text-white/45">Dietary</p>
+                <div className="flex flex-wrap gap-3">
+                  {(["vegetarian", "vegan", "glutenFree", "halal", "spicy"] as const).map((key) => (
+                    <label key={key} className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/60 transition-colors hover:border-gold/20">
+                      <input type="checkbox" checked={form[key]} onChange={(e) => update(key, e.target.checked)} className="rounded border-gold/30" />
+                      {key === "glutenFree" ? "Gluten-Free" : key.charAt(0).toUpperCase() + key.slice(1)}
+                    </label>
+                  ))}
+                </div>
               </div>
               {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
             </div>

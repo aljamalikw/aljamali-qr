@@ -25,8 +25,14 @@ const notoArabic = Noto_Sans_Arabic({
   weight: ["400", "500", "600", "700"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aljamaliqr.com";
+
 export const metadata: Metadata = {
-  title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Aljamali QR — Premium Digital QR Menus for Restaurants",
+    template: "%s | Aljamali QR",
+  },
   description:
     "Replace printed menus with beautiful bilingual QR menus. English & Arabic support, instant updates, analytics, and multi-branch management for modern restaurants.",
   keywords: [
@@ -37,12 +43,28 @@ export const metadata: Metadata = {
     "bilingual menu",
     "Aljamali QR",
   ],
+  authors: [{ name: "Aljamali QR" }],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
     description:
       "Elevate your restaurant with beautiful digital QR menus in English and Arabic.",
+    url: SITE_URL,
+    siteName: "Aljamali QR",
     type: "website",
     locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
+    description:
+      "Elevate your restaurant with beautiful digital QR menus in English and Arabic.",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

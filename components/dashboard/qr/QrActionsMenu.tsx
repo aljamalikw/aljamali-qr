@@ -13,6 +13,7 @@ export type QrAction =
   | "print"
   | "copy-link"
   | "toggle-status"
+  | "toggle-archive"
   | "delete";
 
 interface QrActionsMenuProps {
@@ -25,10 +26,11 @@ const menuItems: { action: QrAction; label: string; icon: Parameters<typeof QrIc
   { action: "rename", label: "Rename", icon: "rename" },
   { action: "duplicate", label: "Duplicate", icon: "duplicate" },
   { action: "download-png", label: "Download PNG", icon: "download" },
-  { action: "download-pdf", label: "Download PDF", icon: "download" },
+  { action: "download-pdf", label: "Download SVG", icon: "download" },
   { action: "print", label: "Print", icon: "print" },
   { action: "copy-link", label: "Copy Link", icon: "link" },
   { action: "toggle-status", label: "Enable / Disable", icon: "toggle" },
+  { action: "toggle-archive", label: "Archive", icon: "duplicate" },
   { action: "delete", label: "Delete", icon: "delete", danger: true },
 ];
 
@@ -84,7 +86,11 @@ export function QrActionsMenu({ item, onAction }: QrActionsMenuProps) {
                 ? item.status === "active"
                   ? "Disable"
                   : "Enable"
-                : mi.label}
+                : mi.action === "toggle-archive"
+                  ? item.isArchived
+                    ? "Restore"
+                    : "Archive"
+                  : mi.label}
             </button>
           ))}
         </div>

@@ -7,9 +7,12 @@ export type MenuItemRow = {
   name: string;
   description: string | null;
   price: number;
+  discount_price: number | null;
   image_url: string | null;
   is_available: boolean;
   display_order: number;
+  is_archived?: boolean;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -22,6 +25,14 @@ export type MenuItemMetadata = {
   vegetarian: boolean;
   spicy: boolean;
   chefSpecial: boolean;
+  popular: boolean;
+  recommended: boolean;
+  vegan: boolean;
+  glutenFree: boolean;
+  halal: boolean;
+  preparationTime: string;
+  calories: string;
+  ingredients: string;
 };
 
 export const DEFAULT_MENU_ITEM_IMAGE =

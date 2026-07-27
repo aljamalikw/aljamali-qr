@@ -8,8 +8,33 @@ export interface RestaurantSettings {
   email: string;
   addressEn: string;
   addressAr: string;
+  openingHours: string;
+  holidaySchedule: string;
   logoUrl: string;
   coverUrl: string;
+  galleryUrls: string[];
+  aboutUs: string;
+  cuisineType: string;
+  branches: string[];
+  socialInstagram: string;
+  socialFacebook: string;
+  socialTiktok: string;
+  website: string;
+  googleMapsUrl: string;
+  deliveryEnabled: boolean;
+  deliveryNotes: string;
+  deliveryPlatforms: string[];
+  taxNumber: string;
+  commercialRegistration: string;
+  vatNumber: string;
+  currency: string;
+  timezone: string;
+  seoTitle: string;
+  seoDescription: string;
+  seoKeywords: string;
+  ogImageUrl: string;
+  themePrimaryColor: string;
+  languages: string[];
   showPrices: boolean;
   bilingualMenu: boolean;
   whatsappOrders: boolean;
@@ -19,21 +44,46 @@ export interface RestaurantSettings {
 }
 
 export const defaultSettings: RestaurantSettings = {
-  nameEn: "Saffron Garden",
-  nameAr: "حديقة الزعفران",
-  taglineEn: "Fine Mediterranean & Gulf Cuisine",
-  taglineAr: "مطبخ متوسطي وخليجي فاخر",
-  phone: "+965 2222 3344",
-  whatsapp: "96550000000",
-  email: "hello@saffrongarden.com",
-  addressEn: "Salem Al Mubarak St, Salmiya, Kuwait City",
-  addressAr: "شارع سالم المبارك، السالمية، مدينة الكويت",
+  nameEn: "",
+  nameAr: "",
+  taglineEn: "",
+  taglineAr: "",
+  phone: "",
+  whatsapp: "",
+  email: "",
+  addressEn: "",
+  addressAr: "",
+  openingHours: "",
+  holidaySchedule: "",
   logoUrl: "",
-  coverUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80",
+  coverUrl: "",
+  galleryUrls: [],
+  aboutUs: "",
+  cuisineType: "",
+  branches: [],
+  socialInstagram: "",
+  socialFacebook: "",
+  socialTiktok: "",
+  website: "",
+  googleMapsUrl: "",
+  deliveryEnabled: false,
+  deliveryNotes: "",
+  deliveryPlatforms: [],
+  taxNumber: "",
+  commercialRegistration: "",
+  vatNumber: "",
+  currency: "KWD",
+  timezone: "Asia/Kuwait",
+  seoTitle: "",
+  seoDescription: "",
+  seoKeywords: "",
+  ogImageUrl: "",
+  themePrimaryColor: "#d4af37",
+  languages: ["en", "ar"],
   showPrices: true,
   bilingualMenu: true,
-  whatsappOrders: true,
-  tableQrOrdering: true,
+  whatsappOrders: false,
+  tableQrOrdering: false,
   showNutrition: false,
   darkModeDefault: true,
 };

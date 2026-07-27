@@ -1,7 +1,9 @@
 import type { DashboardMenuItem, MenuFormData } from "@/lib/dashboard/menu/types";
 import { supabase } from "@/lib/supabase";
+import { insertWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { getCurrentRestaurantId } from "@/lib/categories/get-restaurant-id";
 import { mapMenuFormToRow, mapMenuItemRowToDashboard } from "./mappers";
+import type { MenuItemRow } from "./types";
 
 const CREATE_ERROR = "Unable to create menu item. Please try again.";
 
@@ -28,21 +30,17 @@ export async function createMenuItem(
     const displayOrder = (lastItem?.display_order ?? 0) + 1;
     const payload = mapMenuFormToRow(input);
 
-    const { data, error } = await supabase
-      .from("menu_items")
-      .insert({
-        restaurant_id: restaurantId,
-        ...payload,
-        display_order: displayOrder,
-      })
-      .select("*")
-      .single();
+    const result = await insertWithColumnFallback<MenuItemRow>("menu_items", {
+      restaurant_id: restaurantId,
+      ...payload,
+      display_order: displayOrder,
+    });
 
-    if (error || !data) {
-      return { ok: false, message: CREATE_ERROR };
+    if (!result.ok) {
+      return { ok: false, message: result.message === "NO_COLUMNS_AVAILABLE" ? CREATE_ERROR : result.message };
     }
 
-    return { ok: true, data: mapMenuItemRowToDashboard(data) };
+    return { ok: true, data: mapMenuItemRowToDashboard(result.data) };
   } catch {
     return { ok: false, message: CREATE_ERROR };
   }

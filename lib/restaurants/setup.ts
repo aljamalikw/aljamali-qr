@@ -1,12 +1,18 @@
 import { isEmailVerified } from "@/lib/auth/errors";
+import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
 import { supabase } from "@/lib/supabase";
 import { generateUniqueSlug } from "./slug";
 import type { Restaurant } from "./types";
 
 export function isRestaurantSetupComplete(
-  restaurant: Pick<Restaurant, "restaurant_name"> | null,
+  restaurant: Pick<Restaurant, "onboarding_completed" | "restaurant_name"> | null,
 ): boolean {
   if (!restaurant) return false;
+  // Prefer explicit wizard flag once the column exists.
+  if (typeof restaurant.onboarding_completed === "boolean") {
+    return restaurant.onboarding_completed;
+  }
+  // Fallback before the onboarding migration is applied.
   return Boolean(restaurant.restaurant_name?.trim());
 }
 
@@ -35,6 +41,10 @@ export async function resolveAuthenticatedRedirect(): Promise<string> {
   if (!session?.user) return "/login";
   if (!isEmailVerified(session.user)) return "/verify-email";
 
+  if (await fetchIsPlatformAdmin(session.user)) {
+    return "/admin/dashboard";
+  }
+
   const restaurant = await fetchUserRestaurant();
   if (!isRestaurantSetupComplete(restaurant)) return "/restaurant/setup";
 
@@ -51,6 +61,10 @@ export type RestaurantSetupInput = {
 const SETUP_SAVE_ERROR =
   "We couldn't save your restaurant details. Please try again.";
 
+/**
+ * @deprecated Superseded by the multi-step onboarding wizard (see `lib/onboarding/`).
+ * Kept for backward compatibility with any external callers.
+ */
 export async function saveRestaurantSetup(
   input: RestaurantSetupInput,
 ): Promise<{ ok: true } | { ok: false; message: string }> {

@@ -11,14 +11,29 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export type ToastVariant = "success" | "error" | "info";
 
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface ToastItem {
   id: string;
   message: string;
   variant: ToastVariant;
+  action?: ToastAction;
+}
+
+interface ToastOptions {
+  action?: ToastAction;
+  durationMs?: number;
 }
 
 interface ToastContextValue {
-  showToast: (message: string, variant?: ToastVariant) => void;
+  showToast: (
+    message: string,
+    variant?: ToastVariant,
+    options?: ToastOptions,
+  ) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -54,12 +69,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const showToast = useCallback(
-    (message: string, variant: ToastVariant = "success") => {
+    (message: string, variant: ToastVariant = "success", options?: ToastOptions) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      setToasts((prev) => [...prev, { id, message, variant }]);
+      setToasts((prev) => [...prev, { id, message, variant, action: options?.action }]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 3200);
+      }, options?.durationMs ?? (options?.action ? 5000 : 3200));
     },
     [],
   );
@@ -92,7 +107,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 >
                   {variantIcon[toast.variant]}
                 </span>
-                <p className="text-sm font-medium text-white">{toast.message}</p>
+                <p className="flex-1 text-sm font-medium text-white">{toast.message}</p>
+                {toast.action && (
+                  <button
+                    type="button"
+                    onClick={toast.action.onClick}
+                    className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gold hover:bg-gold/10"
+                  >
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             );
           })}

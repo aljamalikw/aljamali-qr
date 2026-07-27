@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:qr-analytics": "node scripts/verify-qr-analytics.mjs",
+    "db:apply-qr-analytics": "node scripts/apply-qr-analytics-migrations.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",
@@ -23,6 +25,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "pg": "^8.22.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

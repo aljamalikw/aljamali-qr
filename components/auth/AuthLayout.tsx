@@ -7,9 +7,18 @@ import type { ReactNode } from "react";
 interface AuthLayoutProps {
   children: ReactNode;
   wide?: boolean;
+  /** Overrides the default max-width class for the content column. */
+  contentClassName?: string;
 }
 
-export function AuthLayout({ children, wide = false }: AuthLayoutProps) {
+export function AuthLayout({
+  children,
+  wide = false,
+  contentClassName,
+}: AuthLayoutProps) {
+  const widthClass =
+    contentClassName ?? (wide ? "max-w-lg" : "max-w-md");
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4 py-12 sm:px-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.08)_0%,transparent_55%)]" />
@@ -37,7 +46,7 @@ export function AuthLayout({ children, wide = false }: AuthLayoutProps) {
         </Link>
       </motion.div>
 
-      <div className={`relative w-full ${wide ? "max-w-lg" : "max-w-md"}`}>
+      <div className={`relative w-full ${widthClass}`}>
         {children}
       </div>
 

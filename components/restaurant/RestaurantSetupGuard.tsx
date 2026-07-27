@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isEmailVerified } from "@/lib/auth/errors";
+import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
 import {
   fetchUserRestaurant,
   isRestaurantSetupComplete,
@@ -37,6 +38,11 @@ export function RestaurantSetupGuard({ children }: RestaurantSetupGuardProps) {
       if (!isEmailVerified(session.user)) {
         await supabase.auth.signOut();
         router.replace("/verify-email");
+        return;
+      }
+
+      if (await fetchIsPlatformAdmin(session.user)) {
+        router.replace("/admin/dashboard");
         return;
       }
 

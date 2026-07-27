@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { qrTypes } from "@/lib/dashboard/qr/seed-data";
-import type { QrCreateFormData, QrType } from "@/lib/dashboard/qr/types";
+import type { QrCreateFormData, QrMode, QrType } from "@/lib/dashboard/qr/types";
 import {
-  buildQrUrl,
+  buildQrDestinationUrl,
   createEmptyQrForm,
+  getAppBaseUrl,
   validateQrForm,
 } from "@/lib/dashboard/qr/utils";
 import { downloadQrSvg, printQrPage } from "@/lib/dashboard/qr/download-utils";
@@ -17,13 +18,19 @@ import { QrIcon } from "./icons/QrIcons";
 interface CreateQrWizardProps {
   open: boolean;
   onClose: () => void;
-  onComplete: (data: QrCreateFormData) => void;
+  onComplete: (data: QrCreateFormData) => boolean | void | Promise<boolean | void>;
+  restaurantSlug: string | null;
 }
 
 const inputClass =
   "w-full rounded-xl border border-gold/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/15";
 
-export function CreateQrWizard({ open, onClose, onComplete }: CreateQrWizardProps) {
+export function CreateQrWizard({
+  open,
+  onClose,
+  onComplete,
+  restaurantSlug,
+}: CreateQrWizardProps) {
   const { showToast } = useToast();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<QrCreateFormData>(createEmptyQrForm());
@@ -62,14 +69,24 @@ export function CreateQrWizard({ open, onClose, onComplete }: CreateQrWizardProp
     }
     setStep(2);
     await new Promise((r) => setTimeout(r, 1400));
-    const url = buildQrUrl(form.name, form.type, form.tableNumber);
+    const url = buildQrDestinationUrl(restaurantSlug, getAppBaseUrl(), form.tableNumber);
     setPreviewUrl(url);
     setStep(3);
   };
 
-  const handleFinish = () => {
-    onComplete(form);
-    showToast(`QR code "${form.name}" created successfully`);
+  const handleFinish = async () => {
+    const baseUrl = getAppBaseUrl();
+    const destinationUrl = buildQrDestinationUrl(restaurantSlug, baseUrl, form.tableNumber);
+    if (!baseUrl || !destinationUrl.startsWith(`${baseUrl}/menu/`)) {
+      showToast(
+        "Unable to generate destination URL. Set NEXT_PUBLIC_APP_URL to your public base URL.",
+        "error",
+      );
+      return;
+    }
+
+    const saved = await onComplete(form);
+    if (saved === false) return;
     onClose();
   };
 
@@ -162,16 +179,29 @@ export function CreateQrWizard({ open, onClose, onComplete }: CreateQrWizardProp
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
-                      Table Number
-                    </label>
-                    <input
-                      value={form.tableNumber}
-                      onChange={(e) => update("tableNumber", e.target.value)}
-                      placeholder="Optional"
-                      className={inputClass}
-                    />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
+                        Table Number
+                      </label>
+                      <input
+                        value={form.tableNumber}
+                        onChange={(e) => update("tableNumber", e.target.value)}
+                        placeholder="Optional"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
+                        Area / Section
+                      </label>
+                      <input
+                        value={form.area}
+                        onChange={(e) => update("area", e.target.value)}
+                        placeholder="e.g. Terrace"
+                        className={inputClass}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
@@ -184,6 +214,71 @@ export function CreateQrWizard({ open, onClose, onComplete }: CreateQrWizardProp
                       className={`${inputClass} resize-none`}
                     />
                   </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
+                        Mode
+                      </label>
+                      <select
+                        value={form.mode}
+                        onChange={(e) => update("mode", e.target.value as QrMode)}
+                        className={inputClass}
+                      >
+                        <option value="dynamic">Dynamic</option>
+                        <option value="permanent">Permanent</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
+                        Expiration (optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={form.expiresAt}
+                        onChange={(e) => update("expiresAt", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
+                        Scan limit (optional)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={form.scanLimit}
+                        onChange={(e) => update("scanLimit", e.target.value)}
+                        placeholder="Unlimited"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="flex flex-col justify-end">
+                      <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-sm text-white/60">
+                        <input
+                          type="checkbox"
+                          checked={form.passwordProtected}
+                          onChange={(e) => update("passwordProtected", e.target.checked)}
+                          className="rounded border-gold/30"
+                        />
+                        Password protected
+                      </label>
+                    </div>
+                  </div>
+                  {form.passwordProtected && (
+                    <div>
+                      <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">
+                        Access password
+                      </label>
+                      <input
+                        value={form.accessPassword}
+                        onChange={(e) => update("accessPassword", e.target.value)}
+                        placeholder="Guests will enter this to view the menu"
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
                   {error && (
                     <p className="text-sm text-red-400" role="alert">
                       {error}
