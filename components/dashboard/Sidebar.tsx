@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { dashboardNavItems } from "@/lib/dashboard/nav-items";
-import { restaurantProfile } from "@/lib/dashboard/mock-data";
+import { signOut } from "@/lib/auth/sign-out";
+import { useRestaurant } from "@/lib/restaurants/use-restaurant";
+import { useSubscriptionAccess } from "./SubscriptionAccessProvider";
 import { DashboardIcon, getNavIcon } from "./icons/DashboardIcons";
 
 interface SidebarProps {
@@ -21,9 +23,17 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { restaurant } = useRestaurant();
+  const { access, canAccessNav } = useSubscriptionAccess();
+
+  const planLabel = access.plan || restaurant?.subscription_plan || "Starter";
+  const visibleNav = dashboardNavItems.filter((item) => canAccessNav(item.id));
 
   const isActive = (href: string) =>
-    href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+    href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname.startsWith(href);
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
@@ -45,14 +55,17 @@ export function Sidebar({
               Aljamali <span className="text-gold">QR</span>
             </p>
             <p className="truncate text-[11px] text-white/40">
-              {restaurantProfile.plan} Plan
+              {planLabel} Plan
             </p>
           </motion.div>
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Dashboard">
-        {dashboardNavItems.map((item) => {
+      <nav
+        className="flex-1 space-y-1 overflow-y-auto px-3 py-4"
+        aria-label="Dashboard"
+      >
+        {visibleNav.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
@@ -81,7 +94,22 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-gold/10 p-3">
+      <div className="space-y-1 border-t border-gold/10 p-3">
+        <button
+          type="button"
+          onClick={() => signOut(router)}
+          title={collapsed ? "Sign Out" : undefined}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/60 transition-all duration-300 hover:bg-white/5 hover:text-white ${
+            collapsed ? "justify-center" : ""
+          }`}
+        >
+          <DashboardIcon
+            name="close"
+            className="h-5 w-5 shrink-0 text-white/50"
+          />
+          {!collapsed && <span className="truncate">Sign Out</span>}
+        </button>
+
         <button
           type="button"
           onClick={onToggleCollapse}

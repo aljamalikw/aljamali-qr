@@ -1,0 +1,378 @@
+import { supabase } from "@/lib/supabase";
+import { buildCsv } from "@/lib/utils/csv";
+import {
+  DEFAULT_GRACE_PERIOD_DAYS,
+  resolveEffectiveStatus,
+  trialWindowIso,
+} from "@/lib/subscriptions/engine";
+import { getPlanMonthlyPrices, PLAN_PRICES } from "@/lib/subscriptions/pricing";
+
+export const SUBSCRIPTION_PLANS = [
+  "Starter",
+  "Professional",
+  "Enterprise",
+] as const;
+
+export type SubscriptionPlan = (typeof SUBSCRIPTION_PLANS)[number];
+
+export const SUBSCRIPTION_STATUSES = [
+  "trial",
+  "active",
+  "grace",
+  "expired",
+  "cancelled",
+] as const;
+
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+export type RestaurantSubscription = {
+  id: string;
+  restaurantId: string;
+  restaurantName: string | null;
+  restaurantEmail: string | null;
+  plan: SubscriptionPlan;
+  monthlyPrice: number;
+  currency: string;
+  status: SubscriptionStatus;
+  renewalDate: string | null;
+  startedAt: string;
+  cancelledAt: string | null;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  gracePeriodDays: number;
+  createdAt: string;
+  updatedAt: string;
+  isActiveRestaurant: boolean;
+};
+
+/** @deprecated Prefer getPlanMonthlyPrices() from lib/subscriptions/pricing */
+export { PLAN_PRICES };
+
+type SubscriptionRow = {
+  id: string;
+  restaurant_id: string;
+  plan: SubscriptionPlan;
+  monthly_price: number | string;
+  currency: string;
+  status: SubscriptionStatus;
+  renewal_date: string | null;
+  started_at: string;
+  cancelled_at: string | null;
+  trial_started_at?: string | null;
+  trial_ends_at?: string | null;
+  grace_period_days?: number | null;
+  created_at: string;
+  updated_at: string;
+  restaurants:
+    | {
+        restaurant_name: string | null;
+        email: string | null;
+        is_active: boolean | null;
+      }
+    | {
+        restaurant_name: string | null;
+        email: string | null;
+        is_active: boolean | null;
+      }[]
+    | null;
+};
+
+const ERROR = "Unable to load subscriptions. Please try again.";
+const SELECT_WITH_RESTAURANT =
+  "*, restaurants(restaurant_name, email, is_active)";
+
+function restaurantFromJoin(row: SubscriptionRow) {
+  if (Array.isArray(row.restaurants)) return row.restaurants[0] ?? null;
+  return row.restaurants;
+}
+
+function mapRow(row: SubscriptionRow): RestaurantSubscription {
+  const restaurant = restaurantFromJoin(row);
+  const effectiveStatus = resolveEffectiveStatus({
+    plan: row.plan,
+    status: row.status,
+    trialStartedAt: row.trial_started_at,
+    trialEndsAt: row.trial_ends_at,
+    gracePeriodDays: row.grace_period_days,
+    renewalDate: row.renewal_date,
+    cancelledAt: row.cancelled_at,
+  });
+
+  return {
+    id: row.id,
+    restaurantId: row.restaurant_id,
+    restaurantName: restaurant?.restaurant_name ?? null,
+    restaurantEmail: restaurant?.email ?? null,
+    plan: row.plan,
+    monthlyPrice: Number(row.monthly_price ?? 0),
+    currency: row.currency || "KWD",
+    status: effectiveStatus,
+    renewalDate: row.renewal_date,
+    startedAt: row.started_at,
+    cancelledAt: row.cancelled_at,
+    trialStartedAt: row.trial_started_at ?? null,
+    trialEndsAt: row.trial_ends_at ?? null,
+    gracePeriodDays:
+      typeof row.grace_period_days === "number"
+        ? row.grace_period_days
+        : DEFAULT_GRACE_PERIOD_DAYS,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    isActiveRestaurant: Boolean(restaurant?.is_active ?? true),
+  };
+}
+
+async function syncStoredStatus(row: SubscriptionRow): Promise<SubscriptionRow> {
+  const effective = resolveEffectiveStatus({
+    plan: row.plan,
+    status: row.status,
+    trialStartedAt: row.trial_started_at,
+    trialEndsAt: row.trial_ends_at,
+    gracePeriodDays: row.grace_period_days,
+    renewalDate: row.renewal_date,
+    cancelledAt: row.cancelled_at,
+  });
+
+  if (effective === row.status) return row;
+
+  const payload: Record<string, unknown> = { status: effective };
+  if (effective === "cancelled") {
+    payload.cancelled_at = row.cancelled_at ?? new Date().toISOString();
+  } else if (row.status === "cancelled") {
+    // Do not auto-unsync cancelled via date logic — resolveEffectiveStatus
+    // already keeps cancelled sticky.
+  } else {
+    payload.cancelled_at = null;
+  }
+
+  const { data } = await supabase
+    .from("restaurant_subscriptions")
+    .update(payload)
+    .eq("id", row.id)
+    .select(SELECT_WITH_RESTAURANT)
+    .maybeSingle();
+
+  return (data as SubscriptionRow | null) ?? { ...row, status: effective };
+}
+
+export async function fetchSubscriptions(): Promise<
+  { ok: true; data: RestaurantSubscription[] } | { ok: false; message: string }
+> {
+  try {
+    const { data, error } = await supabase
+      .from("restaurant_subscriptions")
+      .select(SELECT_WITH_RESTAURANT)
+      .order("updated_at", { ascending: false });
+
+    if (error) return { ok: false, message: error.message || ERROR };
+
+    const rows = (data ?? []) as SubscriptionRow[];
+    const synced = await Promise.all(rows.map((row) => syncStoredStatus(row)));
+    return { ok: true, data: synced.map(mapRow) };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+export async function fetchOwnerSubscription(
+  restaurantId: string,
+): Promise<
+  { ok: true; data: RestaurantSubscription | null } | { ok: false; message: string }
+> {
+  try {
+    const { data, error } = await supabase
+      .from("restaurant_subscriptions")
+      .select(SELECT_WITH_RESTAURANT)
+      .eq("restaurant_id", restaurantId)
+      .maybeSingle();
+
+    if (error) return { ok: false, message: error.message || ERROR };
+    if (!data) return { ok: true, data: null };
+
+    const synced = await syncStoredStatus(data as SubscriptionRow);
+    return { ok: true, data: mapRow(synced) };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+export async function updateSubscription(params: {
+  id: string;
+  restaurantId: string;
+  plan?: SubscriptionPlan;
+  status?: SubscriptionStatus;
+  monthlyPrice?: number;
+  renewalDate?: string | null;
+  gracePeriodDays?: number;
+  trialEndsAt?: string | null;
+}): Promise<
+  { ok: true; data: RestaurantSubscription } | { ok: false; message: string }
+> {
+  try {
+    const plan = params.plan;
+    const prices = await getPlanMonthlyPrices();
+    const monthlyPrice =
+      params.monthlyPrice ?? (plan ? prices[plan] : undefined);
+
+    const payload: Record<string, unknown> = {};
+    if (plan) payload.plan = plan;
+    if (params.status) {
+      payload.status = params.status;
+      payload.cancelled_at =
+        params.status === "cancelled" ? new Date().toISOString() : null;
+
+      if (params.status === "trial") {
+        const window = trialWindowIso();
+        payload.trial_started_at = window.trialStartedAt;
+        payload.trial_ends_at = window.trialEndsAt;
+        if (params.renewalDate === undefined) {
+          payload.renewal_date = window.renewalDate;
+        }
+      }
+
+      if (params.status === "active" && params.renewalDate === undefined) {
+        const renew = new Date(Date.now() + 30 * 86400000)
+          .toISOString()
+          .slice(0, 10);
+        payload.renewal_date = renew;
+      }
+    }
+    if (monthlyPrice !== undefined) payload.monthly_price = monthlyPrice;
+    if (params.renewalDate !== undefined) {
+      payload.renewal_date = params.renewalDate;
+    }
+    if (params.gracePeriodDays !== undefined) {
+      payload.grace_period_days = params.gracePeriodDays;
+    }
+    if (params.trialEndsAt !== undefined) {
+      payload.trial_ends_at = params.trialEndsAt;
+    }
+
+    const { data, error } = await supabase
+      .from("restaurant_subscriptions")
+      .update(payload)
+      .eq("id", params.id)
+      .select(SELECT_WITH_RESTAURANT)
+      .single();
+
+    if (error || !data) {
+      return { ok: false, message: error?.message ?? ERROR };
+    }
+
+    if (plan) {
+      await supabase
+        .from("restaurants")
+        .update({ subscription_plan: plan })
+        .eq("id", params.restaurantId);
+    }
+
+    return { ok: true, data: mapRow(data as SubscriptionRow) };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+export async function ensureRestaurantSubscription(
+  restaurantId: string,
+  plan: SubscriptionPlan = "Starter",
+): Promise<
+  { ok: true; data: RestaurantSubscription } | { ok: false; message: string }
+> {
+  try {
+    const existing = await fetchOwnerSubscription(restaurantId);
+    if (!existing.ok) return existing;
+    if (existing.data) return { ok: true, data: existing.data };
+
+    const prices = await getPlanMonthlyPrices();
+    const window = trialWindowIso();
+
+    const { data, error } = await supabase
+      .from("restaurant_subscriptions")
+      .insert({
+        restaurant_id: restaurantId,
+        plan,
+        monthly_price: prices[plan],
+        currency: "KWD",
+        status: "trial",
+        trial_started_at: window.trialStartedAt,
+        trial_ends_at: window.trialEndsAt,
+        grace_period_days: DEFAULT_GRACE_PERIOD_DAYS,
+        renewal_date: window.renewalDate,
+      })
+      .select(SELECT_WITH_RESTAURANT)
+      .single();
+
+    if (error || !data) {
+      return { ok: false, message: error?.message ?? ERROR };
+    }
+
+    await supabase
+      .from("restaurants")
+      .update({ subscription_plan: plan })
+      .eq("id", restaurantId);
+
+    return { ok: true, data: mapRow(data as SubscriptionRow) };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+export async function bulkUpdateSubscriptionStatus(
+  ids: string[],
+  status: SubscriptionStatus,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const payload: Record<string, unknown> = { status };
+    payload.cancelled_at =
+      status === "cancelled" ? new Date().toISOString() : null;
+
+    if (status === "trial") {
+      const window = trialWindowIso();
+      payload.trial_started_at = window.trialStartedAt;
+      payload.trial_ends_at = window.trialEndsAt;
+      payload.renewal_date = window.renewalDate;
+    }
+
+    const { error } = await supabase
+      .from("restaurant_subscriptions")
+      .update(payload)
+      .in("id", ids);
+
+    if (error) return { ok: false, message: error.message || ERROR };
+    return { ok: true };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+export function exportSubscriptionsToCsv(
+  items: RestaurantSubscription[],
+): string {
+  const headers = [
+    "Restaurant",
+    "Email",
+    "Plan",
+    "Price",
+    "Currency",
+    "Status",
+    "Trial Ends",
+    "Grace Days",
+    "Renewal",
+    "Started",
+  ];
+
+  const rows = items.map((item) => [
+    item.restaurantName?.trim() || "Unnamed restaurant",
+    item.restaurantEmail ?? "",
+    item.plan,
+    String(item.monthlyPrice),
+    item.currency,
+    item.status,
+    item.trialEndsAt ?? "",
+    String(item.gracePeriodDays),
+    item.renewalDate ?? "",
+    item.startedAt,
+  ]);
+
+  return buildCsv(headers, rows);
+}

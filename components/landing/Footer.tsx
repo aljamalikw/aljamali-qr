@@ -1,19 +1,33 @@
 import Link from "next/link";
-import { navLinks, socialLinks } from "@/lib/landing-data";
+import {
+  PLATFORM_EMAIL,
+  PLATFORM_PHONE,
+  PLATFORM_WHATSAPP,
+  navLinks,
+  socialLinks,
+  whatsappPrefillMessage,
+} from "@/lib/landing-data";
 import { Icon } from "./Icons";
+
+const companyLinks = [
+  { label: "Company", href: "#hero" },
+  { label: "Support", href: "#contact" },
+  { label: "Schedule Demo", href: "/schedule-demo" },
+  { label: "Privacy Policy", href: "#" },
+  { label: "Terms", href: "#" },
+];
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const whatsappHref = `https://wa.me/${PLATFORM_WHATSAPP}?text=${encodeURIComponent(
+    whatsappPrefillMessage,
+  )}`;
 
   return (
-    <footer
-      id="contact"
-      className="border-t border-gold/10 bg-black py-16"
-      aria-label="Site footer"
-    >
+    <footer className="border-t border-gold/10 bg-black py-16" aria-label="Site footer">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+          <div>
             <Link href="/" className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold/10 text-gold">
                 <Icon name="qr" className="h-5 w-5" />
@@ -23,17 +37,17 @@ export function Footer() {
               </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/50">
-              Elevating restaurants digitally with beautiful bilingual QR menus.
-              Replace printed menus and impress every guest.
+              Premium digital QR menus for modern restaurants — bilingual,
+              instant, and built for hospitality.
             </p>
-            <div className="mt-6 flex gap-4">
+            <div className="mt-6 flex gap-3">
               {socialLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-all hover:border-gold/30 hover:text-gold"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/30 hover:text-gold"
                   aria-label={link.label}
                 >
                   <Icon
@@ -47,17 +61,53 @@ export function Footer() {
 
           <div>
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
-              Navigation
+              Explore
             </h3>
             <ul className="space-y-3">
               {navLinks.map((link) => (
                 <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-white/50 transition-colors hover:text-gold"
-                  >
-                    {link.label}
-                  </a>
+                  {link.href.startsWith("/") ? (
+                    <Link
+                      href={link.href}
+                      className="text-sm text-white/50 transition-colors hover:text-gold"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className="text-sm text-white/50 transition-colors hover:text-gold"
+                    >
+                      {link.label}
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
+              Company
+            </h3>
+            <ul className="space-y-3">
+              {companyLinks.map((link) => (
+                <li key={link.label}>
+                  {link.href.startsWith("/") ? (
+                    <Link
+                      href={link.href}
+                      className="text-sm text-white/50 transition-colors hover:text-gold"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className="text-sm text-white/50 transition-colors hover:text-gold"
+                    >
+                      {link.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -69,15 +119,20 @@ export function Footer() {
             </h3>
             <ul className="space-y-3 text-sm text-white/50">
               <li>
-                <a
-                  href="mailto:hello@aljamaliqr.com"
-                  className="transition-colors hover:text-gold"
-                >
-                  hello@aljamaliqr.com
+                <a href={`mailto:${PLATFORM_EMAIL}`} className="hover:text-gold">
+                  {PLATFORM_EMAIL}
                 </a>
               </li>
-              <li>+966 50 000 0000</li>
-              <li>Riyadh, Saudi Arabia</li>
+              <li>
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-gold"
+                >
+                  WhatsApp · {PLATFORM_PHONE}
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -87,11 +142,11 @@ export function Footer() {
             &copy; {currentYear} Aljamali QR. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-white/40">
-            <a href="#" className="transition-colors hover:text-gold">
+            <a href="#" className="hover:text-gold">
               Privacy Policy
             </a>
-            <a href="#" className="transition-colors hover:text-gold">
-              Terms of Service
+            <a href="#" className="hover:text-gold">
+              Terms
             </a>
           </div>
         </div>

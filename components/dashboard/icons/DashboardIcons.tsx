@@ -22,6 +22,7 @@ type DashboardIconName =
   | "view"
   | "update"
   | "order"
+  | "kitchen"
   | "logo";
 
 interface DashboardIconProps {
@@ -158,6 +159,13 @@ export function DashboardIcon({
         <path d="M3 6h18M16 10a4 4 0 0 1-8 0" />
       </svg>
     ),
+    kitchen: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M4 4h16v4H4z" />
+        <path d="M6 8v12M18 8v12M6 20h12" />
+        <path d="M9 12h6M9 16h6" />
+      </svg>
+    ),
     logo: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -176,6 +184,9 @@ export function getNavIcon(id: string): DashboardIconName {
     dashboard: "dashboard",
     "menu-items": "menu-items",
     categories: "categories",
+    reservations: "tables",
+    orders: "order",
+    kitchen: "kitchen",
     "qr-codes": "qr-codes",
     analytics: "analytics",
     settings: "settings",

@@ -1,10 +1,5 @@
-import { DashboardPlaceholder } from "@/components/dashboard/DashboardPlaceholder";
+import { OwnerSubscriptionPage } from "@/components/dashboard/subscription/OwnerSubscriptionPage";
 
 export default function SubscriptionPage() {
-  return (
-    <DashboardPlaceholder
-      title="Subscription"
-      description="Manage your plan, billing details, and premium features for your digital menu experience."
-    />
-  );
+  return <OwnerSubscriptionPage />;
 }

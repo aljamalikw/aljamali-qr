@@ -1,10 +1,5 @@
-import { DashboardPlaceholder } from "@/components/dashboard/DashboardPlaceholder";
+import { AnalyticsDashboard } from "@/components/dashboard/analytics/AnalyticsDashboard";
 
 export default function AnalyticsPage() {
-  return (
-    <DashboardPlaceholder
-      title="Analytics"
-      description="Deep dive into menu views, peak hours, language preferences, and table-level engagement."
-    />
-  );
+  return <AnalyticsDashboard />;
 }

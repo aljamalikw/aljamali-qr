@@ -2,19 +2,28 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
+import { FreeTrial } from "@/components/landing/FreeTrial";
 import { Features } from "@/components/landing/Features";
+import { WhyUs } from "@/components/landing/WhyUs";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Demo } from "@/components/landing/Demo";
 import { Pricing } from "@/components/landing/Pricing";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { FAQ } from "@/components/landing/FAQ";
+import { Contact } from "@/components/landing/Contact";
 import { Footer } from "@/components/landing/Footer";
+import { WhatsAppFloat } from "@/components/landing/WhatsAppFloat";
 import { Button } from "@/components/landing/Button";
+import {
+  PRICING_CURRENCY,
+  PRICING_HIGH_PRICE,
+  PRICING_LOW_PRICE,
+} from "@/lib/landing-data";
 
 export const metadata: Metadata = {
   title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
   description:
-    "Replace printed menus with beautiful bilingual QR menus. English & Arabic support, instant updates, analytics, and multi-branch management.",
+    `Replace printed menus with beautiful bilingual QR menus. Plans from Free to Professional at ${PRICING_HIGH_PRICE} KWD/month. English & Arabic, instant updates, and analytics.`,
   alternates: {
     canonical: "/",
   },
@@ -29,9 +38,9 @@ const jsonLd = {
     "Digital QR menu platform for restaurants with English and Arabic support.",
   offers: {
     "@type": "AggregateOffer",
-    lowPrice: "29",
-    highPrice: "79",
-    priceCurrency: "USD",
+    lowPrice: PRICING_LOW_PRICE,
+    highPrice: PRICING_HIGH_PRICE,
+    priceCurrency: PRICING_CURRENCY,
   },
 };
 
@@ -47,16 +56,18 @@ export default function Home() {
 
       <main id="main-content" className="overflow-x-hidden bg-background">
         <Hero />
+        <FreeTrial />
         <Features />
+        <WhyUs />
         <HowItWorks />
         <Demo />
         <Pricing />
         <Testimonials />
         <FAQ />
+        <Contact />
 
-        {/* Final CTA */}
         <section
-          className="relative border-t border-gold/10 bg-surface py-24 lg:py-28"
+          className="relative border-t border-gold/10 bg-background py-24 lg:py-28"
           aria-labelledby="cta-heading"
         >
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
@@ -69,19 +80,22 @@ export default function Home() {
               <span className="gold-gradient-text">Restaurant Experience</span>?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-white/60">
-              Join hundreds of restaurants already using Aljamali QR. Set up
-              your digital menu in minutes — no credit card required.
+              Join restaurants modernizing service with Aljamali QR. Schedule a
+              free demo or explore the live menu experience.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Button href="/demo" className="min-w-[160px] px-8 py-3.5 text-base">
-                View Demo
+              <Button
+                href="/schedule-demo"
+                className="min-w-[180px] px-8 py-3.5 text-base"
+              >
+                Schedule Free Demo
               </Button>
               <Button
-                href="#pricing"
+                href="/demo"
                 variant="secondary"
                 className="min-w-[160px] px-8 py-3.5 text-base"
               >
-                Get Started
+                View Demo Menu
               </Button>
             </div>
             <p className="mt-6 text-sm text-white/40">
@@ -95,6 +109,7 @@ export default function Home() {
       </main>
 
       <Footer />
+      <WhatsAppFloat />
     </>
   );
 }

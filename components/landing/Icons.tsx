@@ -5,6 +5,9 @@ type IconName =
   | "analytics"
   | "unlimited"
   | "branches"
+  | "phone"
+  | "shield"
+  | "rocket"
   | "twitter"
   | "instagram"
   | "linkedin"
@@ -56,6 +59,26 @@ export function Icon({ name, className = "h-6 w-6" }: IconProps) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
         <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18" />
         <path d="M6 12h12M6 8h12M6 16h12M10 22v-4M14 22v-4" />
+      </svg>
+    ),
+    phone: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <rect x="7" y="2" width="10" height="20" rx="2" />
+        <path d="M11 18h2" />
+      </svg>
+    ),
+    shield: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    ),
+    rocket: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+        <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+        <path d="M9 12H4s.55-3.03 2.4-4.42" />
+        <path d="M12 15v5s3.03-.55 4.42-2.4" />
       </svg>
     ),
     twitter: (

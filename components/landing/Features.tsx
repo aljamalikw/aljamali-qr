@@ -22,10 +22,10 @@ export function Features() {
           {features.map((feature, index) => (
             <article
               key={feature.title}
-              className="card-premium group rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 hover:border-gold/30 hover:shadow-xl hover:shadow-gold/5"
+              className="card-premium group rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-gold/35 hover:shadow-2xl hover:shadow-gold/10"
               style={{ animationDelay: `${index * 80}ms` }}
             >
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10 text-gold transition-colors group-hover:bg-gold/20">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-gold/15 bg-gold/10 text-gold transition-all duration-300 group-hover:scale-105 group-hover:border-gold/30 group-hover:bg-gold/20">
                 <Icon
                   name={feature.icon as Parameters<typeof Icon>[0]["name"]}
                   className="h-6 w-6"
@@ -33,7 +33,7 @@ export function Features() {
               </div>
               <h3
                 id={index === 0 ? "features-heading" : undefined}
-                className="mb-3 font-serif text-xl font-semibold text-white"
+                className="mb-3 font-serif text-xl font-semibold text-white transition-colors group-hover:text-gold"
               >
                 {feature.title}
               </h3>

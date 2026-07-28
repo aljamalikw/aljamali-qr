@@ -1,10 +1,5 @@
-import { DashboardPlaceholder } from "@/components/dashboard/DashboardPlaceholder";
+import { MenuManagement } from "@/components/dashboard/menu/MenuManagement";
 
 export default function MenuItemsPage() {
-  return (
-    <DashboardPlaceholder
-      title="Menu Items"
-      description="Create, edit, and organize your bilingual menu items with photos, prices, and dietary badges."
-    />
-  );
+  return <MenuManagement />;
 }
