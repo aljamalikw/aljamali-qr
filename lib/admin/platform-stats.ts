@@ -102,7 +102,10 @@ export async function fetchPlatformStats(): Promise<
     const tickets = ticketsResult.ok ? ticketsResult.data : [];
 
     const activeSubscriptions = subscriptions.filter(
-      (s) => s.status === "active" || s.status === "trial",
+      (s) =>
+        s.status === "active" ||
+        s.status === "trial" ||
+        s.status === "grace",
     ).length;
 
     const monthlyRevenueAmount = sumPaidThisMonth(payments);

@@ -14,7 +14,7 @@ export const dashboardNavItems: DashboardNavItem[] = [
     label: "Restaurant Settings",
     href: "/dashboard/settings",
   },
-  { id: "subscription", label: "Subscription", href: "/dashboard/subscription" },
+  { id: "subscription", label: "Billing", href: "/dashboard/subscription" },
   { id: "support", label: "Support", href: "/dashboard/support" },
 ];
 

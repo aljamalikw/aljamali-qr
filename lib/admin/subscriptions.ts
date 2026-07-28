@@ -1,5 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { buildCsv } from "@/lib/utils/csv";
+import {
+  DEFAULT_GRACE_PERIOD_DAYS,
+  resolveEffectiveStatus,
+  trialWindowIso,
+} from "@/lib/subscriptions/engine";
+import { getPlanMonthlyPrices, PLAN_PRICES } from "@/lib/subscriptions/pricing";
 
 export const SUBSCRIPTION_PLANS = [
   "Starter",
@@ -12,6 +18,7 @@ export type SubscriptionPlan = (typeof SUBSCRIPTION_PLANS)[number];
 export const SUBSCRIPTION_STATUSES = [
   "trial",
   "active",
+  "grace",
   "expired",
   "cancelled",
 ] as const;
@@ -30,16 +37,16 @@ export type RestaurantSubscription = {
   renewalDate: string | null;
   startedAt: string;
   cancelledAt: string | null;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  gracePeriodDays: number;
   createdAt: string;
   updatedAt: string;
   isActiveRestaurant: boolean;
 };
 
-export const PLAN_PRICES: Record<SubscriptionPlan, number> = {
-  Starter: 19,
-  Professional: 49,
-  Enterprise: 99,
-};
+/** @deprecated Prefer getPlanMonthlyPrices() from lib/subscriptions/pricing */
+export { PLAN_PRICES };
 
 type SubscriptionRow = {
   id: string;
@@ -51,6 +58,9 @@ type SubscriptionRow = {
   renewal_date: string | null;
   started_at: string;
   cancelled_at: string | null;
+  trial_started_at?: string | null;
+  trial_ends_at?: string | null;
+  grace_period_days?: number | null;
   created_at: string;
   updated_at: string;
   restaurants:
@@ -68,6 +78,8 @@ type SubscriptionRow = {
 };
 
 const ERROR = "Unable to load subscriptions. Please try again.";
+const SELECT_WITH_RESTAURANT =
+  "*, restaurants(restaurant_name, email, is_active)";
 
 function restaurantFromJoin(row: SubscriptionRow) {
   if (Array.isArray(row.restaurants)) return row.restaurants[0] ?? null;
@@ -76,6 +88,16 @@ function restaurantFromJoin(row: SubscriptionRow) {
 
 function mapRow(row: SubscriptionRow): RestaurantSubscription {
   const restaurant = restaurantFromJoin(row);
+  const effectiveStatus = resolveEffectiveStatus({
+    plan: row.plan,
+    status: row.status,
+    trialStartedAt: row.trial_started_at,
+    trialEndsAt: row.trial_ends_at,
+    gracePeriodDays: row.grace_period_days,
+    renewalDate: row.renewal_date,
+    cancelledAt: row.cancelled_at,
+  });
+
   return {
     id: row.id,
     restaurantId: row.restaurant_id,
@@ -84,14 +106,53 @@ function mapRow(row: SubscriptionRow): RestaurantSubscription {
     plan: row.plan,
     monthlyPrice: Number(row.monthly_price ?? 0),
     currency: row.currency || "KWD",
-    status: row.status,
+    status: effectiveStatus,
     renewalDate: row.renewal_date,
     startedAt: row.started_at,
     cancelledAt: row.cancelled_at,
+    trialStartedAt: row.trial_started_at ?? null,
+    trialEndsAt: row.trial_ends_at ?? null,
+    gracePeriodDays:
+      typeof row.grace_period_days === "number"
+        ? row.grace_period_days
+        : DEFAULT_GRACE_PERIOD_DAYS,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     isActiveRestaurant: Boolean(restaurant?.is_active ?? true),
   };
+}
+
+async function syncStoredStatus(row: SubscriptionRow): Promise<SubscriptionRow> {
+  const effective = resolveEffectiveStatus({
+    plan: row.plan,
+    status: row.status,
+    trialStartedAt: row.trial_started_at,
+    trialEndsAt: row.trial_ends_at,
+    gracePeriodDays: row.grace_period_days,
+    renewalDate: row.renewal_date,
+    cancelledAt: row.cancelled_at,
+  });
+
+  if (effective === row.status) return row;
+
+  const payload: Record<string, unknown> = { status: effective };
+  if (effective === "cancelled") {
+    payload.cancelled_at = row.cancelled_at ?? new Date().toISOString();
+  } else if (row.status === "cancelled") {
+    // Do not auto-unsync cancelled via date logic — resolveEffectiveStatus
+    // already keeps cancelled sticky.
+  } else {
+    payload.cancelled_at = null;
+  }
+
+  const { data } = await supabase
+    .from("restaurant_subscriptions")
+    .update(payload)
+    .eq("id", row.id)
+    .select(SELECT_WITH_RESTAURANT)
+    .maybeSingle();
+
+  return (data as SubscriptionRow | null) ?? { ...row, status: effective };
 }
 
 export async function fetchSubscriptions(): Promise<
@@ -100,16 +161,14 @@ export async function fetchSubscriptions(): Promise<
   try {
     const { data, error } = await supabase
       .from("restaurant_subscriptions")
-      .select(
-        "*, restaurants(restaurant_name, email, is_active)",
-      )
+      .select(SELECT_WITH_RESTAURANT)
       .order("updated_at", { ascending: false });
 
     if (error) return { ok: false, message: error.message || ERROR };
-    return {
-      ok: true,
-      data: ((data ?? []) as SubscriptionRow[]).map(mapRow),
-    };
+
+    const rows = (data ?? []) as SubscriptionRow[];
+    const synced = await Promise.all(rows.map((row) => syncStoredStatus(row)));
+    return { ok: true, data: synced.map(mapRow) };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -123,13 +182,15 @@ export async function fetchOwnerSubscription(
   try {
     const { data, error } = await supabase
       .from("restaurant_subscriptions")
-      .select("*, restaurants(restaurant_name, email, is_active)")
+      .select(SELECT_WITH_RESTAURANT)
       .eq("restaurant_id", restaurantId)
       .maybeSingle();
 
     if (error) return { ok: false, message: error.message || ERROR };
     if (!data) return { ok: true, data: null };
-    return { ok: true, data: mapRow(data as SubscriptionRow) };
+
+    const synced = await syncStoredStatus(data as SubscriptionRow);
+    return { ok: true, data: mapRow(synced) };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -142,14 +203,16 @@ export async function updateSubscription(params: {
   status?: SubscriptionStatus;
   monthlyPrice?: number;
   renewalDate?: string | null;
+  gracePeriodDays?: number;
+  trialEndsAt?: string | null;
 }): Promise<
   { ok: true; data: RestaurantSubscription } | { ok: false; message: string }
 > {
   try {
     const plan = params.plan;
+    const prices = await getPlanMonthlyPrices();
     const monthlyPrice =
-      params.monthlyPrice ??
-      (plan ? PLAN_PRICES[plan] : undefined);
+      params.monthlyPrice ?? (plan ? prices[plan] : undefined);
 
     const payload: Record<string, unknown> = {};
     if (plan) payload.plan = plan;
@@ -157,17 +220,39 @@ export async function updateSubscription(params: {
       payload.status = params.status;
       payload.cancelled_at =
         params.status === "cancelled" ? new Date().toISOString() : null;
+
+      if (params.status === "trial") {
+        const window = trialWindowIso();
+        payload.trial_started_at = window.trialStartedAt;
+        payload.trial_ends_at = window.trialEndsAt;
+        if (params.renewalDate === undefined) {
+          payload.renewal_date = window.renewalDate;
+        }
+      }
+
+      if (params.status === "active" && params.renewalDate === undefined) {
+        const renew = new Date(Date.now() + 30 * 86400000)
+          .toISOString()
+          .slice(0, 10);
+        payload.renewal_date = renew;
+      }
     }
     if (monthlyPrice !== undefined) payload.monthly_price = monthlyPrice;
     if (params.renewalDate !== undefined) {
       payload.renewal_date = params.renewalDate;
+    }
+    if (params.gracePeriodDays !== undefined) {
+      payload.grace_period_days = params.gracePeriodDays;
+    }
+    if (params.trialEndsAt !== undefined) {
+      payload.trial_ends_at = params.trialEndsAt;
     }
 
     const { data, error } = await supabase
       .from("restaurant_subscriptions")
       .update(payload)
       .eq("id", params.id)
-      .select("*, restaurants(restaurant_name, email, is_active)")
+      .select(SELECT_WITH_RESTAURANT)
       .single();
 
     if (error || !data) {
@@ -198,19 +283,23 @@ export async function ensureRestaurantSubscription(
     if (!existing.ok) return existing;
     if (existing.data) return { ok: true, data: existing.data };
 
+    const prices = await getPlanMonthlyPrices();
+    const window = trialWindowIso();
+
     const { data, error } = await supabase
       .from("restaurant_subscriptions")
       .insert({
         restaurant_id: restaurantId,
         plan,
-        monthly_price: PLAN_PRICES[plan],
+        monthly_price: prices[plan],
         currency: "KWD",
         status: "trial",
-        renewal_date: new Date(Date.now() + 30 * 86400000)
-          .toISOString()
-          .slice(0, 10),
+        trial_started_at: window.trialStartedAt,
+        trial_ends_at: window.trialEndsAt,
+        grace_period_days: DEFAULT_GRACE_PERIOD_DAYS,
+        renewal_date: window.renewalDate,
       })
-      .select("*, restaurants(restaurant_name, email, is_active)")
+      .select(SELECT_WITH_RESTAURANT)
       .single();
 
     if (error || !data) {
@@ -237,6 +326,13 @@ export async function bulkUpdateSubscriptionStatus(
     payload.cancelled_at =
       status === "cancelled" ? new Date().toISOString() : null;
 
+    if (status === "trial") {
+      const window = trialWindowIso();
+      payload.trial_started_at = window.trialStartedAt;
+      payload.trial_ends_at = window.trialEndsAt;
+      payload.renewal_date = window.renewalDate;
+    }
+
     const { error } = await supabase
       .from("restaurant_subscriptions")
       .update(payload)
@@ -259,6 +355,8 @@ export function exportSubscriptionsToCsv(
     "Price",
     "Currency",
     "Status",
+    "Trial Ends",
+    "Grace Days",
     "Renewal",
     "Started",
   ];
@@ -270,6 +368,8 @@ export function exportSubscriptionsToCsv(
     String(item.monthlyPrice),
     item.currency,
     item.status,
+    item.trialEndsAt ?? "",
+    String(item.gracePeriodDays),
     item.renewalDate ?? "",
     item.startedAt,
   ]);

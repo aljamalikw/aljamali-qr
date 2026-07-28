@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  DEFAULT_PLAN_PRICES,
+  type SubscriptionPlanPrices,
+} from "@/lib/subscriptions/pricing";
 
 export const PLATFORM_SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -13,6 +17,7 @@ export type PlatformSettings = {
   whatsappNumber: string;
   currency: string;
   timezone: string;
+  subscriptionPlanPrices: SubscriptionPlanPrices;
   updatedAt: string | null;
 };
 
@@ -29,10 +34,32 @@ type SettingsRow = {
   whatsapp_number: string | null;
   currency: string | null;
   timezone: string | null;
+  subscription_plan_prices?: unknown;
   updated_at: string | null;
 };
 
 const ERROR = "Unable to load platform settings. Please try again.";
+
+function normalizePrices(raw: unknown): SubscriptionPlanPrices {
+  const source =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const result = { ...DEFAULT_PLAN_PRICES };
+  for (const plan of ["Starter", "Professional", "Enterprise"] as const) {
+    const entry = source[plan];
+    if (!entry || typeof entry !== "object") continue;
+    const monthly = Number((entry as { monthly?: unknown }).monthly);
+    const yearly = Number((entry as { yearly?: unknown }).yearly);
+    result[plan] = {
+      monthly: Number.isFinite(monthly)
+        ? monthly
+        : DEFAULT_PLAN_PRICES[plan].monthly,
+      yearly: Number.isFinite(yearly)
+        ? yearly
+        : DEFAULT_PLAN_PRICES[plan].yearly,
+    };
+  }
+  return result;
+}
 
 export const defaultPlatformSettings: PlatformSettings = {
   id: PLATFORM_SETTINGS_ID,
@@ -45,6 +72,7 @@ export const defaultPlatformSettings: PlatformSettings = {
   whatsappNumber: "",
   currency: "KWD",
   timezone: "Asia/Kuwait",
+  subscriptionPlanPrices: DEFAULT_PLAN_PRICES,
   updatedAt: null,
 };
 
@@ -60,6 +88,7 @@ function mapRow(row: SettingsRow): PlatformSettings {
     whatsappNumber: row.whatsapp_number ?? "",
     currency: row.currency ?? "KWD",
     timezone: row.timezone ?? "Asia/Kuwait",
+    subscriptionPlanPrices: normalizePrices(row.subscription_plan_prices),
     updatedAt: row.updated_at,
   };
 }
@@ -100,6 +129,7 @@ export async function upsertPlatformSettings(
       whatsapp_number: form.whatsappNumber.trim() || null,
       currency: form.currency.trim() || "KWD",
       timezone: form.timezone.trim() || "Asia/Kuwait",
+      subscription_plan_prices: form.subscriptionPlanPrices,
     };
 
     const { data, error } = await supabase

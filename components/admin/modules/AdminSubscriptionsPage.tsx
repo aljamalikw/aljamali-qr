@@ -10,7 +10,6 @@ import {
   bulkUpdateSubscriptionStatus,
   exportSubscriptionsToCsv,
   fetchSubscriptions,
-  PLAN_PRICES,
   SUBSCRIPTION_PLANS,
   SUBSCRIPTION_STATUSES,
   updateSubscription,
@@ -23,6 +22,10 @@ import {
   formatDemoDate,
   paginateDemoRequests,
 } from "@/lib/demo-requests/utils";
+import {
+  getPlanMonthlyPrices,
+  PLAN_PRICES,
+} from "@/lib/subscriptions/pricing";
 import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
 
 const PAGE_SIZE = 10;
@@ -33,6 +36,8 @@ function statusClass(status: SubscriptionStatus): string {
       return "text-emerald-300";
     case "trial":
       return "text-sky-300";
+    case "grace":
+      return "text-amber-200";
     case "expired":
       return "text-amber-300";
     case "cancelled":
@@ -59,11 +64,17 @@ export function AdminSubscriptionsPage() {
   const [bulkStatus, setBulkStatus] = useState<SubscriptionStatus | null>(null);
   const [bulkTarget, setBulkTarget] = useState<SubscriptionStatus>("active");
   const [actionLoading, setActionLoading] = useState(false);
+  const [planPrices, setPlanPrices] =
+    useState<Record<SubscriptionPlan, number>>(PLAN_PRICES);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await fetchSubscriptions();
+    const [result, prices] = await Promise.all([
+      fetchSubscriptions(),
+      getPlanMonthlyPrices(),
+    ]);
+    setPlanPrices(prices);
     setLoading(false);
     if (!result.ok) {
       setError(result.message);
@@ -114,7 +125,7 @@ export function AdminSubscriptionsPage() {
       restaurantId: editing.restaurantId,
       plan: nextPlan,
       status: nextStatus,
-      monthlyPrice: PLAN_PRICES[nextPlan],
+      monthlyPrice: planPrices[nextPlan],
     });
     setSaving(false);
     if (!result.ok) {
@@ -411,7 +422,7 @@ export function AdminSubscriptionsPage() {
                 >
                   {SUBSCRIPTION_PLANS.map((p) => (
                     <option key={p} value={p}>
-                      {p} — {formatPaymentAmount(PLAN_PRICES[p])}
+                      {p} — {formatPaymentAmount(planPrices[p])}
                     </option>
                   ))}
                 </select>

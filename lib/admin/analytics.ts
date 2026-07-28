@@ -110,7 +110,10 @@ export async function fetchAdminAnalytics(): Promise<
     }
 
     const activeSubscriptions = subscriptionsResult.data.filter(
-      (s) => s.status === "active" || s.status === "trial",
+      (s) =>
+        s.status === "active" ||
+        s.status === "trial" ||
+        s.status === "grace",
     ).length;
 
     return {
