@@ -193,19 +193,19 @@ export function StepCategories({ onBack, onContinue }: StepCategoriesProps) {
 
   return (
     <div>
-      <div className="mb-6 text-center">
-        <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
+      <div className="mb-8">
+        <h1 className="font-serif text-2xl font-bold tracking-tight text-white sm:text-3xl">
           Organize your menu
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-white/50">
+        <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/55">
           Create categories to group your dishes. You can skip this and add
           categories later from the dashboard.
         </p>
       </div>
 
       {suggestions.length > 0 && (
-        <div className="mb-5">
-          <p className="mb-2 text-xs uppercase tracking-wider text-white/40">
+        <div className="mb-5 rounded-2xl border border-gold/15 bg-black/25 p-4 sm:p-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-gold/80">
             Quick add
           </p>
           <div className="flex flex-wrap gap-2">
@@ -232,12 +232,12 @@ export function StepCategories({ onBack, onContinue }: StepCategoriesProps) {
             {[0, 1, 2].map((skeleton) => (
               <div
                 key={skeleton}
-                className="h-14 animate-pulse rounded-xl bg-white/5"
+                className="h-14 animate-pulse rounded-2xl bg-white/5"
               />
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gold/15 bg-black/20 py-8 text-center text-sm text-white/40">
+          <div className="rounded-2xl border border-dashed border-gold/20 bg-black/25 py-10 text-center text-sm text-white/40">
             No categories yet. Add one below or pick a quick suggestion above.
           </div>
         ) : (
@@ -245,7 +245,7 @@ export function StepCategories({ onBack, onContinue }: StepCategoriesProps) {
             editingId === item.id ? (
               <div
                 key={item.id}
-                className="rounded-xl border border-gold/25 bg-black/30 p-3"
+                className="rounded-2xl border border-gold/25 bg-black/30 p-3"
               >
                 <div className="grid gap-2 sm:grid-cols-[3rem_1fr_1fr]">
                   <input
@@ -289,7 +289,7 @@ export function StepCategories({ onBack, onContinue }: StepCategoriesProps) {
               <motion.div
                 key={item.id}
                 layout
-                className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5"
+                className="flex items-center gap-3 rounded-2xl border border-gold/15 bg-black/25 px-3 py-3"
               >
                 <span className="text-xl">{item.icon}</span>
                 <div className="min-w-0 flex-1">
@@ -397,15 +397,15 @@ export function StepCategories({ onBack, onContinue }: StepCategoriesProps) {
         </button>
       )}
 
-      <div className="mt-6 flex gap-3">
-        <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1">
+      <div className="sticky bottom-0 -mx-1 mt-8 flex gap-3 border-t border-white/[0.06] bg-black/80 px-1 pt-4 pb-1 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:p-0">
+        <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1 py-3.5">
           Back
         </AuthButton>
         <AuthButton
           type="button"
           onClick={handleContinue}
           loading={continuing}
-          className="flex-1"
+          className="flex-1 py-3.5"
         >
           Continue
         </AuthButton>

@@ -147,15 +147,28 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
         animate={{ scale: 1, opacity: 1 }}
         whileHover={{ y: -2 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed bottom-5 end-5 z-40 flex items-center gap-2 rounded-full border border-gold/30 bg-gold px-5 py-3.5 text-sm font-bold text-black shadow-xl shadow-gold/25 transition-transform"
+        className="fixed bottom-5 end-5 z-40 flex items-center gap-2.5 rounded-full border border-gold/40 bg-gradient-to-r from-[#e8c547] via-gold to-[#b8942e] px-5 py-3.5 text-sm font-bold text-black shadow-[0_12px_40px_rgba(212,175,55,0.35)]"
         aria-label={t("viewCart", lang)}
       >
-        <span className="text-lg">🛒</span>
+        <span className="text-lg" aria-hidden="true">
+          🛒
+        </span>
+        <span className="hidden sm:inline">{t("viewCart", lang)}</span>
         {cart.totalCount > 0 && (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1 text-[11px] font-bold text-gold">
+          <motion.span
+            key={cart.totalCount}
+            initial={{ scale: 0.7 }}
+            animate={{ scale: 1 }}
+            className="flex h-6 min-w-6 items-center justify-center rounded-full bg-black px-1.5 text-[11px] font-bold text-gold"
+          >
             {cart.totalCount}
-          </span>
+          </motion.span>
         )}
+        {cart.totalCount > 0 ? (
+          <span className="hidden text-xs font-semibold opacity-80 sm:inline">
+            {formatPublicPrice(cart.subtotal, restaurant.currency, lang)}
+          </span>
+        ) : null}
       </motion.button>
 
       <AnimatePresence>
@@ -178,7 +191,7 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
               animate={{ x: 0 }}
               exit={{ x: lang === "ar" ? "-100%" : "100%" }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-              className="menu-drawer absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-gold/10 sm:border-s"
+              className="menu-drawer absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-gold/20 bg-[#0b0b0b]/95 shadow-[-20px_0_60px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:border-s"
               role="dialog"
               aria-modal="true"
               onClick={(event) => event.stopPropagation()}
@@ -221,9 +234,11 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
                   </motion.div>
                 ) : cart.lines.length === 0 ? (
                   <div className="flex flex-col items-center py-16 text-center">
-                    <span className="text-4xl opacity-30">🛒</span>
-                    <p className="mt-4 text-white/60">{t("cartEmpty", lang)}</p>
-                    <p className="mt-1 text-sm text-white/35">{t("cartEmptyHint", lang)}</p>
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-gold/20 bg-gold/5 text-4xl">
+                      🛒
+                    </div>
+                    <p className="mt-5 font-serif text-lg text-white/80">{t("cartEmpty", lang)}</p>
+                    <p className="mt-1 max-w-[220px] text-sm text-white/40">{t("cartEmptyHint", lang)}</p>
                   </div>
                 ) : (
                   <div className="space-y-6">

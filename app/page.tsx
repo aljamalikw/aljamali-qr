@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
-import { Hero } from "@/components/landing/Hero";
+import { Hero, TrustBar } from "@/components/landing/Hero";
 import { FreeTrial } from "@/components/landing/FreeTrial";
 import { Features } from "@/components/landing/Features";
 import { WhyUs } from "@/components/landing/WhyUs";
@@ -56,6 +56,7 @@ export default function Home() {
 
       <main id="main-content" className="overflow-x-hidden bg-background">
         <Hero />
+        <TrustBar />
         <FreeTrial />
         <Features />
         <WhyUs />

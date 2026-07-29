@@ -204,11 +204,11 @@ export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
 
   return (
     <div>
-      <div className="mb-6 text-center">
-        <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
+      <div className="mb-8">
+        <h1 className="font-serif text-2xl font-bold tracking-tight text-white sm:text-3xl">
           Add your first dishes
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-white/50">
+        <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/55">
           Add a few menu items now, or skip and manage your full menu from the
           dashboard.
         </p>
@@ -220,19 +220,19 @@ export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
             {[0, 1].map((skeleton) => (
               <div
                 key={skeleton}
-                className="h-16 animate-pulse rounded-xl bg-white/5"
+                className="h-16 animate-pulse rounded-2xl bg-white/5"
               />
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gold/15 bg-black/20 py-8 text-center text-sm text-white/40">
+          <div className="rounded-2xl border border-dashed border-gold/20 bg-black/25 py-10 text-center text-sm text-white/40">
             No menu items yet.
           </div>
         ) : (
           items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3"
+              className="flex items-center gap-3 rounded-2xl border border-gold/15 bg-black/25 p-3"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -290,15 +290,15 @@ export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
         </p>
       )}
 
-      <div className="mt-6 flex gap-3">
-        <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1">
+      <div className="sticky bottom-0 -mx-1 mt-8 flex gap-3 border-t border-white/[0.06] bg-black/80 px-1 pt-4 pb-1 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:p-0">
+        <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1 py-3.5">
           Back
         </AuthButton>
         <AuthButton
           type="button"
           onClick={handleContinue}
           loading={continuing}
-          className="flex-1"
+          className="flex-1 py-3.5"
         >
           Continue
         </AuthButton>

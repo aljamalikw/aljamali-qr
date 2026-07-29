@@ -87,18 +87,18 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
 
   return (
     <div>
-      <div className="mb-6 text-center">
-        <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
+      <div className="mb-8">
+        <h1 className="font-serif text-2xl font-bold tracking-tight text-white sm:text-3xl">
           Generate your first QR code
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-white/50">
+        <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/55">
           Guests scan this to open your live digital menu instantly.
         </p>
       </div>
 
       {!generated ? (
-        <div className="space-y-4">
-          <div>
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/45">
               QR Name
             </label>
@@ -110,8 +110,8 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
             />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/45">
+          <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/45">
               Type
             </label>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -133,7 +133,7 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
           </div>
 
           {type === "restaurant-table" && (
-            <div>
+            <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
               <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/45">
                 Table Number
               </label>
@@ -152,15 +152,15 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
             </p>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1">
+          <div className="sticky bottom-0 -mx-1 flex gap-3 border-t border-white/[0.06] bg-black/80 px-1 pt-4 pb-1 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:p-0">
+            <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1 py-3.5">
               Back
             </AuthButton>
             <AuthButton
               type="button"
               onClick={handleGenerate}
               loading={generating}
-              className="flex-1"
+              className="flex-1 py-3.5"
             >
               Generate QR
             </AuthButton>
@@ -182,10 +182,10 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className="text-center"
         >
-          <div className="mx-auto inline-block rounded-2xl bg-white p-4">
+          <div className="mx-auto inline-block rounded-3xl border border-gold/20 bg-white p-5 shadow-[0_20px_50px_rgba(212,175,55,0.15)]">
             <QRCodeSVG value={generated.url} size={180} bgColor="#fff" fgColor="#050505" />
           </div>
-          <p className="mt-3 font-medium text-white">{generated.name}</p>
+          <p className="mt-4 font-medium text-white">{generated.name}</p>
           <p className="mt-1 truncate text-xs text-white/40">{generated.url}</p>
 
           <div className="mt-6 grid grid-cols-2 gap-2">
@@ -211,7 +211,7 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
             </button>
           </div>
 
-          <AuthButton type="button" onClick={handleFinish} loading={finishing} className="mt-6">
+          <AuthButton type="button" onClick={handleFinish} loading={finishing} className="mt-6 py-3.5">
             Finish Setup
           </AuthButton>
         </motion.div>

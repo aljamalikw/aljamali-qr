@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { useToast } from "@/components/ui/ToastProvider";
 import { downloadQrSvg } from "@/lib/dashboard/qr/download-utils";
@@ -16,6 +15,52 @@ interface OnboardingSuccessProps {
   onGoToDashboard: () => void;
 }
 
+function Confetti() {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 36 }, (_, i) => ({
+        id: i,
+        left: `${(i * 17) % 100}%`,
+        delay: (i % 10) * 0.08,
+        duration: 2.2 + (i % 5) * 0.25,
+        color: i % 3 === 0 ? "#d4af37" : i % 3 === 1 ? "#e8c547" : "#ffffff",
+        size: 4 + (i % 4),
+      })),
+    [],
+  );
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden="true"
+    >
+      {pieces.map((piece) => (
+        <motion.span
+          key={piece.id}
+          className="absolute top-0 rounded-sm"
+          style={{
+            left: piece.left,
+            width: piece.size,
+            height: piece.size * 1.4,
+            background: piece.color,
+          }}
+          initial={{ y: -20, opacity: 0, rotate: 0 }}
+          animate={{
+            y: [0, 420],
+            opacity: [0, 1, 1, 0],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: piece.duration,
+            delay: piece.delay,
+            ease: "easeOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function OnboardingSuccess({
   restaurant,
   qrResult,
@@ -23,9 +68,15 @@ export function OnboardingSuccess({
 }: OnboardingSuccessProps) {
   const { showToast } = useToast();
   const [sharing, setSharing] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(true);
 
   const restaurantName = restaurant?.restaurant_name?.trim() || "Your restaurant";
   const menuUrl = buildQrDestinationUrl(restaurant?.slug, getAppBaseUrl());
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowConfetti(false), 3500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleShare = async () => {
     if (!menuUrl) return;
@@ -49,46 +100,60 @@ export function OnboardingSuccess({
   };
 
   return (
-    <AuthCard className="max-w-xl text-center">
+    <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-gold/25 bg-black/55 px-6 py-12 text-center shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:px-10 sm:py-14">
+      {showConfetti ? <Confetti /> : null}
+
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.14)_0%,transparent_55%)]"
+        aria-hidden="true"
+      />
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.7 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-gold/30 bg-gold/10 text-3xl"
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#e8c547] via-gold to-[#b8942e] text-3xl text-black shadow-[0_16px_40px_rgba(212,175,55,0.45)]"
       >
-        🎉
+        ✓
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.5, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+        className="relative"
       >
-        <h1 className="mt-6 font-serif text-2xl font-bold text-white sm:text-3xl">
-          Congratulations!
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-gold">
+          Setup Complete
+        </p>
+        <h1 className="mt-3 font-serif text-3xl font-bold text-white sm:text-4xl">
+          Your restaurant is ready!
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-white/50 sm:text-base">
-          <span className="text-white/80">{restaurantName}</span> is now live.
-          Your premium digital menu is ready for guests to scan and explore.
+        <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-white/55 sm:text-base">
+          <span className="text-white/85">{restaurantName}</span> is live. Your
+          premium digital menu is ready for guests to scan and explore.
         </p>
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-        className="mt-8 grid gap-3 sm:grid-cols-2"
+        transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        className="relative mt-9 grid gap-3 sm:grid-cols-2"
       >
+        <AuthButton type="button" onClick={onGoToDashboard} className="w-full py-3.5">
+          Go to Dashboard
+        </AuthButton>
         <a
           href={menuUrl || "#"}
           target="_blank"
           rel="noopener noreferrer"
           aria-disabled={!menuUrl}
-          className={`auth-btn-secondary flex items-center justify-center ${
+          className={`auth-btn-secondary flex w-full items-center justify-center py-3.5 ${
             !menuUrl ? "pointer-events-none opacity-50" : ""
           }`}
         >
-          View Menu
+          Preview My Menu
         </a>
         <button
           type="button"
@@ -110,10 +175,7 @@ export function OnboardingSuccess({
         >
           {sharing ? "Sharing…" : "Share Menu"}
         </button>
-        <AuthButton type="button" onClick={onGoToDashboard}>
-          Go To Dashboard
-        </AuthButton>
       </motion.div>
-    </AuthCard>
+    </div>
   );
 }

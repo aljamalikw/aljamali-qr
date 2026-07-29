@@ -15,44 +15,58 @@ export function WizardProgress({
 }: WizardProgressProps) {
   const progress = (currentStep / totalSteps) * 100;
   const activeLabel = labels[currentStep - 1] ?? "";
+  const remaining = Math.max(totalSteps - currentStep + 1, 1);
+  const estimatedMinutes = Math.max(1, Math.ceil(remaining * 0.4));
 
   return (
-    <div className="mb-8">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wider text-gold">
-          Step {currentStep} of {totalSteps}
-        </p>
-        <p className="text-xs uppercase tracking-wider text-white/40">
-          {activeLabel}
+    <div className="mb-8 sm:mb-10">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+            Step {currentStep} of {totalSteps}
+          </p>
+          <p className="mt-1 font-serif text-lg font-semibold text-white sm:text-xl">
+            {activeLabel}
+          </p>
+        </div>
+        <p className="rounded-full border border-gold/20 bg-black/40 px-3 py-1.5 text-xs text-white/50 backdrop-blur-md">
+          ~{estimatedMinutes} min left
         </p>
       </div>
 
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-white/10"
+        role="progressbar"
+        aria-valuenow={currentStep}
+        aria-valuemin={1}
+        aria-valuemax={totalSteps}
+        aria-label={`Onboarding progress: step ${currentStep} of ${totalSteps}`}
+      >
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-gold/60 via-gold to-gold/80"
+          className="h-full rounded-full bg-gradient-to-r from-[#b8942e] via-gold to-[#e8c547] shadow-[0_0_16px_rgba(212,175,55,0.45)]"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         />
       </div>
 
-      <div className="mt-3 hidden gap-1 sm:flex">
+      <ol className="mt-5 hidden gap-2 sm:flex">
         {labels.map((stepLabel, index) => {
           const stepNumber = index + 1;
           const isComplete = stepNumber < currentStep;
           const isActive = stepNumber === currentStep;
 
           return (
-            <div
+            <li
               key={stepLabel}
-              className="flex flex-1 flex-col items-center gap-1.5"
+              className="flex flex-1 flex-col items-center gap-2"
             >
               <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold transition-colors duration-300 ${
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 ${
                   isComplete
-                    ? "bg-gold text-black"
+                    ? "bg-gradient-to-br from-[#e8c547] via-gold to-[#b8942e] text-black shadow-md shadow-gold/30"
                     : isActive
-                      ? "border border-gold bg-gold/15 text-gold"
+                      ? "border border-gold bg-gold/15 text-gold ring-2 ring-gold/20"
                       : "border border-white/15 text-white/30"
                 }`}
               >
@@ -60,15 +74,15 @@ export function WizardProgress({
               </span>
               <span
                 className={`text-center text-[10px] leading-tight ${
-                  isActive ? "text-white/70" : "text-white/25"
+                  isActive ? "font-medium text-white/80" : "text-white/30"
                 }`}
               >
                 {stepLabel}
               </span>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
     </div>
   );
 }

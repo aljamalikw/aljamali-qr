@@ -20,7 +20,7 @@ export function FloatingCategoryNav({ groups, lang, onSelect }: FloatingCategory
   if (groups.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 end-5 z-40 lg:hidden">
+    <div className="fixed bottom-5 start-5 z-30 lg:hidden">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -28,7 +28,7 @@ export function FloatingCategoryNav({ groups, lang, onSelect }: FloatingCategory
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.95 }}
             transition={{ duration: 0.18 }}
-            className="mb-3 max-h-[60vh] w-56 overflow-y-auto rounded-2xl border border-gold/20 bg-surface-elevated/95 p-2 shadow-2xl backdrop-blur-xl"
+            className="mb-3 max-h-[55vh] w-56 overflow-y-auto rounded-3xl border border-gold/25 bg-black/90 p-2 shadow-2xl backdrop-blur-xl"
           >
             {groups.map((group) => (
               <button
