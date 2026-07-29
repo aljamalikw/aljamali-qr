@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchImpersonationState } from "@/lib/admin/impersonation-client";
 import { supabase } from "@/lib/supabase";
 import {
   getRestaurantDisplayName,
@@ -20,6 +21,21 @@ export function useRestaurant() {
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
+        setLoading(false);
+        return;
+      }
+
+      const impersonation = await fetchImpersonationState();
+      if (impersonation.ok && impersonation.data.active && impersonation.data.restaurantId) {
+        const { data, error } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("id", impersonation.data.restaurantId)
+          .maybeSingle();
+
+        if (!error && data) {
+          setRestaurant(data as Restaurant);
+        }
         setLoading(false);
         return;
       }

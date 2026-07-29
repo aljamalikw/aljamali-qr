@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import {
   ensureRestaurantSubscription,
   fetchOwnerSubscription,
-  SUBSCRIPTION_PLANS,
   type RestaurantSubscription,
   type SubscriptionPlan,
 } from "@/lib/admin/subscriptions";
@@ -15,23 +15,103 @@ import {
   formatPaymentAmount,
   type PaymentItem,
 } from "@/lib/admin/payments";
-import { fetchQrOverviewStats } from "@/lib/qr-analytics/queries";
 import { formatDemoDate } from "@/lib/demo-requests/utils";
+import { pricingPlans } from "@/lib/landing-data";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
 import {
   getPlanMonthlyPrices,
   PLAN_PRICES,
 } from "@/lib/subscriptions/pricing";
-import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 
 const SUPPORT_EMAIL = "support@aljamaliqr.com";
+const SALES_EMAIL = "aljamaliqr@gmail.com";
+
+const PLAN_COPY: Record<
+  Exclude<SubscriptionPlan, never>,
+  {
+    subtitle: string;
+    features: string[];
+    badge?: string;
+  }
+> = {
+  Starter: {
+    subtitle: "Perfect for one restaurant.",
+    features: (
+      pricingPlans.find((p) => p.id === "starter")?.features.map((f) => f.label) ??
+      []
+    ),
+  },
+  Professional: {
+    subtitle: "Best for growing restaurants.",
+    features: [
+      ...(pricingPlans.find((p) => p.id === "professional")?.features.map(
+        (f) => f.label,
+      ) ?? []),
+      ...(pricingPlans
+        .find((p) => p.id === "professional")
+        ?.premiumFeatures?.map((f) => f.label) ?? []),
+    ],
+    badge: "Most Popular",
+  },
+  Enterprise: {
+    subtitle: "Built for restaurant chains.",
+    features: (
+      pricingPlans.find((p) => p.id === "enterprise")?.features.map(
+        (f) => f.label,
+      ) ?? []
+    ),
+  },
+};
+
+const DEMO_HISTORY = [
+  {
+    id: "demo-1",
+    invoice: "INV-2026-001",
+    date: "2026-06-12",
+    plan: "Starter",
+    amount: 8,
+    status: "paid" as const,
+  },
+  {
+    id: "demo-2",
+    invoice: "INV-2026-002",
+    date: "2026-05-12",
+    plan: "Starter",
+    amount: 8,
+    status: "paid" as const,
+  },
+  {
+    id: "demo-3",
+    invoice: "INV-2026-003",
+    date: "2026-04-12",
+    plan: "Professional",
+    amount: 15,
+    status: "pending" as const,
+  },
+];
 
 function statusLabel(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function invoiceStatusClass(status: PaymentItem["status"]): string {
+function statusTone(status: string): string {
+  switch (status) {
+    case "active":
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+    case "trial":
+      return "border-gold/35 bg-gold/10 text-gold";
+    case "grace":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+    case "expired":
+    case "cancelled":
+      return "border-red-500/30 bg-red-500/10 text-red-300";
+    default:
+      return "border-white/10 bg-white/5 text-white/60";
+  }
+}
+
+function invoiceStatusClass(status: PaymentItem["status"] | "paid" | "pending"): string {
   switch (status) {
     case "paid":
       return "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
@@ -48,17 +128,16 @@ export function OwnerSubscriptionPage() {
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
   const { refresh: refreshAccess } = useSubscriptionAccess();
+  const plansRef = useRef<HTMLElement | null>(null);
+
   const [subscription, setSubscription] =
     useState<RestaurantSubscription | null>(null);
   const [invoices, setInvoices] = useState<PaymentItem[]>([]);
-  const [qrCount, setQrCount] = useState<number>(0);
   const [planPrices, setPlanPrices] =
     useState<Record<SubscriptionPlan, number>>(PLAN_PRICES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
-    null,
-  );
+  const [confirmPlan, setConfirmPlan] = useState<SubscriptionPlan | null>(null);
   const [paying, setPaying] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -70,13 +149,11 @@ export function OwnerSubscriptionPage() {
     setLoading(true);
     setError(null);
 
-    const [subResult, invoicesResult, qrStatsResult, prices] =
-      await Promise.all([
-        fetchOwnerSubscription(restaurant.id),
-        fetchPaymentsForRestaurant(restaurant.id),
-        fetchQrOverviewStats(restaurant.id, restaurant.timezone),
-        getPlanMonthlyPrices(),
-      ]);
+    const [subResult, invoicesResult, prices] = await Promise.all([
+      fetchOwnerSubscription(restaurant.id),
+      fetchPaymentsForRestaurant(restaurant.id),
+      getPlanMonthlyPrices(),
+    ]);
 
     setPlanPrices(prices);
 
@@ -96,13 +173,28 @@ export function OwnerSubscriptionPage() {
 
     setSubscription(subData);
     setInvoices(invoicesResult.ok ? invoicesResult.data : []);
-    setQrCount(qrStatsResult.ok ? qrStatsResult.data.total : 0);
     await refreshAccess();
   }, [restaurant, refreshAccess]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const openSalesContact = () => {
+    const mailto = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(
+      "Enterprise plan inquiry",
+    )}${
+      restaurant
+        ? `&body=${encodeURIComponent(
+            `Restaurant: ${restaurant.restaurant_name ?? ""} (${restaurant.id})\n\nI'd like to discuss the Enterprise plan.`,
+          )}`
+        : ""
+    }`;
+    if (typeof window !== "undefined") {
+      window.open(mailto, "_blank");
+    }
+    showToast("Opening sales contact...");
+  };
 
   const openSupportRequest = (subject: string) => {
     const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}${
@@ -116,12 +208,19 @@ export function OwnerSubscriptionPage() {
     showToast("Opening support request...");
   };
 
+  const scrollToPlans = () => {
+    plansRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const startMyFatoorahPayment = async (plan: SubscriptionPlan) => {
     if (!restaurant?.id || paying) return;
+    if (plan === "Enterprise") {
+      openSalesContact();
+      return;
+    }
 
     setPaying(true);
     setPaymentError(null);
-    setSelectedPlan(plan);
 
     try {
       const response = await fetch("/api/payments/myfatoorah/create", {
@@ -155,12 +254,26 @@ export function OwnerSubscriptionPage() {
       showToast(message, "error");
     } finally {
       setPaying(false);
+      setConfirmPlan(null);
     }
   };
 
+  const access = useMemo(() => {
+    if (!subscription) return null;
+    return getSubscriptionAccess({
+      plan: subscription.plan,
+      status: subscription.status,
+      trialStartedAt: subscription.trialStartedAt,
+      trialEndsAt: subscription.trialEndsAt,
+      gracePeriodDays: subscription.gracePeriodDays,
+      renewalDate: subscription.renewalDate,
+      cancelledAt: subscription.cancelledAt,
+    });
+  }, [subscription]);
+
   if (restaurantLoading || loading) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         <div className="dashboard-card rounded-2xl p-6 sm:p-8">
           <FormSkeleton />
         </div>
@@ -170,7 +283,7 @@ export function OwnerSubscriptionPage() {
 
   if (!restaurant) {
     return (
-      <div className="mx-auto max-w-3xl py-16 text-center">
+      <div className="mx-auto max-w-5xl py-16 text-center">
         <p className="text-sm text-white/50">
           Complete restaurant onboarding to view your subscription.
         </p>
@@ -180,7 +293,7 @@ export function OwnerSubscriptionPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-3xl py-16 text-center">
+      <div className="mx-auto max-w-5xl py-16 text-center">
         <p className="text-sm text-white/50">{error}</p>
         <button
           type="button"
@@ -197,284 +310,444 @@ export function OwnerSubscriptionPage() {
     subscription?.plan ??
     (restaurant.subscription_plan as SubscriptionPlan) ??
     "Starter";
-  const planForPayment = selectedPlan ?? currentPlan;
+  const effectiveStatus = access?.effectiveStatus ?? subscription?.status ?? "trial";
+  const daysRemaining =
+    access?.trialDaysLeft ?? access?.graceDaysLeft ?? null;
+  const currency = subscription?.currency ?? restaurant.currency ?? "KWD";
+  const monthlyPrice =
+    subscription?.monthlyPrice ?? planPrices[currentPlan] ?? PLAN_PRICES[currentPlan];
 
-  const access = subscription
-    ? getSubscriptionAccess({
-        plan: subscription.plan,
-        status: subscription.status,
-        trialStartedAt: subscription.trialStartedAt,
-        trialEndsAt: subscription.trialEndsAt,
-        gracePeriodDays: subscription.gracePeriodDays,
-        renewalDate: subscription.renewalDate,
-        cancelledAt: subscription.cancelledAt,
-      })
-    : null;
+  const isExpired =
+    effectiveStatus === "expired" || effectiveStatus === "cancelled";
+  const isTrial = effectiveStatus === "trial";
+  const isActive =
+    effectiveStatus === "active" || effectiveStatus === "grace";
+
+  const historyRows =
+    invoices.length > 0
+      ? invoices.map((invoice) => ({
+          id: invoice.id,
+          invoice:
+            invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
+          date: formatDemoDate(invoice.paidAt ?? invoice.createdAt),
+          plan: currentPlan,
+          amount: formatPaymentAmount(invoice.amount, invoice.currency),
+          status: invoice.status,
+          demo: false,
+        }))
+      : DEMO_HISTORY.map((row) => ({
+          id: row.id,
+          invoice: row.invoice,
+          date: formatDemoDate(row.date),
+          plan: row.plan,
+          amount: formatPaymentAmount(row.amount, "KWD"),
+          status: row.status,
+          demo: true,
+        }));
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-8">
       <div>
         <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
           Billing
         </h1>
         <p className="mt-1 text-sm text-white/45">
-          Your current plan, trial window, and billing details for Aljamali QR.
+          Manage your subscription, upgrade plans, and review payment history.
         </p>
       </div>
 
-      {access?.message && (
+      {isExpired ? (
+        <div className="rounded-2xl border border-red-500/35 bg-gradient-to-b from-red-500/15 to-black/40 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.35)] sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-300">
+            Subscription required
+          </p>
+          <h2 className="mt-3 font-serif text-2xl font-bold text-white sm:text-3xl">
+            Your trial has ended. Choose a subscription to continue.
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-white/55">
+            Select Starter or Professional below to restore full dashboard access
+            after successful payment.
+          </p>
+          <button
+            type="button"
+            onClick={scrollToPlans}
+            className="menu-btn-primary mt-6"
+          >
+            Choose a Plan
+          </button>
+        </div>
+      ) : null}
+
+      {/* Current Plan */}
+      <section className="dashboard-card relative overflow-hidden rounded-2xl border border-gold/25 bg-gradient-to-b from-gold/[0.08] via-black/50 to-black/60 p-6 sm:p-8">
         <div
-          className={`rounded-2xl border p-4 sm:p-5 ${
-            access.effectiveStatus === "expired" ||
-            access.effectiveStatus === "cancelled" ||
-            (access.trialDaysLeft !== null && access.trialDaysLeft <= 3)
-              ? "border-red-500/30 bg-red-500/10"
-              : "border-gold/25 bg-gold/10"
-          }`}
-        >
-          <p
-            className={`text-sm font-medium ${
-              access.effectiveStatus === "expired" ||
-              access.effectiveStatus === "cancelled"
-                ? "text-red-300"
-                : "text-gold"
-            }`}
-          >
-            {access.message}
-          </p>
-          <button
-            type="button"
-            onClick={() => void startMyFatoorahPayment(planForPayment)}
-            disabled={paying}
-            className="menu-btn-primary mt-3 inline-flex items-center gap-2 text-xs disabled:opacity-60"
-          >
-            {paying ? (
-              <>
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
-                Preparing payment…
-              </>
-            ) : (
-              "Pay Now"
-            )}
-          </button>
-        </div>
-      )}
-
-      <div className="dashboard-card rounded-2xl p-6 sm:p-8">
-        <p className="text-xs uppercase tracking-[0.15em] text-white/40">
-          Current plan
-        </p>
-        <h2 className="mt-2 font-serif text-3xl text-white">{currentPlan}</h2>
-        <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase tracking-wider text-white/40">
-              Status
-            </dt>
-            <dd className="mt-1 text-sm text-gold">
-              {subscription
-                ? statusLabel(subscription.status)
-                : restaurant.is_active === false
-                  ? "Suspended"
-                  : "Active"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wider text-white/40">
-              Monthly price
-            </dt>
-            <dd className="mt-1 text-sm text-white/80">
-              {formatPaymentAmount(
-                subscription?.monthlyPrice ??
-                  planPrices[currentPlan] ??
-                  19,
-                subscription?.currency ?? restaurant.currency ?? "KWD",
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wider text-white/40">
-              Trial ends
-            </dt>
-            <dd className="mt-1 text-sm text-white/80">
-              {formatDemoDate(subscription?.trialEndsAt)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wider text-white/40">
-              Grace period
-            </dt>
-            <dd className="mt-1 text-sm text-white/80">
-              {subscription?.gracePeriodDays ?? 3} days
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wider text-white/40">
-              Renewal date
-            </dt>
-            <dd className="mt-1 text-sm text-white/80">
-              {formatDemoDate(subscription?.renewalDate)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wider text-white/40">
-              Started
-            </dt>
-            <dd className="mt-1 text-sm text-white/80">
-              {formatDemoDate(
-                subscription?.trialStartedAt ??
-                  subscription?.startedAt ??
-                  restaurant.created_at,
-              )}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-6 flex flex-wrap gap-2 border-t border-white/5 pt-6">
-          <button
-            type="button"
-            onClick={() => void startMyFatoorahPayment(planForPayment)}
-            disabled={paying}
-            className="menu-btn-primary inline-flex items-center gap-2 text-xs disabled:opacity-60"
-          >
-            {paying ? (
-              <>
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
-                Preparing payment…
-              </>
-            ) : (
-              "Pay Now"
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => openSupportRequest("Change my subscription plan")}
-            className="menu-btn-secondary text-xs"
-            disabled={paying}
-          >
-            Change Plan
-          </button>
-          {subscription?.status !== "cancelled" && (
-            <button
-              type="button"
-              onClick={() => openSupportRequest("Cancel my subscription")}
-              className="menu-btn-danger text-xs"
-              disabled={paying}
-            >
-              Cancel Subscription
-            </button>
-          )}
-        </div>
-        {paymentError && (
-          <p className="mt-4 text-sm text-red-300" role="alert">
-            {paymentError}
-          </p>
-        )}
-      </div>
-
-      <div className="dashboard-card rounded-2xl p-6 sm:p-8">
-        <p className="text-xs uppercase tracking-[0.15em] text-white/40">Usage</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-4">
-            <p className="text-xs uppercase tracking-wider text-white/40">
-              QR codes
-            </p>
-            <p className="mt-1 font-serif text-2xl text-gold">{qrCount}</p>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-4">
-            <p className="text-xs uppercase tracking-wider text-white/40">
-              Languages enabled
-            </p>
-            <p className="mt-1 font-serif text-2xl text-gold">
-              {restaurant.languages?.length || 1}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        {SUBSCRIPTION_PLANS.map((plan: SubscriptionPlan) => {
-          const isCurrent = plan === currentPlan;
-          const isSelected = plan === planForPayment;
-          return (
-            <div
-              key={plan}
-              className={`rounded-2xl border p-5 ${
-                isSelected
-                  ? "border-gold/40 bg-gold/10"
-                  : "border-gold/15 bg-black/25"
-              }`}
-            >
-              <p className="font-serif text-xl text-white">{plan}</p>
-              <p className="mt-2 text-sm text-white/60">
-                {formatPaymentAmount(planPrices[plan])}/mo
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.12),transparent_55%)]"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.15em] text-white/40">
+                Current Plan
               </p>
-              {isCurrent ? (
-                <p className="mt-4 text-xs uppercase tracking-wider text-gold">
-                  Your plan
-                </p>
+              <h2 className="mt-2 font-serif text-3xl font-bold text-white">
+                {currentPlan}
+              </h2>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${statusTone(effectiveStatus)}`}
+            >
+              {statusLabel(effectiveStatus)}
+            </span>
+          </div>
+
+          <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-wider text-white/40">
+                Trial end date
+              </dt>
+              <dd className="mt-1 text-sm text-white/85">
+                {formatDemoDate(subscription?.trialEndsAt)}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-wider text-white/40">
+                Renewal date
+              </dt>
+              <dd className="mt-1 text-sm text-white/85">
+                {formatDemoDate(subscription?.renewalDate)}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-wider text-white/40">
+                Monthly price
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-gold">
+                {currentPlan === "Enterprise"
+                  ? "Custom Pricing"
+                  : formatPaymentAmount(monthlyPrice, currency)}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-wider text-white/40">
+                Grace period
+              </dt>
+              <dd className="mt-1 text-sm text-white/85">
+                {subscription?.gracePeriodDays ?? 3} days
+              </dd>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-wider text-white/40">
+                Days remaining
+              </dt>
+              <dd className="mt-1 text-sm text-white/85">
+                {daysRemaining === null
+                  ? "—"
+                  : `${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`}
+              </dd>
+            </div>
+          </dl>
+
+          {!isExpired ? (
+            <div className="mt-6 flex flex-wrap gap-3 border-t border-white/5 pt-6">
+              {isTrial ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={scrollToPlans}
+                    className="menu-btn-primary text-xs sm:text-sm"
+                  >
+                    Upgrade Plan
+                  </button>
+                  {currentPlan !== "Enterprise" ? (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmPlan(currentPlan)}
+                      disabled={paying}
+                      className="menu-btn-secondary text-xs sm:text-sm disabled:opacity-60"
+                    >
+                      Pay Now
+                    </button>
+                  ) : null}
+                </>
               ) : null}
+
+              {isActive ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={scrollToPlans}
+                    className="menu-btn-primary text-xs sm:text-sm"
+                  >
+                    Manage Subscription
+                  </button>
+                  <button
+                    type="button"
+                    onClick={scrollToPlans}
+                    className="menu-btn-secondary text-xs sm:text-sm"
+                  >
+                    Change Plan
+                  </button>
+                </>
+              ) : null}
+
+              {subscription?.status !== "cancelled" ? (
+                <button
+                  type="button"
+                  onClick={() => openSupportRequest("Cancel my subscription")}
+                  className="menu-btn-danger text-xs sm:text-sm"
+                  disabled={paying}
+                >
+                  Cancel Subscription
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {paymentError ? (
+            <p className="mt-4 text-sm text-red-300" role="alert">
+              {paymentError}
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      {/* Available Plans */}
+      <section ref={plansRef} className="scroll-mt-6">
+        <div className="mb-5">
+          <h2 className="font-serif text-xl font-bold text-white sm:text-2xl">
+            Available Plans
+          </h2>
+          <p className="mt-1 text-sm text-white/45">
+            Choose Starter or Professional to pay securely. Enterprise is
+            contact-sales only.
+          </p>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-3">
+          {(["Starter", "Professional", "Enterprise"] as const).map((plan) => {
+            const isCurrent = plan === currentPlan;
+            const copy = PLAN_COPY[plan];
+            const price = planPrices[plan];
+            const isEnterprise = plan === "Enterprise";
+            const isPopular = plan === "Professional";
+
+            return (
+              <article
+                key={plan}
+                className={`relative flex h-full flex-col rounded-2xl border p-6 backdrop-blur-xl transition-all duration-300 ${
+                  isPopular
+                    ? "border-gold/45 bg-gradient-to-b from-gold/[0.12] to-black/50 shadow-[0_16px_48px_rgba(212,175,55,0.12)]"
+                    : "border-gold/20 bg-black/35"
+                }`}
+              >
+                {copy.badge ? (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-black shadow-lg shadow-gold/25">
+                    {copy.badge}
+                  </span>
+                ) : null}
+
+                <h3 className="font-serif text-2xl font-bold text-white">
+                  {plan}
+                </h3>
+                <p className="mt-1 text-sm text-white/50">{copy.subtitle}</p>
+
+                <div className="mt-5">
+                  {isEnterprise ? (
+                    <p className="font-serif text-3xl font-bold text-gold">
+                      Custom Pricing
+                    </p>
+                  ) : (
+                    <p className="font-serif text-3xl font-bold text-white">
+                      {formatPaymentAmount(price, "KWD")}
+                      <span className="ms-1 text-sm font-medium text-white/45">
+                        / month
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <ul className="mt-6 flex-1 space-y-2.5">
+                  {copy.features.slice(0, 8).map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex items-start gap-2 text-sm text-white/65"
+                    >
+                      <span className="mt-0.5 text-gold" aria-hidden="true">
+                        ✓
+                      </span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-8">
+                  {isEnterprise ? (
+                    <button
+                      type="button"
+                      onClick={openSalesContact}
+                      className="menu-btn-secondary w-full text-sm"
+                    >
+                      Contact Sales
+                    </button>
+                  ) : isCurrent ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="menu-btn-secondary w-full cursor-not-allowed text-sm opacity-50"
+                    >
+                      Current Plan
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmPlan(plan)}
+                      disabled={paying}
+                      className={`w-full text-sm disabled:opacity-60 ${
+                        isPopular ? "menu-btn-primary" : "menu-btn-secondary"
+                      }`}
+                    >
+                      {plan === "Professional"
+                        ? "Upgrade to Professional"
+                        : "Choose Starter"}
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Payment History */}
+      <section className="dashboard-card rounded-2xl p-6 sm:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-xl font-bold text-white">
+              Payment History
+            </h2>
+            <p className="mt-1 text-sm text-white/45">
+              Invoices and payment status for your restaurant.
+            </p>
+          </div>
+          {invoices.length === 0 ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-wider text-white/40">
+              Sample data
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-white/40">
+                <th className="pb-3 pr-4 font-medium">Invoice</th>
+                <th className="pb-3 pr-4 font-medium">Date</th>
+                <th className="pb-3 pr-4 font-medium">Plan</th>
+                <th className="pb-3 pr-4 font-medium">Amount</th>
+                <th className="pb-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyRows.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b border-white/5 last:border-0"
+                >
+                  <td className="py-3.5 pr-4 font-medium text-white">
+                    {row.invoice}
+                  </td>
+                  <td className="py-3.5 pr-4 text-white/60">{row.date}</td>
+                  <td className="py-3.5 pr-4 text-white/70">{row.plan}</td>
+                  <td className="py-3.5 pr-4 font-serif text-gold">
+                    {row.amount}
+                  </td>
+                  <td className="py-3.5">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs capitalize ${invoiceStatusClass(row.status)}`}
+                    >
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Confirmation modal */}
+      {confirmPlan && confirmPlan !== "Enterprise" ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-plan-title"
+          onClick={() => {
+            if (!paying) setConfirmPlan(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-gold/30 bg-[#0d0d0d] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3
+              id="confirm-plan-title"
+              className="font-serif text-2xl font-bold text-white"
+            >
+              {confirmPlan === "Professional"
+                ? "Upgrade to Professional"
+                : `Choose ${confirmPlan}`}
+            </h3>
+            <dl className="mt-6 space-y-3 rounded-xl border border-white/10 bg-black/40 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-sm text-white/50">Plan</dt>
+                <dd className="text-sm font-medium text-white">{confirmPlan}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-sm text-white/50">Monthly Price</dt>
+                <dd className="font-serif text-lg font-bold text-gold">
+                  {formatPaymentAmount(planPrices[confirmPlan], "KWD")}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-sm leading-relaxed text-white/55">
+              You will immediately activate this subscription after successful
+              payment.
+            </p>
+            {paymentError ? (
+              <p className="mt-3 text-sm text-red-300" role="alert">
+                {paymentError}
+              </p>
+            ) : null}
+            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedPlan(plan);
-                  void startMyFatoorahPayment(plan);
-                }}
+                onClick={() => setConfirmPlan(null)}
                 disabled={paying}
-                className="menu-btn-secondary mt-4 inline-flex w-full items-center justify-center gap-2 text-xs disabled:opacity-60"
+                className="menu-btn-secondary text-sm disabled:opacity-60"
               >
-                {paying && isSelected ? (
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void startMyFatoorahPayment(confirmPlan)}
+                disabled={paying}
+                className="menu-btn-primary inline-flex items-center justify-center gap-2 text-sm disabled:opacity-60"
+              >
+                {paying ? (
                   <>
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                    Preparing…
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                    Preparing payment…
                   </>
-                ) : isCurrent ? (
-                  "Renew"
                 ) : (
-                  `Pay for ${plan}`
+                  "Proceed to Payment"
                 )}
               </button>
             </div>
-          );
-        })}
-      </div>
-
-      <div className="dashboard-card rounded-2xl p-6 sm:p-8">
-        <p className="text-xs uppercase tracking-[0.15em] text-white/40">
-          Invoices
-        </p>
-        {invoices.length === 0 ? (
-          <p className="mt-4 text-sm text-white/45">No invoices yet.</p>
-        ) : (
-          <div className="mt-4 space-y-2">
-            {invoices.map((invoice) => (
-              <div
-                key={invoice.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/5 bg-black/20 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-white">
-                    {invoice.invoiceNumber ||
-                      `Invoice ${invoice.id.slice(0, 8)}`}
-                  </p>
-                  <p className="text-xs text-white/40">
-                    {formatDemoDate(invoice.paidAt ?? invoice.createdAt)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-serif text-gold">
-                    {formatPaymentAmount(invoice.amount, invoice.currency)}
-                  </span>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs capitalize ${invoiceStatusClass(invoice.status)}`}
-                  >
-                    {invoice.status}
-                  </span>
-                </div>
-              </div>
-            ))}
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

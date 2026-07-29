@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { DashboardShellSkeleton } from "@/components/ui/Skeleton";
 import { isEmailVerified } from "@/lib/auth/errors";
 import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
+import { fetchImpersonationState } from "@/lib/admin/impersonation-client";
 import {
   fetchUserRestaurant,
   isRestaurantSetupComplete,
@@ -44,6 +45,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
       }
 
       if (await fetchIsPlatformAdmin(session.user)) {
+        const impersonation = await fetchImpersonationState();
+        if (impersonation.ok && impersonation.data.active) {
+          if (!mounted) return;
+          setReady(true);
+          return;
+        }
+
         if (pathname.startsWith("/dashboard/demo-requests")) {
           router.replace("/admin/demo-requests");
           return;

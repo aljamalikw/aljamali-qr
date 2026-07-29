@@ -11,6 +11,7 @@ export type Restaurant = {
   currency: string;
   timezone: string;
   is_active?: boolean;
+  is_archived?: boolean;
   subscription_plan?: string | null;
   tagline_en?: string | null;
   tagline_ar?: string | null;

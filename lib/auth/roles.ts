@@ -30,6 +30,10 @@ export function isAdminRole(role: AppRole | null | undefined): boolean {
   return ADMIN_ROLES.includes(role);
 }
 
+export function isSuperAdminRole(role: AppRole | null | undefined): boolean {
+  return role === "super_admin";
+}
+
 export function isRestaurantOwnerRole(
   role: AppRole | null | undefined,
 ): boolean {

@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { adminNavItems } from "@/lib/admin/nav-items";
+import { fetchIsSuperAdmin } from "@/lib/auth/get-user-role";
 import { signOut } from "@/lib/auth/sign-out";
+import { supabase } from "@/lib/supabase";
 import { DashboardIcon, getNavIcon } from "@/components/dashboard/icons/DashboardIcons";
 
 interface AdminSidebarProps {
@@ -34,6 +37,26 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadRole() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const superAdmin = await fetchIsSuperAdmin(session?.user ?? null);
+      if (mounted) setIsSuperAdmin(superAdmin);
+    }
+    void loadRole();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const navItems = adminNavItems.filter(
+    (item) => item.id !== "restaurants" || isSuperAdmin,
+  );
 
   const isActive = (href: string) =>
     href === "/admin/dashboard"
@@ -67,7 +90,7 @@ export function AdminSidebar({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Admin">
-        {adminNavItems.map((item) => {
+        {navItems.map((item) => {
           const active = isActive(item.href);
           return (
             <Link

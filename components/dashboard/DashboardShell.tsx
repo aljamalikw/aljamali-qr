@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { ImpersonationBannerHost } from "./ImpersonationBannerHost";
 import { SubscriptionAccessProvider } from "./SubscriptionAccessProvider";
 import { SubscriptionLockBanner } from "./SubscriptionLockBanner";
 import { Sidebar } from "./Sidebar";
@@ -59,6 +60,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           >
             <TopBar onOpenMobileMenu={() => setMobileOpen(true)} />
             <main className="px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+              <ImpersonationBannerHost />
               <SubscriptionLockBanner />
               {children}
             </main>

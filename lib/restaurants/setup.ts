@@ -1,5 +1,6 @@
 import { isEmailVerified } from "@/lib/auth/errors";
 import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
+import { fetchImpersonationState } from "@/lib/admin/impersonation-client";
 import { supabase } from "@/lib/supabase";
 import { generateUniqueSlug } from "./slug";
 import type { Restaurant } from "./types";
@@ -22,6 +23,23 @@ export async function fetchUserRestaurant(): Promise<Restaurant | null> {
   } = await supabase.auth.getSession();
 
   if (!session?.user) return null;
+
+  // During Super Admin impersonation, resolve the target restaurant by id.
+  if (typeof window !== "undefined") {
+    const impersonation = await fetchImpersonationState();
+    if (
+      impersonation.ok &&
+      impersonation.data.active &&
+      impersonation.data.restaurantId
+    ) {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("id", impersonation.data.restaurantId)
+        .maybeSingle();
+      if (!error && data) return data as Restaurant;
+    }
+  }
 
   const { data, error } = await supabase
     .from("restaurants")

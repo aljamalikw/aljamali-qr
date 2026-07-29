@@ -51,3 +51,10 @@ export async function fetchIsPlatformAdmin(
   const role = await fetchUserRole(user);
   return isAdminRole(role);
 }
+
+export async function fetchIsSuperAdmin(
+  user?: User | null,
+): Promise<boolean> {
+  const role = await fetchUserRole(user);
+  return role === "super_admin";
+}
