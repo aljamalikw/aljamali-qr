@@ -26,7 +26,7 @@ export async function saveBranding(
       menu_accent_color: input.menuAccentColor.trim() || "#d4af37",
       font_style: input.fontStyle,
       dark_mode_default: input.darkModeDefault,
-      onboarding_step: Math.max(restaurant.onboarding_step ?? 1, 3),
+      onboarding_step: Math.max(restaurant.onboarding_step ?? 1, 4),
     };
 
     const { data, error } = await supabase

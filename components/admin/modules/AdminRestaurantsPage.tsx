@@ -10,6 +10,7 @@ import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
+import { logAdminActivity } from "@/lib/admin/activity-log";
 import { fetchIsSuperAdmin } from "@/lib/auth/get-user-role";
 import { startImpersonation } from "@/lib/admin/impersonation-client";
 import {
@@ -250,6 +251,16 @@ export function AdminRestaurantsPage() {
 
     await loadRestaurants();
     setPendingAction(null);
+    void logAdminActivity({
+      action:
+        type === "activate"
+          ? "restaurant_activated"
+          : type === "suspend"
+            ? "restaurant_suspended"
+            : "restaurant_archived",
+      restaurantId: restaurant.id,
+      restaurantName: restaurant.restaurantName,
+    });
     showToast(
       type === "activate"
         ? "Restaurant activated"
@@ -261,8 +272,10 @@ export function AdminRestaurantsPage() {
 
   const handleDeletePermanently = async () => {
     if (!deleteTarget) return;
+
     const expected = (deleteTarget.restaurantName ?? "").trim();
-    if (!expected || deleteConfirmName.trim() !== expected) {
+    const typed = deleteConfirmName.trim();
+    if (!expected || typed !== expected) {
       showToast("Type the restaurant name exactly to confirm deletion.", "error");
       return;
     }
@@ -284,6 +297,13 @@ export function AdminRestaurantsPage() {
       showToast(result.message, "error");
       return;
     }
+
+    void logAdminActivity({
+      action: "restaurant_deleted",
+      restaurantId: deleteTarget.id,
+      restaurantName: deleteTarget.restaurantName,
+      reason: "Permanent delete",
+    });
 
     setRestaurants((prev) => prev.filter((row) => row.id !== deleteTarget.id));
     setDeleteTarget(null);
@@ -806,12 +826,8 @@ export function AdminRestaurantsPage() {
               </button>
               <button
                 type="button"
-                className="menu-btn-danger flex-1"
-                disabled={
-                  actionLoading ||
-                  deleteConfirmName.trim() !==
-                    (deleteTarget.restaurantName ?? "").trim()
-                }
+                className="menu-btn-danger flex-1 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={actionLoading}
                 onClick={() => void handleDeletePermanently()}
               >
                 {actionLoading ? "Deleting…" : "Delete Forever"}

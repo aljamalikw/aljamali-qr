@@ -117,7 +117,7 @@ export function Pricing() {
           <SectionHeader
             label="Pricing"
             title="Plans That Scale With You"
-            description="Start free or go enterprise — every plan includes bilingual menus and instant updates."
+            description="Start with a 7-day free trial — every plan includes bilingual menus and instant updates."
           />
 
           <motion.div
@@ -188,7 +188,7 @@ export function Pricing() {
             </div>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:items-stretch">
+          <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3 md:items-stretch">
             {pricingPlans.map((plan, index) => {
               const isYearly = billing === "yearly";
               const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
@@ -200,7 +200,7 @@ export function Pricing() {
                   key={plan.id}
                   className={`card-premium relative flex h-full flex-col rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 ${
                     plan.highlighted
-                      ? "border-gold/45 shadow-xl shadow-gold/15 ring-1 ring-gold/25 xl:scale-[1.03]"
+                      ? "border-gold/45 shadow-xl shadow-gold/15 ring-1 ring-gold/25 md:scale-[1.02]"
                       : ""
                   }`}
                 >
@@ -376,9 +376,6 @@ export function Pricing() {
                         >
                           {row.feature}
                         </th>
-                        <td className="px-4 py-3.5 text-center">
-                          <ComparisonCell value={row.free} />
-                        </td>
                         <td className="px-4 py-3.5 text-center">
                           <ComparisonCell value={row.starter} />
                         </td>

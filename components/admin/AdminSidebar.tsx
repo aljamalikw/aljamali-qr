@@ -26,6 +26,8 @@ function resolveIcon(id: string) {
   if (id === "payments") return "subscription" as const;
   if (id === "announcements") return "bell" as const;
   if (id === "email-templates") return "menu-items" as const;
+  if (id === "activity") return "analytics" as const;
+  if (id === "backup-export") return "settings" as const;
   return getNavIcon(id === "dashboard" ? "dashboard" : id);
 }
 
@@ -55,7 +57,7 @@ export function AdminSidebar({
   }, []);
 
   const navItems = adminNavItems.filter(
-    (item) => item.id !== "restaurants" || isSuperAdmin,
+    (item) => !item.superAdminOnly || isSuperAdmin,
   );
 
   const isActive = (href: string) =>

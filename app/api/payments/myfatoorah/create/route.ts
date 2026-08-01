@@ -54,9 +54,9 @@ export async function POST(request: NextRequest) {
   if (!plan) {
     return badRequest("plan is required.");
   }
-  if (!isPricedPlan(plan)) {
+  if (!isPricedPlan(plan) || plan === "Enterprise") {
     return badRequest(
-      "plan must be one of: Starter, Professional, Enterprise.",
+      "plan must be Starter or Professional. Enterprise requires Contact Sales.",
     );
   }
 

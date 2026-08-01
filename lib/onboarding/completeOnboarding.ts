@@ -17,7 +17,7 @@ export async function completeOnboarding(): Promise<
 
     const { data, error } = await supabase
       .from("restaurants")
-      .update({ onboarding_completed: true, onboarding_step: 5 })
+      .update({ onboarding_completed: true, onboarding_step: 8 })
       .eq("id", restaurant.id)
       .select("*")
       .single();

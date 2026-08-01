@@ -106,6 +106,18 @@ export async function POST(request: NextRequest) {
     ip_address: ip,
   });
 
+  await supabase.from("admin_activity_logs").insert({
+    actor_user_id: auth.userId,
+    actor_email: auth.email,
+    actor_role: "super_admin",
+    restaurant_id: restaurantId,
+    restaurant_name: restaurantName,
+    action: "login_as_restaurant",
+    details: { session: "impersonation" },
+    reason,
+    ip_address: ip,
+  });
+
   const response = NextResponse.json({
     ok: true,
     restaurantId,

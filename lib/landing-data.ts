@@ -1,3 +1,5 @@
+import { SUBSCRIPTION_PLANS } from "@/lib/subscriptions/plans";
+
 export const PLATFORM_WHATSAPP = "96550000000";
 export const PLATFORM_EMAIL = "hello@aljamaliqr.com";
 export const PLATFORM_PHONE = "+965 5000 0000";
@@ -138,49 +140,24 @@ export type PricingFeature = {
   comingSoon?: boolean;
 };
 
-/** Canonical marketing prices — single source of truth for landing/SEO. */
+/** Canonical marketing prices — derived from shared subscription catalog. */
 export const PRICING_CURRENCY = "KWD";
-export const PRICING_LOW_PRICE = "0";
-export const PRICING_HIGH_PRICE = "15";
+export const PRICING_LOW_PRICE = String(SUBSCRIPTION_PLANS.Starter.monthly ?? 8);
+export const PRICING_HIGH_PRICE = String(
+  SUBSCRIPTION_PLANS.Professional.monthly ?? 15,
+);
 
 export const pricingPlans = [
   {
-    id: "free",
-    name: "Free",
-    subtitle: "Best for trying Aljamali QR",
-    description: "Explore the platform before upgrading.",
-    monthlyPrice: "Free",
-    yearlyPrice: "Free",
-    monthlySuffix: "",
-    yearlySuffix: "",
-    featuresIntro: null as string | null,
-    features: [
-      { label: "1 Restaurant" },
-      { label: "1 QR Code" },
-      { label: "5 Menu Items" },
-      { label: "Basic Digital Menu" },
-      { label: "Basic QR Analytics" },
-      { label: "Aljamali Branding" },
-      { label: "Community Support" },
-    ] as PricingFeature[],
-    premiumFeaturesTitle: null as string | null,
-    premiumFeatures: null as PricingFeature[] | null,
-    highlighted: false,
-    badge: "Try Before You Buy",
-    cta: "Get Started",
-    ctaHref: "/register",
-    showYearlySavings: false,
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    subtitle: "Perfect for cafés & small restaurants",
-    description: "Everything you need to digitize your menu.",
-    monthlyPrice: "8",
-    yearlyPrice: "80",
+    id: SUBSCRIPTION_PLANS.Starter.id,
+    name: SUBSCRIPTION_PLANS.Starter.name,
+    subtitle: SUBSCRIPTION_PLANS.Starter.subtitle,
+    description: SUBSCRIPTION_PLANS.Starter.description,
+    monthlyPrice: String(SUBSCRIPTION_PLANS.Starter.monthly),
+    yearlyPrice: String(SUBSCRIPTION_PLANS.Starter.yearly),
     monthlySuffix: "KWD / month",
     yearlySuffix: "KWD / year",
-    featuresIntro: "Everything in Free PLUS",
+    featuresIntro: "Includes" as string | null,
     features: [
       { label: "1 Restaurant" },
       { label: "5 QR Codes" },
@@ -194,20 +171,19 @@ export const pricingPlans = [
     ] as PricingFeature[],
     premiumFeaturesTitle: null as string | null,
     premiumFeatures: null as PricingFeature[] | null,
-    highlighted: false,
-    badge: "Best Value",
-    cta: "Start Free Trial",
-    ctaHref: "/register",
+    highlighted: SUBSCRIPTION_PLANS.Starter.highlighted,
+    badge: SUBSCRIPTION_PLANS.Starter.badge,
+    cta: SUBSCRIPTION_PLANS.Starter.ctaLabel,
+    ctaHref: SUBSCRIPTION_PLANS.Starter.ctaHref,
     showYearlySavings: true,
   },
   {
-    id: "professional",
-    name: "Professional",
-    subtitle: "Best for growing restaurants & multiple branches",
-    description:
-      "Advanced tools to increase sales and automate operations.",
-    monthlyPrice: "15",
-    yearlyPrice: "150",
+    id: SUBSCRIPTION_PLANS.Professional.id,
+    name: SUBSCRIPTION_PLANS.Professional.name,
+    subtitle: SUBSCRIPTION_PLANS.Professional.subtitle,
+    description: SUBSCRIPTION_PLANS.Professional.description,
+    monthlyPrice: String(SUBSCRIPTION_PLANS.Professional.monthly),
+    yearlyPrice: String(SUBSCRIPTION_PLANS.Professional.yearly),
     monthlySuffix: "KWD / month",
     yearlySuffix: "KWD / year",
     featuresIntro: "Everything in Starter PLUS",
@@ -231,18 +207,17 @@ export const pricingPlans = [
       { label: "Sales Analytics" },
       { label: "Remove Aljamali Branding" },
     ] as PricingFeature[],
-    highlighted: true,
-    badge: "Most Popular",
-    cta: "Start Free Trial",
-    ctaHref: "/register",
+    highlighted: SUBSCRIPTION_PLANS.Professional.highlighted,
+    badge: SUBSCRIPTION_PLANS.Professional.badge,
+    cta: SUBSCRIPTION_PLANS.Professional.ctaLabel,
+    ctaHref: SUBSCRIPTION_PLANS.Professional.ctaHref,
     showYearlySavings: true,
   },
   {
-    id: "enterprise",
-    name: "Enterprise",
-    subtitle: "Built for restaurant chains",
-    description:
-      "Tailored solutions with dedicated support and custom integrations.",
+    id: SUBSCRIPTION_PLANS.Enterprise.id,
+    name: SUBSCRIPTION_PLANS.Enterprise.name,
+    subtitle: SUBSCRIPTION_PLANS.Enterprise.subtitle,
+    description: SUBSCRIPTION_PLANS.Enterprise.description,
     monthlyPrice: "Contact Us",
     yearlyPrice: "Contact Us",
     monthlySuffix: "",
@@ -263,10 +238,10 @@ export const pricingPlans = [
     ] as PricingFeature[],
     premiumFeaturesTitle: null as string | null,
     premiumFeatures: null as PricingFeature[] | null,
-    highlighted: false,
-    badge: "Custom Solution",
-    cta: "Contact Sales",
-    ctaHref: "#contact",
+    highlighted: SUBSCRIPTION_PLANS.Enterprise.highlighted,
+    badge: SUBSCRIPTION_PLANS.Enterprise.badge,
+    cta: SUBSCRIPTION_PLANS.Enterprise.ctaLabel,
+    ctaHref: SUBSCRIPTION_PLANS.Enterprise.ctaHref,
     showYearlySavings: false,
   },
 ] as const;
@@ -303,112 +278,96 @@ export type PricingComparisonValue = string | boolean;
 
 export const pricingComparisonRows: ReadonlyArray<{
   feature: string;
-  free: PricingComparisonValue;
   starter: PricingComparisonValue;
   professional: PricingComparisonValue;
   enterprise: PricingComparisonValue;
 }> = [
   {
     feature: "Restaurants / Branches",
-    free: "1",
     starter: "1",
     professional: "2",
     enterprise: "Unlimited",
   },
   {
     feature: "Menu Items",
-    free: "5",
     starter: "25",
     professional: "Unlimited",
     enterprise: "Unlimited",
   },
   {
     feature: "QR Codes",
-    free: "1",
     starter: "5",
     professional: "Unlimited",
     enterprise: "Unlimited",
   },
   {
     feature: "Categories",
-    free: "Basic",
     starter: "Unlimited",
     professional: "Unlimited",
     enterprise: "Unlimited",
   },
   {
     feature: "Analytics",
-    free: "Basic QR",
     starter: "QR Scan",
     professional: "Sales Analytics",
     enterprise: "Sales Analytics",
   },
   {
     feature: "Restaurant Branding",
-    free: "Aljamali Branding",
     starter: true,
     professional: true,
     enterprise: true,
   },
   {
     feature: "Remove Aljamali Branding",
-    free: false,
     starter: false,
     professional: true,
     enterprise: true,
   },
   {
     feature: "Menu Images",
-    free: false,
     starter: true,
     professional: true,
     enterprise: true,
   },
   {
     feature: "Online Ordering",
-    free: false,
     starter: false,
     professional: "Soon",
     enterprise: "Soon",
   },
   {
     feature: "Online Payments",
-    free: false,
     starter: false,
     professional: "Soon",
     enterprise: "Soon",
   },
   {
     feature: "Kitchen / Table Ordering",
-    free: false,
     starter: false,
     professional: "Soon",
     enterprise: "Soon",
   },
   {
     feature: "Support",
-    free: "Community",
     starter: "Priority Email",
     professional: "Priority",
     enterprise: "Priority SLA",
   },
   {
     feature: "Staff Roles & Permissions",
-    free: false,
     starter: false,
     professional: false,
     enterprise: true,
   },
   {
     feature: "API / POS / Custom Domain",
-    free: false,
     starter: false,
     professional: false,
     enterprise: true,
   },
   {
     feature: "Dedicated Account Manager",
-    free: false,
     starter: false,
     professional: false,
     enterprise: true,

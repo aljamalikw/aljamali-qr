@@ -49,13 +49,24 @@ function normalizePrices(raw: unknown): SubscriptionPlanPrices {
     if (!entry || typeof entry !== "object") continue;
     const monthly = Number((entry as { monthly?: unknown }).monthly);
     const yearly = Number((entry as { yearly?: unknown }).yearly);
+
+    if (plan === "Enterprise") {
+      result.Enterprise = { monthly: 0, yearly: 0 };
+      continue;
+    }
+
+    const legacyMonthly = monthly === 19 || monthly === 49 || monthly === 99;
+    const legacyYearly = yearly === 190 || yearly === 490 || yearly === 990;
+
     result[plan] = {
-      monthly: Number.isFinite(monthly)
-        ? monthly
-        : DEFAULT_PLAN_PRICES[plan].monthly,
-      yearly: Number.isFinite(yearly)
-        ? yearly
-        : DEFAULT_PLAN_PRICES[plan].yearly,
+      monthly:
+        Number.isFinite(monthly) && monthly > 0 && !legacyMonthly
+          ? monthly
+          : DEFAULT_PLAN_PRICES[plan].monthly,
+      yearly:
+        Number.isFinite(yearly) && yearly > 0 && !legacyYearly
+          ? yearly
+          : DEFAULT_PLAN_PRICES[plan].yearly,
     };
   }
   return result;

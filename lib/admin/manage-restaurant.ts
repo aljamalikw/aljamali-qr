@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { logAdminActivity } from "@/lib/admin/activity-log";
 import {
   ensureRestaurantSubscription,
   fetchOwnerSubscription,
@@ -139,6 +140,11 @@ export async function adminUpgradeRestaurantPlan(
     });
 
     if (!updated.ok) return updated;
+    void logAdminActivity({
+      action: "plan_upgraded",
+      restaurantId,
+      details: { plan },
+    });
     return { ok: true };
   } catch {
     return { ok: false, message: "Unable to upgrade plan." };
@@ -170,6 +176,11 @@ export async function adminExtendTrial(
     });
 
     if (!updated.ok) return updated;
+    void logAdminActivity({
+      action: "trial_extended",
+      restaurantId,
+      details: { days },
+    });
     return { ok: true };
   } catch {
     return { ok: false, message: "Unable to extend trial." };
@@ -210,6 +221,10 @@ export async function adminCancelSubscription(
     });
 
     if (!updated.ok) return updated;
+    void logAdminActivity({
+      action: "subscription_cancelled",
+      restaurantId,
+    });
     return { ok: true };
   } catch {
     return { ok: false, message: "Unable to cancel subscription." };
@@ -230,6 +245,10 @@ export async function adminReactivateSubscription(
     });
 
     if (!updated.ok) return updated;
+    void logAdminActivity({
+      action: "subscription_reactivated",
+      restaurantId,
+    });
     return { ok: true };
   } catch {
     return { ok: false, message: "Unable to reactivate subscription." };

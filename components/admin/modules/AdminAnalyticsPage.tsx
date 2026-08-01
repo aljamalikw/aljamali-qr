@@ -78,6 +78,10 @@ export function AdminAnalyticsPage() {
     1,
     ...(data?.dailyScans.map((d) => d.count) ?? [1]),
   );
+  const maxRegs = Math.max(
+    1,
+    ...(data?.restaurantsOverTime.map((d) => d.count) ?? [1]),
+  );
 
   const handleExport = () => {
     if (!data) {
@@ -90,10 +94,21 @@ export function AdminAnalyticsPage() {
         ["Demo Conversion Rate", `${data.conversionRate}%`],
         ["Active Restaurants", String(data.activeRestaurants)],
         ["Total Restaurants", String(data.totalRestaurants)],
+        ["New Registrations (30d)", String(data.newRegistrations30d)],
+        ["Growth %", String(data.growthPercent)],
+        ["Trial Conversion Rate", `${data.trialConversionRate}%`],
         ["QR Scans (all time)", String(data.totalScans)],
         ["Scans (30 days)", String(data.scansLast30Days)],
         ["Active Subscriptions", String(data.activeSubscriptions)],
+        ["Expired Subscriptions", String(data.expiredSubscriptions)],
+        ["Suspended Subscriptions", String(data.suspendedSubscriptions)],
+        ["MRR (KWD)", data.mrr.toFixed(3)],
+        ["ARR (KWD)", data.arr.toFixed(3)],
         ["Monthly Revenue (KWD)", data.monthlyRevenue.toFixed(3)],
+        ["Average Menu Size", String(data.averageMenuSize)],
+        ["Average QR Scans", String(data.averageQrScans)],
+        ["Reservations", String(data.reservationsTotal)],
+        ["Orders", String(data.ordersTotal)],
         ["Demos Total", String(data.demosTotal)],
         ["Demos Converted", String(data.demosConverted)],
       ],
@@ -135,17 +150,24 @@ export function AdminAnalyticsPage() {
               Export CSV
             </button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              ["Demo Conversion", `${data.conversionRate}%`],
-              ["Active Restaurants", String(data.activeRestaurants)],
-              ["QR Scans (all time)", String(data.totalScans)],
-              ["Scans (30 days)", String(data.scansLast30Days)],
+              ["Restaurants", String(data.totalRestaurants)],
+              ["Active", String(data.activeRestaurants)],
+              ["New Registrations", String(data.newRegistrations30d)],
+              ["Growth %", `${data.growthPercent}%`],
+              ["Trial Conversions", `${data.trialConversionRate}%`],
               ["Active Subscriptions", String(data.activeSubscriptions)],
-              [
-                "Monthly Revenue",
-                formatPaymentAmount(data.monthlyRevenue, "KWD"),
-              ],
+              ["Expired", String(data.expiredSubscriptions)],
+              ["Suspended", String(data.suspendedSubscriptions)],
+              ["MRR", formatPaymentAmount(data.mrr, "KWD")],
+              ["ARR", formatPaymentAmount(data.arr, "KWD")],
+              ["Revenue (month)", formatPaymentAmount(data.monthlyRevenue, "KWD")],
+              ["Avg Menu Size", String(data.averageMenuSize)],
+              ["Avg QR Scans", String(data.averageQrScans)],
+              ["Reservations", String(data.reservationsTotal)],
+              ["Orders", String(data.ordersTotal)],
+              ["Demo Conversion", `${data.conversionRate}%`],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -159,33 +181,62 @@ export function AdminAnalyticsPage() {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
-            <h3 className="font-serif text-xl text-white">
-              QR scans · last 30 days
-            </h3>
-            <div className="mt-4 flex h-40 items-end gap-1">
-              {data.dailyScans.map((day) => (
-                <div
-                  key={day.date}
-                  className="flex-1 rounded-t bg-gold/70"
-                  style={{
-                    height: `${Math.max(4, Math.round((day.count / maxDaily) * 100))}%`,
-                  }}
-                  title={`${day.date}: ${day.count}`}
-                />
-              ))}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
+              <h3 className="font-serif text-xl text-white">
+                QR scans · last 30 days
+              </h3>
+              <div className="mt-4 flex h-40 items-end gap-1">
+                {data.dailyScans.map((day) => (
+                  <div
+                    key={day.date}
+                    className="flex-1 rounded-t bg-gold/70"
+                    style={{
+                      height: `${Math.max(4, Math.round((day.count / maxDaily) * 100))}%`,
+                    }}
+                    title={`${day.date}: ${day.count}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
+              <h3 className="font-serif text-xl text-white">
+                Restaurants over time
+              </h3>
+              <div className="mt-4 flex h-40 items-end gap-1">
+                {data.restaurantsOverTime.map((day) => (
+                  <div
+                    key={day.date}
+                    className="flex-1 rounded-t bg-gold/50"
+                    style={{
+                      height: `${Math.max(4, Math.round((day.count / maxRegs) * 100))}%`,
+                    }}
+                    title={`${day.date}: ${day.count}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
               <h3 className="mb-4 font-serif text-xl text-white">
-                Subscriptions by plan
+                Plan distribution
               </h3>
               <BarList
-                items={data.subscriptionsByPlan}
+                items={data.planDistribution}
                 labelKey="plan"
                 valueKey="count"
+              />
+            </div>
+            <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
+              <h3 className="mb-4 font-serif text-xl text-white">
+                Top restaurants (scans)
+              </h3>
+              <BarList
+                items={data.topRestaurants}
+                labelKey="name"
+                valueKey="scans"
               />
             </div>
             <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
@@ -197,6 +248,20 @@ export function AdminAnalyticsPage() {
                 labelKey="status"
                 valueKey="count"
               />
+            </div>
+            <div className="rounded-2xl border border-gold/15 bg-black/25 p-5">
+              <h3 className="mb-4 font-serif text-xl text-white">
+                Inactive restaurants
+              </h3>
+              {data.inactiveRestaurantNames.length === 0 ? (
+                <p className="text-sm text-white/45">None right now.</p>
+              ) : (
+                <ul className="space-y-2 text-sm text-white/70">
+                  {data.inactiveRestaurantNames.map((item) => (
+                    <li key={item.id}>{item.name}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>

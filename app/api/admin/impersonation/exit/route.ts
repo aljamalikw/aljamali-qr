@@ -49,6 +49,18 @@ export async function POST(request: NextRequest) {
         reason: "Exit impersonation",
         ip_address: ip,
       });
+
+      await supabase.from("admin_activity_logs").insert({
+        actor_user_id: auth.userId,
+        actor_email: auth.email,
+        actor_role: "super_admin",
+        restaurant_id: session.restaurant_id,
+        restaurant_name: session.restaurant_name,
+        action: "exit_impersonation",
+        details: {},
+        reason: "Exit impersonation",
+        ip_address: ip,
+      });
     }
   }
 

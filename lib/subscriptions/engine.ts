@@ -5,6 +5,7 @@ export type SubscriptionStatus =
   | "trial"
   | "active"
   | "grace"
+  | "suspended"
   | "expired"
   | "cancelled";
 
@@ -47,6 +48,7 @@ function asStatus(value: string | null | undefined): SubscriptionStatus {
     value === "trial" ||
     value === "active" ||
     value === "grace" ||
+    value === "suspended" ||
     value === "expired" ||
     value === "cancelled"
   ) {
@@ -87,7 +89,12 @@ export function resolveEffectiveStatus(
       ? input.gracePeriodDays
       : DEFAULT_GRACE_PERIOD_DAYS;
 
-  if (stored === "cancelled" || stored === "expired") {
+  // Sticky terminal / admin states — only manual or payment flows revive these.
+  if (
+    stored === "cancelled" ||
+    stored === "expired" ||
+    stored === "suspended"
+  ) {
     return stored;
   }
 
@@ -124,7 +131,8 @@ export function resolveEffectiveStatus(
 
   const graceEnd = addDays(baseEnd, graceDays);
   if (now.getTime() <= graceEnd.getTime()) return "grace";
-  return "expired";
+  // After grace: suspended (auto) — restaurant access should be revoked by sync.
+  return "suspended";
 }
 
 export function getSubscriptionAccess(
@@ -165,6 +173,11 @@ export function getSubscriptionAccess(
           ? "Your grace period ends today. Renew to avoid feature locks."
           : `${graceDaysLeft} day${graceDaysLeft === 1 ? "" : "s"} left in your grace period.`;
     }
+  }
+
+  if (effectiveStatus === "suspended") {
+    message =
+      "Your restaurant is suspended after the grace period. Renew billing to restore access.";
   }
 
   if (effectiveStatus === "expired") {

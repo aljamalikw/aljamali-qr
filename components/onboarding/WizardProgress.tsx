@@ -36,7 +36,7 @@ export function WizardProgress({
         />
       </div>
 
-      <div className="mt-3 hidden gap-1 sm:flex">
+      <div className="mt-3 hidden gap-1 lg:flex">
         {labels.map((stepLabel, index) => {
           const stepNumber = index + 1;
           const isComplete = stepNumber < currentStep;
@@ -45,7 +45,7 @@ export function WizardProgress({
           return (
             <div
               key={stepLabel}
-              className="flex flex-1 flex-col items-center gap-1.5"
+              className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
             >
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold transition-colors duration-300 ${
@@ -59,7 +59,7 @@ export function WizardProgress({
                 {isComplete ? "✓" : stepNumber}
               </span>
               <span
-                className={`text-center text-[10px] leading-tight ${
+                className={`truncate text-center text-[9px] leading-tight ${
                   isActive ? "text-white/70" : "text-white/25"
                 }`}
               >

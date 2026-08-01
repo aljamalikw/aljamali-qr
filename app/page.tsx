@@ -23,7 +23,7 @@ import {
 export const metadata: Metadata = {
   title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
   description:
-    `Replace printed menus with beautiful bilingual QR menus. Plans from Free to Professional at ${PRICING_HIGH_PRICE} KWD/month. English & Arabic, instant updates, and analytics.`,
+    `Replace printed menus with beautiful bilingual QR menus. Plans from ${PRICING_LOW_PRICE} to ${PRICING_HIGH_PRICE} KWD/month, plus Enterprise. English & Arabic, instant updates, and analytics.`,
   alternates: {
     canonical: "/",
   },

@@ -19,6 +19,7 @@ export const SUBSCRIPTION_STATUSES = [
   "trial",
   "active",
   "grace",
+  "suspended",
   "expired",
   "cancelled",
 ] as const;
@@ -263,6 +264,25 @@ export async function updateSubscription(params: {
       await supabase
         .from("restaurants")
         .update({ subscription_plan: plan })
+        .eq("id", params.restaurantId);
+    }
+
+    // Reactivation after successful payment / admin reactivate.
+    if (params.status === "active" || params.status === "trial") {
+      await supabase
+        .from("restaurants")
+        .update({ is_active: true, is_archived: false })
+        .eq("id", params.restaurantId);
+    }
+
+    if (
+      params.status === "suspended" ||
+      params.status === "expired" ||
+      params.status === "cancelled"
+    ) {
+      await supabase
+        .from("restaurants")
+        .update({ is_active: false })
         .eq("id", params.restaurantId);
     }
 

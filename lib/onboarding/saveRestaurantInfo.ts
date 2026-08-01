@@ -48,7 +48,7 @@ export async function saveRestaurantInfo(
       timezone: input.timezone,
       preferred_language: input.preferredLanguage,
       slug,
-      onboarding_step: Math.max(existing?.onboarding_step ?? 1, 2),
+      onboarding_step: Math.max(existing?.onboarding_step ?? 1, 3),
     };
 
     const { data, error } = existing

@@ -12,6 +12,7 @@ export function SubscriptionLockBanner() {
   if (
     access.effectiveStatus !== "trial" &&
     access.effectiveStatus !== "grace" &&
+    access.effectiveStatus !== "suspended" &&
     access.effectiveStatus !== "expired" &&
     access.effectiveStatus !== "cancelled"
   ) {
@@ -21,6 +22,7 @@ export function SubscriptionLockBanner() {
   const urgent =
     access.effectiveStatus === "expired" ||
     access.effectiveStatus === "cancelled" ||
+    access.effectiveStatus === "suspended" ||
     (access.trialDaysLeft !== null && access.trialDaysLeft <= 3) ||
     (access.graceDaysLeft !== null && access.graceDaysLeft <= 1);
 

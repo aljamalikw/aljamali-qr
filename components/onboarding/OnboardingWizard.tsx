@@ -23,9 +23,12 @@ import type { Restaurant } from "@/lib/restaurants/types";
 import { OnboardingSuccess } from "./OnboardingSuccess";
 import { StepBranding } from "./StepBranding";
 import { StepCategories } from "./StepCategories";
+import { StepFinish } from "./StepFinish";
 import { StepFirstQr } from "./StepFirstQr";
 import { StepMenuItems } from "./StepMenuItems";
+import { StepMenuPreview } from "./StepMenuPreview";
 import { StepRestaurantInfo } from "./StepRestaurantInfo";
+import { StepWelcome } from "./StepWelcome";
 import { WizardProgress } from "./WizardProgress";
 
 type WizardPhase = "loading" | "wizard" | "success";
@@ -58,12 +61,18 @@ export function OnboardingWizard() {
     };
   }, []);
 
+  const handleWelcome = useCallback(async () => {
+    const result = await updateOnboardingStep(2);
+    if (!result.ok) showToast(result.message, "error");
+    setStep(2);
+  }, [showToast]);
+
   const handleRestaurantInfo = useCallback(
     async (values: RestaurantInfoFormData) => {
       const result = await saveRestaurantInfo(values);
       if (!result.ok) return result.message;
       setRestaurant(result.restaurant);
-      setStep(2);
+      setStep(3);
       return null;
     },
     [],
@@ -73,35 +82,47 @@ export function OnboardingWizard() {
     const result = await saveBranding(values);
     if (!result.ok) return result.message;
     setRestaurant(result.restaurant);
-    setStep(3);
+    setStep(4);
     return null;
   }, []);
 
   const handleCategoriesContinue = useCallback(async () => {
-    const result = await updateOnboardingStep(4);
-    if (!result.ok) showToast(result.message, "error");
-    setStep(4);
-  }, [showToast]);
-
-  const handleMenuItemsContinue = useCallback(async () => {
     const result = await updateOnboardingStep(5);
     if (!result.ok) showToast(result.message, "error");
     setStep(5);
   }, [showToast]);
 
-  const handleFinish = useCallback(
+  const handleMenuItemsContinue = useCallback(async () => {
+    const result = await updateOnboardingStep(6);
+    if (!result.ok) showToast(result.message, "error");
+    setStep(6);
+  }, [showToast]);
+
+  const handleQrContinue = useCallback(
     async (qr: OnboardingQrResult | null) => {
-      const result = await completeOnboarding();
-      if (!result.ok) {
-        showToast(result.message, "error");
-        return;
-      }
-      setRestaurant(result.restaurant);
       setQrResult(qr);
-      setPhase("success");
+      const result = await updateOnboardingStep(7);
+      if (!result.ok) showToast(result.message, "error");
+      setStep(7);
     },
     [showToast],
   );
+
+  const handlePreviewContinue = useCallback(async () => {
+    const result = await updateOnboardingStep(8);
+    if (!result.ok) showToast(result.message, "error");
+    setStep(8);
+  }, [showToast]);
+
+  const handleFinish = useCallback(async () => {
+    const result = await completeOnboarding();
+    if (!result.ok) {
+      showToast(result.message, "error");
+      return;
+    }
+    setRestaurant(result.restaurant);
+    setPhase("success");
+  }, [showToast]);
 
   const handleBack = useCallback(() => {
     setStep((current) => Math.max(1, current - 1));
@@ -149,33 +170,48 @@ export function OnboardingWizard() {
           exit={{ opacity: 0, x: -24 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         >
-          {step === 1 && (
+          {step === 1 && <StepWelcome onContinue={handleWelcome} />}
+          {step === 2 && (
             <StepRestaurantInfo
               restaurant={restaurant}
               onContinue={handleRestaurantInfo}
             />
           )}
-          {step === 2 && (
+          {step === 3 && (
             <StepBranding
               restaurant={restaurant}
               onBack={handleBack}
               onContinue={handleBranding}
             />
           )}
-          {step === 3 && (
+          {step === 4 && (
             <StepCategories
               onBack={handleBack}
               onContinue={handleCategoriesContinue}
             />
           )}
-          {step === 4 && (
+          {step === 5 && (
             <StepMenuItems
               onBack={handleBack}
               onContinue={handleMenuItemsContinue}
             />
           )}
-          {step === 5 && (
+          {step === 6 && (
             <StepFirstQr
+              restaurant={restaurant}
+              onBack={handleBack}
+              onFinish={handleQrContinue}
+            />
+          )}
+          {step === 7 && (
+            <StepMenuPreview
+              restaurant={restaurant}
+              onBack={handleBack}
+              onContinue={handlePreviewContinue}
+            />
+          )}
+          {step === 8 && (
+            <StepFinish
               restaurant={restaurant}
               onBack={handleBack}
               onFinish={handleFinish}

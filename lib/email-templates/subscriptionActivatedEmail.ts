@@ -1,3 +1,4 @@
+import { formatPlanPriceLabel } from "@/lib/subscriptions/plans";
 import { escapeHtml, renderEmailLayout } from "./shared";
 
 export type SubscriptionActivatedEmailData = {
@@ -47,6 +48,6 @@ export const subscriptionActivatedEmailSample: SubscriptionActivatedEmailData = 
   ownerName: "Layla Al-Mutairi",
   restaurantName: "Saffron Garden",
   plan: "Professional",
-  monthlyPrice: "KD 49.000 / month",
+  monthlyPrice: formatPlanPriceLabel("Professional"),
   renewalDate: "September 1, 2026",
 };

@@ -17,15 +17,15 @@ import {
   type SubscriptionPlan,
   type SubscriptionStatus,
 } from "@/lib/admin/subscriptions";
-import { formatPaymentAmount } from "@/lib/admin/payments";
 import {
   formatDemoDate,
   paginateDemoRequests,
 } from "@/lib/demo-requests/utils";
 import {
-  getPlanMonthlyPrices,
-  PLAN_PRICES,
-} from "@/lib/subscriptions/pricing";
+  formatPlanPriceLabel,
+  getPlanMonthlyAmount,
+} from "@/lib/subscriptions/plans";
+import { getCatalogMonthlyPrices } from "@/lib/subscriptions/pricing";
 import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
 
 const PAGE_SIZE = 10;
@@ -38,6 +38,8 @@ function statusClass(status: SubscriptionStatus): string {
       return "text-sky-300";
     case "grace":
       return "text-amber-200";
+    case "suspended":
+      return "text-orange-300";
     case "expired":
       return "text-amber-300";
     case "cancelled":
@@ -64,17 +66,12 @@ export function AdminSubscriptionsPage() {
   const [bulkStatus, setBulkStatus] = useState<SubscriptionStatus | null>(null);
   const [bulkTarget, setBulkTarget] = useState<SubscriptionStatus>("active");
   const [actionLoading, setActionLoading] = useState(false);
-  const [planPrices, setPlanPrices] =
-    useState<Record<SubscriptionPlan, number>>(PLAN_PRICES);
+  const planPrices = getCatalogMonthlyPrices();
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [result, prices] = await Promise.all([
-      fetchSubscriptions(),
-      getPlanMonthlyPrices(),
-    ]);
-    setPlanPrices(prices);
+    const result = await fetchSubscriptions();
     setLoading(false);
     if (!result.ok) {
       setError(result.message);
@@ -125,7 +122,7 @@ export function AdminSubscriptionsPage() {
       restaurantId: editing.restaurantId,
       plan: nextPlan,
       status: nextStatus,
-      monthlyPrice: planPrices[nextPlan],
+      monthlyPrice: getPlanMonthlyAmount(nextPlan) ?? planPrices[nextPlan],
     });
     setSaving(false);
     if (!result.ok) {
@@ -364,7 +361,7 @@ export function AdminSubscriptionsPage() {
                         {item.plan}
                       </td>
                       <td className="px-3 py-3 text-sm text-white/70">
-                        {formatPaymentAmount(item.monthlyPrice, item.currency)}
+                        {formatPlanPriceLabel(item.plan)}
                       </td>
                       <td
                         className={`px-3 py-3 text-sm capitalize ${statusClass(item.status)}`}
@@ -422,7 +419,7 @@ export function AdminSubscriptionsPage() {
                 >
                   {SUBSCRIPTION_PLANS.map((p) => (
                     <option key={p} value={p}>
-                      {p} — {formatPaymentAmount(planPrices[p])}
+                      {p} — {formatPlanPriceLabel(p)}
                     </option>
                   ))}
                 </select>

@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  getPlanMonthlyAmount,
+  isPayablePlan,
+  PLAN_CURRENCY,
+  type SubscriptionPlanId,
+} from "@/lib/subscriptions/plans";
 import type { PricedPlan } from "@/lib/subscriptions/pricing";
-
-const PLATFORM_SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
 
 const PLAN_KEYS: PricedPlan[] = ["Starter", "Professional", "Enterprise"];
 
@@ -10,47 +14,30 @@ export function isPricedPlan(value: string): value is PricedPlan {
 }
 
 /**
- * Load a plan's monthly price from platform_settings.
- * Does not fall back to hardcoded defaults — fails if pricing is unavailable.
+ * Resolve payable plan amount from the canonical catalog
+ * (`lib/subscriptions/plans.ts`). DB platform_settings are not used for
+ * charge amounts so renew/upgrade never drift from the shared config.
  */
 export async function getPlanMonthlyPriceFromDb(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   plan: PricedPlan,
-): Promise<{ ok: true; amount: number; currency: string } | { ok: false; message: string }> {
-  const { data, error } = await supabase
-    .from("platform_settings")
-    .select("subscription_plan_prices, currency")
-    .eq("id", PLATFORM_SETTINGS_ID)
-    .maybeSingle();
-
-  if (error) {
-    return { ok: false, message: error.message || "Unable to load plan pricing." };
+): Promise<
+  { ok: true; amount: number; currency: string } | { ok: false; message: string }
+> {
+  if (!isPayablePlan(plan)) {
+    return {
+      ok: false,
+      message: "Enterprise is not available for online payment.",
+    };
   }
 
-  if (!data) {
-    return { ok: false, message: "Platform pricing settings not found." };
-  }
-
-  const raw = (data as { subscription_plan_prices?: unknown }).subscription_plan_prices;
-  if (!raw || typeof raw !== "object") {
-    return { ok: false, message: "Plan pricing is not configured." };
-  }
-
-  const entry = (raw as Record<string, unknown>)[plan];
-  if (!entry || typeof entry !== "object") {
-    return { ok: false, message: `No price configured for plan: ${plan}` };
-  }
-
-  const monthly = Number((entry as { monthly?: unknown }).monthly);
-  if (!Number.isFinite(monthly) || monthly <= 0) {
+  const amount = getPlanMonthlyAmount(plan as SubscriptionPlanId);
+  if (amount == null || !Number.isFinite(amount) || amount <= 0) {
     return {
       ok: false,
       message: `Invalid monthly price for plan: ${plan}`,
     };
   }
 
-  const currency =
-    ((data as { currency?: string | null }).currency || "KWD").trim() || "KWD";
-
-  return { ok: true, amount: monthly, currency };
+  return { ok: true, amount, currency: PLAN_CURRENCY };
 }

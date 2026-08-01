@@ -8,6 +8,8 @@ export type AdminNavId =
   | "payments"
   | "support"
   | "analytics"
+  | "activity"
+  | "backup-export"
   | "announcements"
   | "email-templates"
   | "settings";
@@ -16,18 +18,36 @@ export type AdminNavItem = {
   id: AdminNavId;
   label: string;
   href: string;
+  superAdminOnly?: boolean;
 };
 
 export const adminNavItems: AdminNavItem[] = [
   { id: "dashboard", label: "Dashboard", href: "/admin/dashboard" },
   { id: "demo-requests", label: "Demo Requests", href: "/admin/demo-requests" },
-  { id: "restaurants", label: "Restaurant Management", href: "/admin/restaurants" },
+  {
+    id: "restaurants",
+    label: "Restaurant Management",
+    href: "/admin/restaurants",
+    superAdminOnly: true,
+  },
   { id: "owners", label: "Restaurant Owners", href: "/admin/owners" },
   { id: "reservations", label: "Reservations", href: "/admin/reservations" },
   { id: "subscriptions", label: "Subscriptions", href: "/admin/subscriptions" },
   { id: "payments", label: "Payments", href: "/admin/payments" },
   { id: "support", label: "Support", href: "/admin/support" },
   { id: "analytics", label: "Analytics", href: "/admin/analytics" },
+  {
+    id: "activity",
+    label: "Activity Log",
+    href: "/admin/activity",
+    superAdminOnly: true,
+  },
+  {
+    id: "backup-export",
+    label: "Backup & Export",
+    href: "/admin/backup-export",
+    superAdminOnly: true,
+  },
   { id: "announcements", label: "Announcements", href: "/admin/announcements" },
   {
     id: "email-templates",

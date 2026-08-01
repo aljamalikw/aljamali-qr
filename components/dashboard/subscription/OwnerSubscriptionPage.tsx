@@ -20,49 +20,28 @@ import { pricingPlans } from "@/lib/landing-data";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
 import {
-  getPlanMonthlyPrices,
-  PLAN_PRICES,
-} from "@/lib/subscriptions/pricing";
+  SUBSCRIPTION_PLAN_ORDER,
+  SUBSCRIPTION_PLANS,
+  formatPlanAmountKd,
+  formatPlanPriceLabel,
+  getPlanMonthlyAmount,
+  isPayablePlan,
+  type SubscriptionPlanId,
+} from "@/lib/subscriptions/plans";
 
 const SUPPORT_EMAIL = "support@aljamaliqr.com";
 const SALES_EMAIL = "aljamaliqr@gmail.com";
 
-const PLAN_COPY: Record<
-  Exclude<SubscriptionPlan, never>,
-  {
-    subtitle: string;
-    features: string[];
-    badge?: string;
-  }
-> = {
-  Starter: {
-    subtitle: "Perfect for one restaurant.",
-    features: (
-      pricingPlans.find((p) => p.id === "starter")?.features.map((f) => f.label) ??
-      []
-    ),
-  },
-  Professional: {
-    subtitle: "Best for growing restaurants.",
-    features: [
-      ...(pricingPlans.find((p) => p.id === "professional")?.features.map(
-        (f) => f.label,
-      ) ?? []),
-      ...(pricingPlans
-        .find((p) => p.id === "professional")
-        ?.premiumFeatures?.map((f) => f.label) ?? []),
-    ],
-    badge: "Most Popular",
-  },
-  Enterprise: {
-    subtitle: "Built for restaurant chains.",
-    features: (
-      pricingPlans.find((p) => p.id === "enterprise")?.features.map(
-        (f) => f.label,
-      ) ?? []
-    ),
-  },
-};
+function planFeatureLabels(planId: SubscriptionPlanId): string[] {
+  const marketing = pricingPlans.find(
+    (p) => p.id === SUBSCRIPTION_PLANS[planId].id,
+  );
+  if (!marketing) return [];
+  return [
+    ...marketing.features.map((f) => f.label),
+    ...(marketing.premiumFeatures?.map((f) => f.label) ?? []),
+  ];
+}
 
 const DEMO_HISTORY = [
   {
@@ -70,7 +49,7 @@ const DEMO_HISTORY = [
     invoice: "INV-2026-001",
     date: "2026-06-12",
     plan: "Starter",
-    amount: 8,
+    amount: getPlanMonthlyAmount("Starter") ?? 0,
     status: "paid" as const,
   },
   {
@@ -78,7 +57,7 @@ const DEMO_HISTORY = [
     invoice: "INV-2026-002",
     date: "2026-05-12",
     plan: "Starter",
-    amount: 8,
+    amount: getPlanMonthlyAmount("Starter") ?? 0,
     status: "paid" as const,
   },
   {
@@ -86,7 +65,7 @@ const DEMO_HISTORY = [
     invoice: "INV-2026-003",
     date: "2026-04-12",
     plan: "Professional",
-    amount: 15,
+    amount: getPlanMonthlyAmount("Professional") ?? 0,
     status: "pending" as const,
   },
 ];
@@ -133,8 +112,6 @@ export function OwnerSubscriptionPage() {
   const [subscription, setSubscription] =
     useState<RestaurantSubscription | null>(null);
   const [invoices, setInvoices] = useState<PaymentItem[]>([]);
-  const [planPrices, setPlanPrices] =
-    useState<Record<SubscriptionPlan, number>>(PLAN_PRICES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirmPlan, setConfirmPlan] = useState<SubscriptionPlan | null>(null);
@@ -149,13 +126,10 @@ export function OwnerSubscriptionPage() {
     setLoading(true);
     setError(null);
 
-    const [subResult, invoicesResult, prices] = await Promise.all([
+    const [subResult, invoicesResult] = await Promise.all([
       fetchOwnerSubscription(restaurant.id),
       fetchPaymentsForRestaurant(restaurant.id),
-      getPlanMonthlyPrices(),
     ]);
-
-    setPlanPrices(prices);
 
     let subData = subResult.ok ? subResult.data : null;
     if (subResult.ok && !subResult.data) {
@@ -313,9 +287,7 @@ export function OwnerSubscriptionPage() {
   const effectiveStatus = access?.effectiveStatus ?? subscription?.status ?? "trial";
   const daysRemaining =
     access?.trialDaysLeft ?? access?.graceDaysLeft ?? null;
-  const currency = subscription?.currency ?? restaurant.currency ?? "KWD";
-  const monthlyPrice =
-    subscription?.monthlyPrice ?? planPrices[currentPlan] ?? PLAN_PRICES[currentPlan];
+  const monthlyPriceLabel = formatPlanPriceLabel(currentPlan);
 
   const isExpired =
     effectiveStatus === "expired" || effectiveStatus === "cancelled";
@@ -423,9 +395,7 @@ export function OwnerSubscriptionPage() {
                 Monthly price
               </dt>
               <dd className="mt-1 text-sm font-medium text-gold">
-                {currentPlan === "Enterprise"
-                  ? "Custom Pricing"
-                  : formatPaymentAmount(monthlyPrice, currency)}
+                {monthlyPriceLabel}
               </dd>
             </div>
             <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
@@ -459,14 +429,14 @@ export function OwnerSubscriptionPage() {
                   >
                     Upgrade Plan
                   </button>
-                  {currentPlan !== "Enterprise" ? (
+                  {isPayablePlan(currentPlan) ? (
                     <button
                       type="button"
                       onClick={() => setConfirmPlan(currentPlan)}
                       disabled={paying}
                       className="menu-btn-secondary text-xs sm:text-sm disabled:opacity-60"
                     >
-                      Pay Now
+                      {`Renew ${currentPlan} · ${formatPlanAmountKd(currentPlan)}`}
                     </button>
                   ) : null}
                 </>
@@ -488,6 +458,16 @@ export function OwnerSubscriptionPage() {
                   >
                     Change Plan
                   </button>
+                  {isPayablePlan(currentPlan) ? (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmPlan(currentPlan)}
+                      disabled={paying}
+                      className="menu-btn-secondary text-xs sm:text-sm disabled:opacity-60"
+                    >
+                      {`Renew ${currentPlan} · ${formatPlanAmountKd(currentPlan)}`}
+                    </button>
+                  ) : null}
                 </>
               ) : null}
 
@@ -525,50 +505,47 @@ export function OwnerSubscriptionPage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-3">
-          {(["Starter", "Professional", "Enterprise"] as const).map((plan) => {
+          {SUBSCRIPTION_PLAN_ORDER.map((plan) => {
+            const catalog = SUBSCRIPTION_PLANS[plan];
             const isCurrent = plan === currentPlan;
-            const copy = PLAN_COPY[plan];
-            const price = planPrices[plan];
-            const isEnterprise = plan === "Enterprise";
-            const isPopular = plan === "Professional";
+            const isEnterprise = catalog.contactSales;
+            const isPopular = catalog.highlighted;
+            const features = planFeatureLabels(plan);
+            // Same catalog formatter as Current Plan (KD 8/month, Contact Us).
+            const priceLabel = formatPlanPriceLabel(plan);
 
             return (
               <article
-                key={plan}
+                key={catalog.id}
                 className={`relative flex h-full flex-col rounded-2xl border p-6 backdrop-blur-xl transition-all duration-300 ${
                   isPopular
                     ? "border-gold/45 bg-gradient-to-b from-gold/[0.12] to-black/50 shadow-[0_16px_48px_rgba(212,175,55,0.12)]"
                     : "border-gold/20 bg-black/35"
                 }`}
               >
-                {copy.badge ? (
+                {catalog.badge ? (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-black shadow-lg shadow-gold/25">
-                    {copy.badge}
+                    {catalog.badge}
                   </span>
                 ) : null}
 
                 <h3 className="font-serif text-2xl font-bold text-white">
-                  {plan}
+                  {catalog.name}
                 </h3>
-                <p className="mt-1 text-sm text-white/50">{copy.subtitle}</p>
+                <p className="mt-1 text-sm text-white/50">{catalog.subtitle}</p>
 
                 <div className="mt-5">
-                  {isEnterprise ? (
-                    <p className="font-serif text-3xl font-bold text-gold">
-                      Custom Pricing
-                    </p>
-                  ) : (
-                    <p className="font-serif text-3xl font-bold text-white">
-                      {formatPaymentAmount(price, "KWD")}
-                      <span className="ms-1 text-sm font-medium text-white/45">
-                        / month
-                      </span>
-                    </p>
-                  )}
+                  <p
+                    className={`font-serif text-3xl font-bold ${
+                      isEnterprise ? "text-gold" : "text-white"
+                    }`}
+                  >
+                    {priceLabel}
+                  </p>
                 </div>
 
                 <ul className="mt-6 flex-1 space-y-2.5">
-                  {copy.features.slice(0, 8).map((feature) => (
+                  {features.slice(0, 8).map((feature) => (
                     <li
                       key={feature}
                       className="flex items-start gap-2 text-sm text-white/65"
@@ -608,8 +585,8 @@ export function OwnerSubscriptionPage() {
                       }`}
                     >
                       {plan === "Professional"
-                        ? "Upgrade to Professional"
-                        : "Choose Starter"}
+                        ? "Upgrade"
+                        : `Choose Starter · ${formatPlanAmountKd("Starter")}`}
                     </button>
                   )}
                 </div>
@@ -707,7 +684,7 @@ export function OwnerSubscriptionPage() {
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-sm text-white/50">Monthly Price</dt>
                 <dd className="font-serif text-lg font-bold text-gold">
-                  {formatPaymentAmount(planPrices[confirmPlan], "KWD")}
+                  {formatPlanPriceLabel(confirmPlan)}
                 </dd>
               </div>
             </dl>

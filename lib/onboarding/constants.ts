@@ -1,11 +1,14 @@
-export const TOTAL_ONBOARDING_STEPS = 5;
+export const TOTAL_ONBOARDING_STEPS = 8;
 
 export const ONBOARDING_STEP_LABELS = [
-  "Restaurant Info",
+  "Welcome",
+  "Restaurant",
   "Branding",
   "Categories",
-  "Menu Items",
-  "First QR Code",
+  "Menu",
+  "QR Code",
+  "Preview",
+  "Finish",
 ] as const;
 
 export const RESTAURANT_TYPE_OPTIONS = [

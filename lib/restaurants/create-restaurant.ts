@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { queueEmailNotification } from "@/lib/email/framework";
 
 const RESTAURANT_SETUP_ERROR =
   "Your account was created, but we couldn't finish setting up your restaurant profile. Please try signing in or contact support.";
@@ -7,42 +8,30 @@ export async function createRestaurantForOwner(
   ownerId: string,
   email: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  console.log("[createRestaurantForOwner] called", {
-    ownerId,
-    email: email.trim(),
-  });
-
   try {
-    const { data, error } = await supabase.rpc("create_restaurant_for_owner", {
+    const { error } = await supabase.rpc("create_restaurant_for_owner", {
       p_owner_id: ownerId,
       p_email: email.trim(),
     });
 
     if (error) {
-      console.error("[createRestaurantForOwner] RPC failed", {
-        ownerId,
-        email: email.trim(),
-        error,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      });
       return { ok: false, message: RESTAURANT_SETUP_ERROR };
     }
 
-    console.log("[createRestaurantForOwner] RPC succeeded", {
-      ownerId,
-      email: email.trim(),
-      data,
+    // Framework-only: queue welcome / trial emails (no provider connected yet).
+    void queueEmailNotification({
+      templateId: "registration_successful",
+      toEmail: email.trim(),
+      meta: { ownerId },
     });
+    void queueEmailNotification({
+      templateId: "trial_started",
+      toEmail: email.trim(),
+      meta: { ownerId },
+    });
+
     return { ok: true };
-  } catch (err) {
-    console.error("[createRestaurantForOwner] unexpected error", {
-      ownerId,
-      email: email.trim(),
-      err,
-    });
+  } catch {
     return { ok: false, message: RESTAURANT_SETUP_ERROR };
   }
 }

@@ -1617,9 +1617,9 @@ select
   r.id,
   coalesce(nullif(r.subscription_plan, ''), 'Starter'),
   case coalesce(nullif(r.subscription_plan, ''), 'Starter')
-    when 'Professional' then 49.000
-    when 'Enterprise' then 99.000
-    else 19.000
+    when 'Professional' then 15.000
+    when 'Enterprise' then 0.000
+    else 8.000
   end,
   coalesce(nullif(r.currency, ''), 'KWD'),
   case when r.is_active then 'active' else 'cancelled' end,

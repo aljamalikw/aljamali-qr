@@ -67,6 +67,7 @@ export function deriveRestaurantManagementStatus(input: {
 
   if (effective === "trial") return "trial";
   if (effective === "grace") return "grace";
+  if (effective === "suspended") return "suspended";
   if (effective === "expired" || effective === "cancelled") return "expired";
   return "active";
 }

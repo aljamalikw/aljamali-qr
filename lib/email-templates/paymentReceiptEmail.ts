@@ -1,3 +1,4 @@
+import { formatPlanAmountKd } from "@/lib/subscriptions/plans";
 import { escapeHtml, renderEmailLayout } from "./shared";
 
 export type PaymentReceiptEmailData = {
@@ -53,7 +54,7 @@ export const paymentReceiptEmailSample: PaymentReceiptEmailData = {
   ownerName: "Layla Al-Mutairi",
   restaurantName: "Saffron Garden",
   invoiceNumber: "INV-2026-0042",
-  amount: "KD 49.000",
+  amount: formatPlanAmountKd("Professional"),
   paymentMethod: "Visa •••• 4242",
   paidAt: "July 27, 2026",
 };
