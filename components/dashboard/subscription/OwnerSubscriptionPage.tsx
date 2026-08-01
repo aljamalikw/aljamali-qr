@@ -20,7 +20,6 @@ import { pricingPlans } from "@/lib/landing-data";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
 import {
-  SUBSCRIPTION_PLAN_ORDER,
   SUBSCRIPTION_PLANS,
   formatPlanAmountKd,
   formatPlanPriceLabel,
@@ -104,7 +103,6 @@ function invoiceStatusClass(status: PaymentItem["status"] | "paid" | "pending"):
 }
 
 export function OwnerSubscriptionPage() {
-  console.log("OwnerSubscriptionPage build: 72246d3");
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
   const { refresh: refreshAccess } = useSubscriptionAccess();
@@ -506,36 +504,38 @@ export function OwnerSubscriptionPage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-3">
-          {console.log("Available Plans:", SUBSCRIPTION_PLANS)}
-          {SUBSCRIPTION_PLAN_ORDER.map((plan) => {
+          {/* Same `pricingPlans` catalog as Landing — Starter / Professional / Enterprise only. */}
+          {pricingPlans.map((marketing) => {
+            const plan = marketing.name as SubscriptionPlanId;
             const catalog = SUBSCRIPTION_PLANS[plan];
             const isCurrent = plan === currentPlan;
             const isEnterprise = catalog.contactSales;
             const isPopular = catalog.highlighted;
             const features = planFeatureLabels(plan);
-            // Same catalog formatter as Current Plan (KD 8/month, Contact Us).
-            console.log("Rendering", plan, formatPlanPriceLabel(plan));
-            const priceLabel = formatPlanPriceLabel(plan);
+            // Exact Landing monthly display: "8 KWD / month" | "Contact Us"
+            const priceLabel = marketing.monthlySuffix
+              ? `${marketing.monthlyPrice} ${marketing.monthlySuffix}`
+              : marketing.monthlyPrice;
 
             return (
               <article
-                key={catalog.id}
+                key={marketing.id}
                 className={`relative flex h-full flex-col rounded-2xl border p-6 backdrop-blur-xl transition-all duration-300 ${
                   isPopular
                     ? "border-gold/45 bg-gradient-to-b from-gold/[0.12] to-black/50 shadow-[0_16px_48px_rgba(212,175,55,0.12)]"
                     : "border-gold/20 bg-black/35"
                 }`}
               >
-                {catalog.badge ? (
+                {marketing.badge ? (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-black shadow-lg shadow-gold/25">
-                    {catalog.badge}
+                    {marketing.badge}
                   </span>
                 ) : null}
 
                 <h3 className="font-serif text-2xl font-bold text-white">
-                  {catalog.name}
+                  {marketing.name}
                 </h3>
-                <p className="mt-1 text-sm text-white/50">{catalog.subtitle}</p>
+                <p className="mt-1 text-sm text-white/50">{marketing.subtitle}</p>
 
                 <div className="mt-5">
                   <p

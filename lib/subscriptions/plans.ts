@@ -23,7 +23,8 @@ export type PlanCatalogEntry = {
 };
 
 export const PLAN_CURRENCY = "KWD" as const;
-export const PLAN_CURRENCY_LABEL = "KD" as const;
+/** Display label matching Landing (`8 KWD / month`). */
+export const PLAN_CURRENCY_LABEL = "KWD" as const;
 
 export const SUBSCRIPTION_PLAN_ORDER: SubscriptionPlanId[] = [
   "Starter",
@@ -101,7 +102,7 @@ export function getPlanMonthlyAmount(
   return SUBSCRIPTION_PLANS[plan].monthly;
 }
 
-/** Display helper: "KD 8/month" | "Contact Us" */
+/** Display helper matching Landing: "8 KWD / month" | "Contact Us" */
 export function formatPlanPriceLabel(
   plan: SubscriptionPlanId,
   cycle: "monthly" | "yearly" = "monthly",
@@ -112,16 +113,16 @@ export function formatPlanPriceLabel(
   }
   const amount = cycle === "yearly" ? entry.yearly : entry.monthly;
   if (amount == null) return "Contact Us";
-  return `${PLAN_CURRENCY_LABEL} ${amount}/${cycle === "yearly" ? "year" : "month"}`;
+  return `${amount} ${PLAN_CURRENCY_LABEL} / ${cycle === "yearly" ? "year" : "month"}`;
 }
 
-/** Compact amount for invoices/UI that already append "/ month". */
+/** Compact amount for CTAs (e.g. "8 KWD"). */
 export function formatPlanAmountKd(plan: SubscriptionPlanId): string {
   const entry = SUBSCRIPTION_PLANS[plan];
   if (entry.contactSales || entry.monthly == null) {
     return "Contact Us";
   }
-  return `${PLAN_CURRENCY_LABEL} ${entry.monthly}`;
+  return `${entry.monthly} ${PLAN_CURRENCY_LABEL}`;
 }
 
 /**
