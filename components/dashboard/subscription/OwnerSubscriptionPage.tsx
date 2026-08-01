@@ -104,6 +104,7 @@ function invoiceStatusClass(status: PaymentItem["status"] | "paid" | "pending"):
 }
 
 export function OwnerSubscriptionPage() {
+  console.log("OwnerSubscriptionPage build: 72246d3");
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
   const { refresh: refreshAccess } = useSubscriptionAccess();
@@ -505,6 +506,7 @@ export function OwnerSubscriptionPage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-3">
+          {console.log("Available Plans:", SUBSCRIPTION_PLANS)}
           {SUBSCRIPTION_PLAN_ORDER.map((plan) => {
             const catalog = SUBSCRIPTION_PLANS[plan];
             const isCurrent = plan === currentPlan;
@@ -512,6 +514,7 @@ export function OwnerSubscriptionPage() {
             const isPopular = catalog.highlighted;
             const features = planFeatureLabels(plan);
             // Same catalog formatter as Current Plan (KD 8/month, Contact Us).
+            console.log("Rendering", plan, formatPlanPriceLabel(plan));
             const priceLabel = formatPlanPriceLabel(plan);
 
             return (
