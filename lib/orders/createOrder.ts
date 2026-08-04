@@ -189,7 +189,8 @@ if (error) {
     };
 
     return { ok: true, data: mapOrderRow(fullOrder) };
-  } catch {
+  } catch (err) {
+  console.error("CATCH ERROR:", err);
     return { ok: false, message: CREATE_ERROR };
   }
 }
