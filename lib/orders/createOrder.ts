@@ -107,6 +107,7 @@ export async function createOrder(
         })),
       });
 
+      console.log("restaurant_id", input.restaurantId);
       const { data, error } = await supabase
         .from("orders")
         .insert({
@@ -126,15 +127,15 @@ export async function createOrder(
           grand_total: grandTotal,
           currency,
           printer_payload: printerPayload,
-        })
-        .select("*")
-        .maybeSingle();
+        });
 
       if (!error && data) {
         orderRow = data as OrderRecord;
         break;
       }
-
+if (error) {
+  console.log("SUPABASE ERROR:", error);
+}
       lastError = error;
       if (error && error.code !== UNIQUE_VIOLATION_CODE) break;
     }
