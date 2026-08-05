@@ -107,6 +107,11 @@ export async function createOrder(
       });
 
       console.log("restaurant_id", input.restaurantId);
+
+      console.log("INSERT PAYLOAD", {
+  restaurant_id: input.restaurantId,
+  order_number: orderNumber,
+}); 
       const { data, error } = await supabase
         .from("orders")
         .insert({
