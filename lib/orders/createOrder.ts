@@ -16,8 +16,7 @@ function round(value: number): number {
 }
 
 function generateOrderNumber(): string {
-  const digits = Math.floor(1000 + Math.random() * 9000);
-  return `ORD-${digits}`;
+  return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
 function buildPrinterPayload(params: {
@@ -127,7 +126,9 @@ export async function createOrder(
           grand_total: grandTotal,
           currency,
           printer_payload: printerPayload,
-        });
+        })
+.select("*")
+.maybeSingle();
 
       if (!error && data) {
         orderRow = data as OrderRecord;
