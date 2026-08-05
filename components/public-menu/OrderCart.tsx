@@ -114,6 +114,8 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
     }
 
     setSubmitting(true);
+    console.log("CALLING createOrder");
+    
     const result = await createOrder({
       restaurantId: restaurant.id,
       orderType,
