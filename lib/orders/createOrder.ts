@@ -1,5 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { notifyRestaurantOwner } from "@/lib/notifications/createNotification";
-import { supabase } from "@/lib/supabase";
 import { mapOrderRow } from "./mappers";
 import type { CreateOrderInput, Order, OrderItemRecord, OrderRecord } from "./types";
 import { isMissingTableError } from "./utils";
@@ -58,7 +58,12 @@ function buildNotificationBody(params: {
   return `${who} placed a Delivery order — ${total}`;
 }
 
-export async function createOrder(
+/**
+ * Core order write path. Browser calls must use createOrder() → API route;
+ * the route passes the server service-role client here.
+ */
+export async function createOrderWithClient(
+  client: SupabaseClient,
   input: CreateOrderInput,
 ): Promise<{ ok: true; data: Order } | { ok: false; message: string }> {
   try {
@@ -67,12 +72,32 @@ export async function createOrder(
     const validation = validateCreateOrder(input);
     if (!validation.ok) return validation;
 
+    const { data: restaurant, error: restaurantError } = await client
+      .from("restaurants")
+      .select("id, is_active, online_ordering_enabled, slug")
+      .eq("id", input.restaurantId)
+      .maybeSingle();
+
+    if (restaurantError) {
+      return { ok: false, message: restaurantError.message || CREATE_ERROR };
+    }
+    if (
+      !restaurant ||
+      restaurant.is_active === false ||
+      restaurant.online_ordering_enabled === false ||
+      !String(restaurant.slug ?? "").trim()
+    ) {
+      return { ok: false, message: UNAVAILABLE_ERROR };
+    }
+
     const subtotal = round(
       input.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
     );
     const taxRate = input.taxRate ?? 0;
     const taxAmount = round(subtotal * (taxRate / 100));
-    const discountAmount = round(Math.min(input.discountAmount ?? 0, subtotal + taxAmount));
+    const discountAmount = round(
+      Math.min(input.discountAmount ?? 0, subtotal + taxAmount),
+    );
     const grandTotal = round(Math.max(subtotal + taxAmount - discountAmount, 0));
     const currency = input.currency ?? "KWD";
 
@@ -83,10 +108,13 @@ export async function createOrder(
     const trimmedCustomerPhone =
       input.orderType === "Dine In" ? null : input.customerPhone?.trim() || null;
     const trimmedDeliveryAddress =
-      input.orderType === "Delivery" ? input.deliveryAddress?.trim() || null : null;
+      input.orderType === "Delivery"
+        ? input.deliveryAddress?.trim() || null
+        : null;
     const trimmedLandmark =
       input.orderType === "Delivery" ? input.landmark?.trim() || null : null;
-    const trimmedSpecialInstructions = input.specialInstructions?.trim() || null;
+    const trimmedSpecialInstructions =
+      input.specialInstructions?.trim() || null;
 
     let orderRow: OrderRecord | null = null;
     let lastError: { code?: string; message?: string } | null = null;
@@ -106,13 +134,7 @@ export async function createOrder(
         })),
       });
 
-      console.log("restaurant_id", input.restaurantId);
-
-      console.log("INSERT PAYLOAD", {
-  restaurant_id: input.restaurantId,
-  order_number: orderNumber,
-}); 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from("orders")
         .insert({
           restaurant_id: input.restaurantId,
@@ -132,16 +154,14 @@ export async function createOrder(
           currency,
           printer_payload: printerPayload,
         })
-.select("*")
-.maybeSingle();
+        .select("*")
+        .maybeSingle();
 
       if (!error && data) {
         orderRow = data as OrderRecord;
         break;
       }
-if (error) {
-  console.log("SUPABASE ERROR:", error);
-}
+
       lastError = error;
       if (error && error.code !== UNIQUE_VIOLATION_CODE) break;
     }
@@ -164,7 +184,7 @@ if (error) {
       line_total: round(item.unitPrice * item.quantity),
     }));
 
-    const { data: insertedItems, error: itemsError } = await supabase
+    const { data: insertedItems, error: itemsError } = await client
       .from("order_items")
       .insert(itemRows)
       .select("*");
@@ -175,19 +195,23 @@ if (error) {
 
     const finalItems = (insertedItems ?? itemRows) as OrderItemRecord[];
 
-    void notifyRestaurantOwner(input.restaurantId, {
-      type: "new_order",
-      title: `New order ${orderRow.order_number}`,
-      body: buildNotificationBody({
-        orderType: orderRow.order_type,
-        customerName: orderRow.customer_name,
-        tableNumber: orderRow.table_number,
-        grandTotal,
-        currency,
-      }),
-      href: "/dashboard/orders",
-      meta: { orderId: orderRow.id, orderNumber: orderRow.order_number },
-    });
+    void notifyRestaurantOwner(
+      input.restaurantId,
+      {
+        type: "new_order",
+        title: `New order ${orderRow.order_number}`,
+        body: buildNotificationBody({
+          orderType: orderRow.order_type,
+          customerName: orderRow.customer_name,
+          tableNumber: orderRow.table_number,
+          grandTotal,
+          currency,
+        }),
+        href: "/dashboard/orders",
+        meta: { orderId: orderRow.id, orderNumber: orderRow.order_number },
+      },
+      client,
+    );
 
     const fullOrder: OrderRecord = {
       ...orderRow,
@@ -195,8 +219,47 @@ if (error) {
     };
 
     return { ok: true, data: mapOrderRow(fullOrder) };
-  } catch (err) {
-  console.error("CATCH ERROR:", err);
+  } catch {
+    return { ok: false, message: CREATE_ERROR };
+  }
+}
+
+/**
+ * Browser entrypoint — posts to the secure Route Handler.
+ * Does not use the anon key for inserts.
+ */
+export async function createOrder(
+  input: CreateOrderInput,
+): Promise<{ ok: true; data: Order } | { ok: false; message: string }> {
+  try {
+    const response = await fetch("/api/orders/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    let payload: {
+      ok?: boolean;
+      data?: Order;
+      error?: string;
+      message?: string;
+    } = {};
+
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      return { ok: false, message: CREATE_ERROR };
+    }
+
+    if (!response.ok || !payload.ok || !payload.data) {
+      return {
+        ok: false,
+        message: payload.error || payload.message || CREATE_ERROR,
+      };
+    }
+
+    return { ok: true, data: payload.data };
+  } catch {
     return { ok: false, message: CREATE_ERROR };
   }
 }

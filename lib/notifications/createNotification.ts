@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { NotificationType } from "./types";
 
@@ -16,12 +17,14 @@ export type CreateNotificationParams = {
 /**
  * Inserts a notification row. RLS only allows this when the caller is a
  * platform admin (any target user) or is inserting a row for themselves.
+ * Pass a service-role client from server routes when needed.
  */
 export async function createNotification(
   params: CreateNotificationParams,
+  client: SupabaseClient = supabase,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
-    const { error } = await supabase.from("notifications").insert({
+    const { error } = await client.from("notifications").insert({
       user_id: params.userId,
       type: params.type,
       title: params.title,
@@ -66,9 +69,10 @@ export async function createNotificationsForUsers(
 export async function notifyRestaurantOwner(
   restaurantId: string,
   base: Omit<CreateNotificationParams, "userId" | "restaurantId">,
+  client: SupabaseClient = supabase,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("restaurants")
       .select("owner_id")
       .eq("id", restaurantId)
@@ -78,11 +82,14 @@ export async function notifyRestaurantOwner(
       return { ok: false, message: error?.message ?? "Owner not found." };
     }
 
-    return createNotification({
-      userId: data.owner_id,
-      restaurantId,
-      ...base,
-    });
+    return createNotification(
+      {
+        userId: data.owner_id,
+        restaurantId,
+        ...base,
+      },
+      client,
+    );
   } catch {
     return { ok: false, message: ERROR };
   }
