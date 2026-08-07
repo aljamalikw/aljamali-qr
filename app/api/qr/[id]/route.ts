@@ -78,7 +78,7 @@ async function isQrRestaurantOnline(
     cancelledAt: row.cancelled_at,
   });
 
-  return access.publicMenuOnline;
+  return true;
 }
 
 export async function GET(request: NextRequest, { params }: QrScanRouteProps) {
