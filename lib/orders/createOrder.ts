@@ -74,7 +74,7 @@ export async function createOrderWithClient(
 
     const { data: restaurant, error: restaurantError } = await client
       .from("restaurants")
-      .select("id, is_active, online_ordering_enabled, slug")
+      .select("id, is_active, online_ordering_enabled, slug, subscription_plan")
       .eq("id", input.restaurantId)
       .maybeSingle();
 
@@ -89,6 +89,13 @@ export async function createOrderWithClient(
     ) {
       return { ok: false, message: UNAVAILABLE_ERROR };
     }
+    if (restaurant.subscription_plan === "Starter") {
+  return {
+    ok: false,
+    message:
+      "Online ordering is not available on the Starter plan. Please contact the restaurant.",
+  };
+}
 
     const subtotal = round(
       input.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
