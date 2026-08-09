@@ -20,6 +20,7 @@ export type PublicRestaurant = {
   googleMapsUrl: string;
   reservationsEnabled: boolean;
   onlineOrderingEnabled: boolean;
+  subscriptionPlan: string;
   taxRate: number;
 };
 

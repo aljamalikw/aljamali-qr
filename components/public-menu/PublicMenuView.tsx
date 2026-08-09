@@ -354,7 +354,10 @@ export function PublicMenuView({ menu }: PublicMenuViewProps) {
   const [reserveOpen, setReserveOpen] = useState(false);
   const { restaurant, groups, totalItems, popularItems, recommendedItems, chefSpecialItems, offerItems } = menu;
   const canReserve = Boolean(restaurant.id) && restaurant.reservationsEnabled;
-  const canOrder = Boolean(restaurant.id) && restaurant.onlineOrderingEnabled !== false;
+  const canOrder =
+    Boolean(restaurant.id) &&
+    restaurant.onlineOrderingEnabled !== false &&
+    restaurant.subscriptionPlan !== "Starter";
   const cart = useOrderCart(restaurant.taxRate);
 
   const scrollToCategory = useCallback((categoryId: string) => {

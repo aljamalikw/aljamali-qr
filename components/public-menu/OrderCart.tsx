@@ -58,6 +58,7 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
   }, [qrTableNumber]);
 
   if (restaurant.onlineOrderingEnabled === false) return null;
+  if (restaurant.subscriptionPlan === "Starter") return null;
 
   const resetForm = () => {
     setOrderType("Dine In");

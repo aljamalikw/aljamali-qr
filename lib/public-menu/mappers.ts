@@ -36,6 +36,7 @@ export function mapRestaurantToPublic(row: Restaurant): PublicRestaurant {
     googleMapsUrl: row.google_maps_url?.trim() ?? "",
     reservationsEnabled: row.reservations_enabled ?? true,
     onlineOrderingEnabled: row.online_ordering_enabled ?? true,
+    subscriptionPlan: row.subscription_plan ?? "Starter",
     taxRate: Number(row.tax_rate ?? 0) || 0,
   };
 }

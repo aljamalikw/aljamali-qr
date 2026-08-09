@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 import type { CategoryRow } from "@/lib/categories/types";
 import type { MenuItemRow } from "@/lib/menu-items/types";
 import type { Restaurant } from "@/lib/restaurants/types";
@@ -21,34 +22,44 @@ type SubscriptionPublicRow = {
   cancelled_at: string | null;
 };
 
-async function isPublicMenuAllowed(
+/**
+ * Canonical plan for public menu gating.
+ * Prefer restaurant_subscriptions.plan (same source as Billing / admin).
+ * restaurants.subscription_plan is only a mirror and can be stale.
+ */
+function resolvePublicSubscriptionPlan(
+  subscriptionPlan: string | null | undefined,
+  restaurantPlan: string | null | undefined,
+): string {
+  const fromSub = subscriptionPlan?.trim();
+  if (fromSub) return fromSub;
+  const fromRestaurant = restaurantPlan?.trim();
+  if (fromRestaurant) return fromRestaurant;
+  return "Starter";
+}
+
+function isPublicMenuAllowed(
   restaurant: Restaurant,
-): Promise<boolean> {
+  subscription: SubscriptionPublicRow | null,
+): boolean {
   if (restaurant.is_active === false) return false;
 
-  const supabase = createServerSupabaseClient();
-  const { data } = await supabase
-    .from("restaurant_subscriptions")
-    .select(
-      "plan, status, trial_started_at, trial_ends_at, grace_period_days, renewal_date, cancelled_at",
-    )
-    .eq("restaurant_id", restaurant.id)
-    .maybeSingle();
-
-  if (!data) {
+  if (!subscription) {
     // No subscription row: allow during bootstrap; locks apply once row exists.
     return true;
   }
 
-  const row = data as SubscriptionPublicRow;
   const access = getSubscriptionAccess({
-    plan: row.plan ?? restaurant.subscription_plan,
-    status: row.status,
-    trialStartedAt: row.trial_started_at,
-    trialEndsAt: row.trial_ends_at,
-    gracePeriodDays: row.grace_period_days,
-    renewalDate: row.renewal_date,
-    cancelledAt: row.cancelled_at,
+    plan: resolvePublicSubscriptionPlan(
+      subscription.plan,
+      restaurant.subscription_plan,
+    ),
+    status: subscription.status,
+    trialStartedAt: subscription.trial_started_at,
+    trialEndsAt: subscription.trial_ends_at,
+    gracePeriodDays: subscription.grace_period_days,
+    renewalDate: subscription.renewal_date,
+    cancelledAt: subscription.cancelled_at,
   });
 
   return access.publicMenuOnline;
@@ -72,11 +83,36 @@ export async function fetchPublicMenuBySlug(
     return null;
   }
 
-  const restaurant = mapRestaurantToPublic(restaurantRow as Restaurant);
+  const typedRestaurant = restaurantRow as Restaurant;
 
-  if (!(await isPublicMenuAllowed(restaurantRow as Restaurant))) {
+  // Anon RLS cannot read restaurant_subscriptions. Use service role (server-only)
+  // so public menu gets the same plan Billing shows.
+  let subscription: SubscriptionPublicRow | null = null;
+  try {
+    const admin = createServiceSupabaseClient();
+    const { data } = await admin
+      .from("restaurant_subscriptions")
+      .select(
+        "plan, status, trial_started_at, trial_ends_at, grace_period_days, renewal_date, cancelled_at",
+      )
+      .eq("restaurant_id", typedRestaurant.id)
+      .maybeSingle();
+    subscription = (data as SubscriptionPublicRow | null) ?? null;
+  } catch {
+    subscription = null;
+  }
+
+  if (!isPublicMenuAllowed(typedRestaurant, subscription)) {
     return null;
   }
+
+  const restaurant = mapRestaurantToPublic({
+    ...typedRestaurant,
+    subscription_plan: resolvePublicSubscriptionPlan(
+      subscription?.plan,
+      typedRestaurant.subscription_plan,
+    ),
+  });
 
   const { data: categoryRows, error: categoriesError } = await supabase
     .from("categories")

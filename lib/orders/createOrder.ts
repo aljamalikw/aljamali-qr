@@ -89,13 +89,25 @@ export async function createOrderWithClient(
     ) {
       return { ok: false, message: UNAVAILABLE_ERROR };
     }
-    if (restaurant.subscription_plan === "Starter") {
-  return {
-    ok: false,
-    message:
-      "Online ordering is not available on the Starter plan. Please contact the restaurant.",
-  };
-}
+
+    // Canonical plan is restaurant_subscriptions.plan (mirrors Billing).
+    const { data: subscription } = await client
+      .from("restaurant_subscriptions")
+      .select("plan")
+      .eq("restaurant_id", input.restaurantId)
+      .maybeSingle();
+    const plan =
+      (typeof subscription?.plan === "string" && subscription.plan.trim()) ||
+      (typeof restaurant.subscription_plan === "string" &&
+        restaurant.subscription_plan.trim()) ||
+      "Starter";
+    if (plan === "Starter") {
+      return {
+        ok: false,
+        message:
+          "Online ordering is not available on the Starter plan. Please contact the restaurant.",
+      };
+    }
 
     const subtotal = round(
       input.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
