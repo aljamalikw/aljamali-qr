@@ -5,6 +5,7 @@ import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { RestaurantSwitcher } from "./RestaurantSwitcher";
 import { DashboardIcon } from "./icons/DashboardIcons";
 
 interface TopBarProps {
@@ -59,6 +60,7 @@ export function TopBar({ onOpenMobileMenu }: TopBarProps) {
                   {restaurantSubtitle}
                 </p>
               </div>
+              <RestaurantSwitcher />
             </>
           )}
         </div>

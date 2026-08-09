@@ -2,6 +2,11 @@ import { isEmailVerified } from "@/lib/auth/errors";
 import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
 import { fetchImpersonationState } from "@/lib/admin/impersonation-client";
 import { supabase } from "@/lib/supabase";
+import {
+  getStoredActiveRestaurantId,
+  pickActiveRestaurant,
+  setStoredActiveRestaurantId,
+} from "./active-restaurant";
 import { generateUniqueSlug } from "./slug";
 import type { Restaurant } from "./types";
 
@@ -45,10 +50,15 @@ export async function fetchUserRestaurant(): Promise<Restaurant | null> {
     .from("restaurants")
     .select("*")
     .eq("owner_id", session.user.id)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
-  if (error || !data) return null;
-  return data as Restaurant;
+  if (error || !data?.length) return null;
+  const active = pickActiveRestaurant(
+    data as Restaurant[],
+    getStoredActiveRestaurantId(),
+  );
+  if (active) setStoredActiveRestaurantId(active.id);
+  return active;
 }
 
 export async function resolveAuthenticatedRedirect(): Promise<string> {
@@ -96,11 +106,7 @@ export async function saveRestaurantSetup(
     }
 
     const slug = await generateUniqueSlug(input.restaurantName);
-    const { data: existing } = await supabase
-      .from("restaurants")
-      .select("id")
-      .eq("owner_id", session.user.id)
-      .maybeSingle();
+    const existing = await fetchUserRestaurant();
 
     const payload = {
       restaurant_name: input.restaurantName.trim(),
@@ -114,7 +120,7 @@ export async function saveRestaurantSetup(
       ? await supabase
           .from("restaurants")
           .update(payload)
-          .eq("owner_id", session.user.id)
+          .eq("id", existing.id)
       : await supabase.from("restaurants").insert({
           ...payload,
           owner_id: session.user.id,

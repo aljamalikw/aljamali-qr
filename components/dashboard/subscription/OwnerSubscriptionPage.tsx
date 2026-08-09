@@ -23,6 +23,7 @@ import {
   SUBSCRIPTION_PLANS,
   formatPlanAmountKd,
   formatPlanPriceLabel,
+  formatRestaurantUsage,
   getPlanMonthlyAmount,
   isPayablePlan,
   type SubscriptionPlanId,
@@ -104,7 +105,11 @@ function invoiceStatusClass(status: PaymentItem["status"] | "paid" | "pending"):
 
 export function OwnerSubscriptionPage() {
   const { showToast } = useToast();
-  const { restaurant, loading: restaurantLoading } = useRestaurant();
+  const {
+    restaurant,
+    restaurantCount,
+    loading: restaurantLoading,
+  } = useRestaurant();
   const { refresh: refreshAccess } = useSubscriptionAccess();
   const plansRef = useRef<HTMLElement | null>(null);
 
@@ -279,14 +284,16 @@ export function OwnerSubscriptionPage() {
     );
   }
 
-  const currentPlan =
-    subscription?.plan ??
-    (restaurant.subscription_plan as SubscriptionPlan) ??
-    "Starter";
+  // Canonical plan from restaurant_subscriptions (Billing source of truth).
+  const currentPlan: SubscriptionPlan = subscription?.plan ?? "Starter";
   const effectiveStatus = access?.effectiveStatus ?? subscription?.status ?? "trial";
   const daysRemaining =
     access?.trialDaysLeft ?? access?.graceDaysLeft ?? null;
   const monthlyPriceLabel = formatPlanPriceLabel(currentPlan);
+  const restaurantUsageLabel = formatRestaurantUsage(
+    currentPlan,
+    restaurantCount,
+  );
 
   const isExpired =
     effectiveStatus === "expired" || effectiveStatus === "cancelled";
@@ -395,6 +402,14 @@ export function OwnerSubscriptionPage() {
               </dt>
               <dd className="mt-1 text-sm font-medium text-gold">
                 {monthlyPriceLabel}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-wider text-white/40">
+                Restaurants
+              </dt>
+              <dd className="mt-1 text-sm text-white/85">
+                {restaurantUsageLabel}
               </dd>
             </div>
             <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">

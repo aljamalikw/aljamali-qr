@@ -96,17 +96,91 @@ export function isPayablePlan(
   return value === "Starter" || value === "Professional";
 }
 
+/** Capability flags resolved from a subscription plan. */
+export type PlanFeatures = {
+  onlineOrdering: boolean;
+  /** Use Number.POSITIVE_INFINITY for unlimited. */
+  maxRestaurants: number;
+};
+
+/**
+ * Canonical plan capability table — single source for feature gates
+ * (online ordering, restaurant limits). Prefer helpers below over
+ * comparing plan name strings in feature code.
+ */
+export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
+  Starter: {
+    onlineOrdering: false,
+    maxRestaurants: 1,
+  },
+  Professional: {
+    onlineOrdering: true,
+    maxRestaurants: Number.POSITIVE_INFINITY,
+  },
+  Enterprise: {
+    onlineOrdering: true,
+    maxRestaurants: Number.POSITIVE_INFINITY,
+  },
+};
+
+/** Normalize unknown plan strings to a catalog id (default Starter). */
+export function normalizePlanId(
+  plan: string | null | undefined,
+): SubscriptionPlanId {
+  const normalized = typeof plan === "string" ? plan.trim() : "";
+  return isSubscriptionPlanId(normalized) ? normalized : "Starter";
+}
+
+export function getPlanFeatures(
+  plan: string | null | undefined,
+): PlanFeatures {
+  return PLAN_FEATURES[normalizePlanId(plan)];
+}
+
+export function getMaxRestaurants(plan: string | null | undefined): number {
+  return getPlanFeatures(plan).maxRestaurants;
+}
+
 /**
  * Online ordering features (public cart, Orders, Kitchen Display).
- * Only Professional and Enterprise — Starter and unknown plans are denied.
- * Same gate used across public menu, order API, and dashboard.
+ * Driven by PLAN_FEATURES — not ad-hoc plan name checks.
  */
 export function planAllowsOnlineOrdering(
   plan: string | null | undefined,
 ): boolean {
-  const normalized = typeof plan === "string" ? plan.trim() : "";
-  return normalized === "Professional" || normalized === "Enterprise";
+  return getPlanFeatures(plan).onlineOrdering;
 }
+
+/** Whether the account may create another restaurant under this plan. */
+export function canCreateRestaurant(
+  plan: string | null | undefined,
+  restaurantCount: number,
+): boolean {
+  const count = Number.isFinite(restaurantCount)
+    ? Math.max(0, Math.floor(restaurantCount))
+    : 0;
+  return count < getMaxRestaurants(plan);
+}
+
+/**
+ * Billing / UI usage label, e.g. "1 / 1 used" or "2 / Unlimited".
+ */
+export function formatRestaurantUsage(
+  plan: string | null | undefined,
+  restaurantCount: number,
+): string {
+  const count = Number.isFinite(restaurantCount)
+    ? Math.max(0, Math.floor(restaurantCount))
+    : 0;
+  const max = getMaxRestaurants(plan);
+  if (!Number.isFinite(max)) {
+    return `${count} / Unlimited`;
+  }
+  return `${count} / ${max} used`;
+}
+
+export const STARTER_RESTAURANT_LIMIT_MESSAGE =
+  "Your current plan allows only one restaurant. Upgrade to Professional to create additional restaurants.";
 
 export function getPlanMonthlyAmount(
   plan: SubscriptionPlanId,

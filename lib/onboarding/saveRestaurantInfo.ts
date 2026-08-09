@@ -55,7 +55,7 @@ export async function saveRestaurantInfo(
       ? await supabase
           .from("restaurants")
           .update(payload)
-          .eq("owner_id", session.user.id)
+          .eq("id", existing.id)
           .select("*")
           .single()
       : await supabase
