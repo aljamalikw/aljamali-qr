@@ -22,6 +22,7 @@ import {
   getTodayOrders,
   paginate,
 } from "@/lib/orders/utils";
+import { OnlineOrderingFeatureGate } from "@/components/dashboard/OnlineOrderingFeatureGate";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { supabase } from "@/lib/supabase";
 import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
@@ -38,7 +39,16 @@ const TABS: { id: OrdersTab; label: string }[] = [
   { id: "history", label: "History" },
 ];
 
+/** Public entry — Starter sees upgrade card; Pro/Enterprise see orders UI. */
 export function OrdersManagement() {
+  return (
+    <OnlineOrderingFeatureGate>
+      <OrdersManagementContent />
+    </OnlineOrderingFeatureGate>
+  );
+}
+
+function OrdersManagementContent() {
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
 

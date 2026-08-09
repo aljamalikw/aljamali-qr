@@ -6,6 +6,7 @@ import { fetchOrders } from "@/lib/orders/fetchOrders";
 import type { Order } from "@/lib/orders/types";
 import { updateOrderStatus } from "@/lib/orders/updateOrderStatus";
 import { getNextOrderStatus } from "@/lib/orders/utils";
+import { OnlineOrderingFeatureGate } from "@/components/dashboard/OnlineOrderingFeatureGate";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { supabase } from "@/lib/supabase";
 import { KitchenOrderCard } from "./KitchenOrderCard";
@@ -45,7 +46,16 @@ function readInitialMuted(): boolean {
   }
 }
 
+/** Public entry — Starter sees upgrade card; Pro/Enterprise see KDS. */
 export function KitchenDisplay() {
+  return (
+    <OnlineOrderingFeatureGate>
+      <KitchenDisplayContent />
+    </OnlineOrderingFeatureGate>
+  );
+}
+
+function KitchenDisplayContent() {
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
 

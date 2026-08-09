@@ -127,11 +127,13 @@ export function SubscriptionAccessProvider({
 export function useSubscriptionAccess(): SubscriptionAccessContextValue {
   const ctx = useContext(SubscriptionAccessContext);
   if (!ctx) {
+    // Outside the provider (e.g. premature render): stay in loading/deny state.
+    // Never report loading:false with a synthetic plan that could unlock features.
     return {
       access: FULL_ACCESS,
-      loading: false,
+      loading: true,
       refresh: async () => undefined,
-      canAccessNav: () => true,
+      canAccessNav: () => false,
     };
   }
   return ctx;

@@ -7,8 +7,12 @@ import { planAllowsOnlineOrdering } from "@/lib/subscriptions/plans";
 import { OnlineOrderingUpgradeCard } from "./OnlineOrderingUpgradeCard";
 
 /**
- * Keeps Orders / Kitchen nav visible, but replaces page content for Starter
- * using the shared planAllowsOnlineOrdering() gate.
+ * Keeps Orders / Kitchen nav visible, but replaces page content for Starter.
+ * Uses access.plan from SubscriptionAccessProvider (restaurant_subscriptions via
+ * fetchOwnerSubscription — same canonical source as Billing).
+ *
+ * Compose inside the feature client module (OrdersManagement / KitchenDisplay)
+ * so gated UI is not passed through an RSC children slot.
  */
 export function OnlineOrderingFeatureGate({
   children,
@@ -25,6 +29,7 @@ export function OnlineOrderingFeatureGate({
     );
   }
 
+  // Deny until we know the plan is Professional or Enterprise.
   if (!planAllowsOnlineOrdering(access.plan)) {
     return <OnlineOrderingUpgradeCard />;
   }

@@ -98,12 +98,14 @@ export function isPayablePlan(
 
 /**
  * Online ordering features (public cart, Orders, Kitchen Display).
- * Starter is excluded — same gate used across public menu and dashboard.
+ * Only Professional and Enterprise — Starter and unknown plans are denied.
+ * Same gate used across public menu, order API, and dashboard.
  */
 export function planAllowsOnlineOrdering(
   plan: string | null | undefined,
 ): boolean {
-  return plan !== "Starter";
+  const normalized = typeof plan === "string" ? plan.trim() : "";
+  return normalized === "Professional" || normalized === "Enterprise";
 }
 
 export function getPlanMonthlyAmount(
