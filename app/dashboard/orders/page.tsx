@@ -1,5 +1,10 @@
+import { OnlineOrderingFeatureGate } from "@/components/dashboard/OnlineOrderingFeatureGate";
 import { OrdersManagement } from "@/components/dashboard/orders/OrdersManagement";
 
 export default function OrdersPage() {
-  return <OrdersManagement />;
+  return (
+    <OnlineOrderingFeatureGate>
+      <OrdersManagement />
+    </OnlineOrderingFeatureGate>
+  );
 }

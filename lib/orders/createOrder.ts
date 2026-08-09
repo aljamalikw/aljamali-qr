@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notifyRestaurantOwner } from "@/lib/notifications/createNotification";
+import { planAllowsOnlineOrdering } from "@/lib/subscriptions/plans";
 import { mapOrderRow } from "./mappers";
 import type { CreateOrderInput, Order, OrderItemRecord, OrderRecord } from "./types";
 import { isMissingTableError } from "./utils";
@@ -101,7 +102,7 @@ export async function createOrderWithClient(
       (typeof restaurant.subscription_plan === "string" &&
         restaurant.subscription_plan.trim()) ||
       "Starter";
-    if (plan === "Starter") {
+    if (!planAllowsOnlineOrdering(plan)) {
       return {
         ok: false,
         message:

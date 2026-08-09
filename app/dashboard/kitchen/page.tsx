@@ -1,5 +1,10 @@
+import { OnlineOrderingFeatureGate } from "@/components/dashboard/OnlineOrderingFeatureGate";
 import { KitchenDisplay } from "@/components/dashboard/kitchen/KitchenDisplay";
 
 export default function KitchenPage() {
-  return <KitchenDisplay />;
+  return (
+    <OnlineOrderingFeatureGate>
+      <KitchenDisplay />
+    </OnlineOrderingFeatureGate>
+  );
 }

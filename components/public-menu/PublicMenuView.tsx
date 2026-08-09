@@ -10,6 +10,7 @@ import type {
   PublicMenuData,
   PublicMenuItem,
 } from "@/lib/public-menu/types";
+import { planAllowsOnlineOrdering } from "@/lib/subscriptions/plans";
 import { FloatingCategoryNav } from "./FloatingCategoryNav";
 import { ImageLightbox } from "./ImageLightbox";
 import { LanguageSwitch } from "./LanguageSwitch";
@@ -357,7 +358,7 @@ export function PublicMenuView({ menu }: PublicMenuViewProps) {
   const canOrder =
     Boolean(restaurant.id) &&
     restaurant.onlineOrderingEnabled !== false &&
-    restaurant.subscriptionPlan !== "Starter";
+    planAllowsOnlineOrdering(restaurant.subscriptionPlan);
   const cart = useOrderCart(restaurant.taxRate);
 
   const scrollToCategory = useCallback((categoryId: string) => {

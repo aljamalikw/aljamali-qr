@@ -96,6 +96,16 @@ export function isPayablePlan(
   return value === "Starter" || value === "Professional";
 }
 
+/**
+ * Online ordering features (public cart, Orders, Kitchen Display).
+ * Starter is excluded — same gate used across public menu and dashboard.
+ */
+export function planAllowsOnlineOrdering(
+  plan: string | null | undefined,
+): boolean {
+  return plan !== "Starter";
+}
+
 export function getPlanMonthlyAmount(
   plan: SubscriptionPlanId,
 ): number | null {

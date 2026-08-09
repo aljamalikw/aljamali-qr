@@ -10,6 +10,7 @@ import { validateCreateOrder } from "@/lib/orders/validateCreateOrder";
 import { formatPublicPrice } from "@/lib/public-menu/format-price";
 import { t } from "@/lib/public-menu/i18n";
 import type { PublicLanguage, PublicRestaurant } from "@/lib/public-menu/types";
+import { planAllowsOnlineOrdering } from "@/lib/subscriptions/plans";
 
 interface OrderCartProps {
   restaurant: PublicRestaurant;
@@ -58,7 +59,7 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
   }, [qrTableNumber]);
 
   if (restaurant.onlineOrderingEnabled === false) return null;
-  if (restaurant.subscriptionPlan === "Starter") return null;
+  if (!planAllowsOnlineOrdering(restaurant.subscriptionPlan)) return null;
 
   const resetForm = () => {
     setOrderType("Dine In");
