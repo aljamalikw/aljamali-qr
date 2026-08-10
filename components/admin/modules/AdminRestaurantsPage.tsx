@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { ManageRestaurantDrawer } from "@/components/admin/restaurants/ManageRestaurantDrawer";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
@@ -19,6 +19,7 @@ import {
   exportRestaurantsToCsv,
   fetchAdminRestaurantManagementRows,
   getRestaurantManagementKpis,
+  groupRestaurantManagementByOwner,
   setRestaurantActive,
   setRestaurantArchived,
   type AdminRestaurantManagementRow,
@@ -29,6 +30,7 @@ import {
   STATUS_LABELS,
   formatTrialCountdown,
 } from "@/lib/admin/restaurant-status";
+import { restaurantCountLabel } from "@/lib/admin/group-by-owner";
 import {
   SUBSCRIPTION_PLANS,
   type SubscriptionPlan,
@@ -114,6 +116,7 @@ export function AdminRestaurantsPage() {
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [impersonateTarget, setImpersonateTarget] =
     useState<AdminRestaurantManagementRow | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let mounted = true;
@@ -176,15 +179,29 @@ export function AdminRestaurantsPage() {
     });
   }, [restaurants, search, status, plan]);
 
+  const ownerGroups = useMemo(
+    () => groupRestaurantManagementByOwner(filteredRestaurants),
+    [filteredRestaurants],
+  );
+
   const kpis = useMemo(
     () => getRestaurantManagementKpis(restaurants),
     [restaurants],
   );
 
   const { pageItems, totalPages, page: safePage } = useMemo(
-    () => paginateDemoRequests(filteredRestaurants, page, PAGE_SIZE),
-    [filteredRestaurants, page],
+    () => paginateDemoRequests(ownerGroups, page, PAGE_SIZE),
+    [ownerGroups, page],
   );
+
+  const toggleExpanded = useCallback((ownerId: string) => {
+    setExpandedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(ownerId)) next.delete(ownerId);
+      else next.add(ownerId);
+      return next;
+    });
+  }, []);
 
   const beginDelete = (restaurant: AdminRestaurantManagementRow) => {
     if (currentUserId && restaurant.ownerId === currentUserId) {
@@ -465,7 +482,7 @@ export function AdminRestaurantsPage() {
             <p className="text-sm text-white/45">
               {loading
                 ? "Loading…"
-                : `${filteredRestaurants.length} restaurant${filteredRestaurants.length === 1 ? "" : "s"}`}
+                : `${ownerGroups.length} owner${ownerGroups.length === 1 ? "" : "s"} · ${filteredRestaurants.length} restaurant${filteredRestaurants.length === 1 ? "" : "s"}`}
             </p>
             <button
               type="button"
@@ -479,7 +496,7 @@ export function AdminRestaurantsPage() {
 
         {loading ? (
           <TableSkeleton rows={6} />
-        ) : filteredRestaurants.length === 0 ? (
+        ) : ownerGroups.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-white/50">
               {search.trim() || status !== "all" || plan !== "all"
@@ -490,140 +507,233 @@ export function AdminRestaurantsPage() {
         ) : (
           <>
             <div className="overflow-x-auto rounded-2xl border border-gold/15 bg-black/25">
-              <table className="w-full min-w-[1180px] text-left">
+              <table className="w-full min-w-[980px] text-left">
                 <thead>
                   <tr className="border-b border-gold/10">
-                    {[
-                      "Restaurant Name",
-                      "Owner",
-                      "Email",
-                      "Plan",
-                      "Status",
-                      "Created Date",
-                      "Trial Ends",
-                      "Active QR Codes",
-                      "Actions",
-                    ].map((heading) => (
-                      <th
-                        key={heading}
-                        className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40"
-                      >
-                        {heading}
-                      </th>
-                    ))}
+                    {["Owner", "Email", "Plan", "Restaurants", "Details"].map(
+                      (heading) => (
+                        <th
+                          key={heading}
+                          className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40"
+                        >
+                          {heading}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((restaurant) => {
-                    const isOwn =
-                      Boolean(currentUserId) &&
-                      restaurant.ownerId === currentUserId;
-                    const displayName =
-                      restaurant.restaurantName?.trim() || "Unnamed restaurant";
+                  {pageItems.map((group) => {
+                    const expanded = expandedIds.has(group.ownerId);
+                    const ownerLabel =
+                      group.ownerName?.trim() || "Unnamed owner";
+
                     return (
-                      <tr
-                        key={restaurant.id}
-                        className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]"
-                      >
-                        <td className="px-4 py-3.5">
-                          <p className="font-medium text-white">{displayName}</p>
-                          {restaurant.slug ? (
-                            <p className="text-xs text-white/35">
-                              /{restaurant.slug}
-                            </p>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-3.5 text-sm text-white/70">
-                          {restaurant.ownerName?.trim() || "—"}
-                        </td>
-                        <td className="px-4 py-3.5 text-sm text-white/60">
-                          {restaurant.email || "—"}
-                        </td>
-                        <td className="px-4 py-3.5 text-sm text-gold">
-                          {restaurant.plan}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <StatusBadge status={restaurant.status} />
-                        </td>
-                        <td className="px-4 py-3.5 text-sm text-white/55">
-                          {formatDemoDate(restaurant.createdAt)}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <TrialCell trialEndsAt={restaurant.trialEndsAt} />
-                        </td>
-                        <td className="px-4 py-3.5 font-serif text-gold">
-                          {restaurant.activeQrCodes}
-                        </td>
-                        <td className="relative px-4 py-3.5">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setMenuOpenId((current) =>
-                                current === restaurant.id ? null : restaurant.id,
-                              );
-                            }}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gold/20 bg-black/30 text-gold hover:border-gold/40"
-                            aria-label={`Actions for ${displayName}`}
-                            aria-haspopup="menu"
-                            aria-expanded={menuOpenId === restaurant.id}
-                          >
-                            <span className="text-lg leading-none">⋮</span>
-                          </button>
-                          {menuOpenId === restaurant.id ? (
-                            <div
-                              className="absolute end-4 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-gold/20 bg-[#111] py-1 shadow-2xl"
-                              role="menu"
-                              onClick={(event) => event.stopPropagation()}
+                      <Fragment key={group.ownerId}>
+                        <tr className="border-b border-white/5 hover:bg-white/[0.02]">
+                          <td className="px-4 py-3.5">
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(group.ownerId)}
+                              aria-expanded={expanded}
+                              className="flex max-w-xs items-start gap-2 text-start"
                             >
-                              {(
-                                [
-                                  { action: "view" as const, label: "View" },
-                                  { action: "manage" as const, label: "Manage" },
-                                  {
-                                    action: "impersonate" as const,
-                                    label: "Impersonate",
-                                  },
-                                  restaurant.isActive
-                                    ? {
-                                        action: "suspend" as const,
-                                        label: "Suspend",
-                                      }
-                                    : {
-                                        action: "activate" as const,
-                                        label: "Activate",
-                                      },
-                                  {
-                                    action: "archive" as const,
-                                    label: "Archive",
-                                  },
-                                  {
-                                    action: "delete" as const,
-                                    label: "Delete Permanently",
-                                  },
-                                ] as const
-                              ).map(({ action, label }) => (
-                                <button
-                                  key={action}
-                                  type="button"
-                                  role="menuitem"
-                                  disabled={action === "delete" && isOwn}
-                                  onClick={() =>
-                                    handleMenuAction(action, restaurant)
-                                  }
-                                  className={`block w-full px-3 py-2.5 text-start text-sm transition-colors ${
-                                    action === "delete"
-                                      ? "text-red-300 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
-                                      : "text-white/75 hover:bg-gold/10 hover:text-gold"
-                                  }`}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </td>
-                      </tr>
+                              <span
+                                className="mt-0.5 inline-block w-3 shrink-0 text-gold/80"
+                                aria-hidden="true"
+                              >
+                                {expanded ? "▼" : "▶"}
+                              </span>
+                              <span className="font-medium text-white">
+                                {ownerLabel}
+                              </span>
+                            </button>
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-white/60">
+                            {group.email || "—"}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-gold">
+                            {group.plan}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-white/70">
+                            {restaurantCountLabel(group.restaurantCount)}
+                          </td>
+                          <td className="px-4 py-3.5 text-xs text-white/40">
+                            {expanded
+                              ? "Hide restaurants"
+                              : "Show restaurants & actions"}
+                          </td>
+                        </tr>
+                        {expanded ? (
+                          <tr className="border-b border-white/5 bg-black/30">
+                            <td colSpan={5} className="px-4 py-3">
+                              <p className="mb-3 text-[11px] uppercase tracking-wider text-white/35">
+                                Restaurants under this account
+                              </p>
+                              <div className="overflow-x-auto rounded-xl border border-white/5">
+                                <table className="w-full min-w-[1100px] text-left">
+                                  <thead>
+                                    <tr className="border-b border-white/5">
+                                      {[
+                                        "Restaurant Name",
+                                        "Slug",
+                                        "Status",
+                                        "Created Date",
+                                        "Trial Ends",
+                                        "Active QR Codes",
+                                        "Actions",
+                                      ].map((heading) => (
+                                        <th
+                                          key={heading}
+                                          className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-white/35"
+                                        >
+                                          {heading}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {group.restaurants.map((restaurant) => {
+                                      const isOwn =
+                                        Boolean(currentUserId) &&
+                                        restaurant.ownerId === currentUserId;
+                                      const displayName =
+                                        restaurant.restaurantName?.trim() ||
+                                        "Unnamed restaurant";
+                                      return (
+                                        <tr
+                                          key={restaurant.id}
+                                          className="border-b border-white/5 last:border-0"
+                                        >
+                                          <td className="px-3 py-3">
+                                            <p className="font-medium text-white">
+                                              {displayName}
+                                            </p>
+                                          </td>
+                                          <td className="px-3 py-3 text-sm text-white/45">
+                                            {restaurant.slug
+                                              ? `/${restaurant.slug}`
+                                              : "—"}
+                                          </td>
+                                          <td className="px-3 py-3">
+                                            <StatusBadge
+                                              status={restaurant.status}
+                                            />
+                                          </td>
+                                          <td className="px-3 py-3 text-sm text-white/55">
+                                            {formatDemoDate(restaurant.createdAt)}
+                                          </td>
+                                          <td className="px-3 py-3">
+                                            <TrialCell
+                                              trialEndsAt={restaurant.trialEndsAt}
+                                            />
+                                          </td>
+                                          <td className="px-3 py-3 font-serif text-gold">
+                                            {restaurant.activeQrCodes}
+                                          </td>
+                                          <td className="relative px-3 py-3">
+                                            <button
+                                              type="button"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                setMenuOpenId((current) =>
+                                                  current === restaurant.id
+                                                    ? null
+                                                    : restaurant.id,
+                                                );
+                                              }}
+                                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gold/20 bg-black/30 text-gold hover:border-gold/40"
+                                              aria-label={`Actions for ${displayName}`}
+                                              aria-haspopup="menu"
+                                              aria-expanded={
+                                                menuOpenId === restaurant.id
+                                              }
+                                            >
+                                              <span className="text-lg leading-none">
+                                                ⋮
+                                              </span>
+                                            </button>
+                                            {menuOpenId === restaurant.id ? (
+                                              <div
+                                                className="absolute end-3 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-gold/20 bg-[#111] py-1 shadow-2xl"
+                                                role="menu"
+                                                onClick={(event) =>
+                                                  event.stopPropagation()
+                                                }
+                                              >
+                                                {(
+                                                  [
+                                                    {
+                                                      action: "view" as const,
+                                                      label: "View",
+                                                    },
+                                                    {
+                                                      action: "manage" as const,
+                                                      label: "Manage",
+                                                    },
+                                                    {
+                                                      action:
+                                                        "impersonate" as const,
+                                                      label: "Impersonate",
+                                                    },
+                                                    restaurant.isActive
+                                                      ? {
+                                                          action:
+                                                            "suspend" as const,
+                                                          label: "Suspend",
+                                                        }
+                                                      : {
+                                                          action:
+                                                            "activate" as const,
+                                                          label: "Activate",
+                                                        },
+                                                    {
+                                                      action: "archive" as const,
+                                                      label: "Archive",
+                                                    },
+                                                    {
+                                                      action: "delete" as const,
+                                                      label:
+                                                        "Delete Permanently",
+                                                    },
+                                                  ] as const
+                                                ).map(({ action, label }) => (
+                                                  <button
+                                                    key={action}
+                                                    type="button"
+                                                    role="menuitem"
+                                                    disabled={
+                                                      action === "delete" &&
+                                                      isOwn
+                                                    }
+                                                    onClick={() =>
+                                                      handleMenuAction(
+                                                        action,
+                                                        restaurant,
+                                                      )
+                                                    }
+                                                    className={`block w-full px-3 py-2.5 text-start text-sm transition-colors ${
+                                                      action === "delete"
+                                                        ? "text-red-300 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                                        : "text-white/75 hover:bg-gold/10 hover:text-gold"
+                                                    }`}
+                                                  >
+                                                    {label}
+                                                  </button>
+                                                ))}
+                                              </div>
+                                            ) : null}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -633,7 +743,7 @@ export function AdminRestaurantsPage() {
             <DemoRequestPagination
               page={safePage}
               totalPages={totalPages}
-              totalItems={filteredRestaurants.length}
+              totalItems={ownerGroups.length}
               pageSize={PAGE_SIZE}
               onPageChange={setPage}
             />

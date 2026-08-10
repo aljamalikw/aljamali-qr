@@ -6,6 +6,12 @@ import {
   trialWindowIso,
 } from "@/lib/subscriptions/engine";
 import { getPlanMonthlyPrices, PLAN_PRICES } from "@/lib/subscriptions/pricing";
+import {
+  firstNonEmpty,
+  groupItemsByOwnerId,
+  pickPrimaryByPlan,
+  sortOwnerRowsByName,
+} from "@/lib/admin/group-by-owner";
 
 export const SUBSCRIPTION_PLANS = [
   "Starter",
@@ -112,12 +118,6 @@ const ERROR = "Unable to load subscriptions. Please try again.";
 const SELECT_WITH_RESTAURANT =
   "*, restaurants(owner_id, owner_name, restaurant_name, email, is_active)";
 
-const PLAN_RANK: Record<SubscriptionPlan, number> = {
-  Starter: 1,
-  Professional: 2,
-  Enterprise: 3,
-};
-
 function restaurantFromJoin(row: SubscriptionRow) {
   if (Array.isArray(row.restaurants)) return row.restaurants[0] ?? null;
   return row.restaurants;
@@ -216,11 +216,7 @@ export async function fetchSubscriptions(): Promise<
 function pickPrimarySubscription(
   subscriptions: RestaurantSubscription[],
 ): RestaurantSubscription {
-  return [...subscriptions].sort((a, b) => {
-    const planDiff = PLAN_RANK[b.plan] - PLAN_RANK[a.plan];
-    if (planDiff !== 0) return planDiff;
-    return b.updatedAt.localeCompare(a.updatedAt);
-  })[0]!;
+  return pickPrimaryByPlan(subscriptions, (item) => item.updatedAt);
 }
 
 /**
@@ -238,13 +234,7 @@ export function groupSubscriptionsByOwner(
     restaurant_name: string | null;
   }> = [],
 ): OwnerSubscriptionAccount[] {
-  const subsByOwner = new Map<string, RestaurantSubscription[]>();
-  for (const sub of subscriptions) {
-    if (!sub.ownerId) continue;
-    const list = subsByOwner.get(sub.ownerId) ?? [];
-    list.push(sub);
-    subsByOwner.set(sub.ownerId, list);
-  }
+  const subsByOwner = groupItemsByOwnerId(subscriptions);
 
   const restaurantsByOwner = new Map<
     string,
@@ -295,20 +285,16 @@ export function groupSubscriptionsByOwner(
       (a.restaurantName ?? "").localeCompare(b.restaurantName ?? ""),
     );
 
-    const ownerName =
-      ownedRestaurants.find((r) => r.owner_name?.trim())?.owner_name?.trim() ||
-      ownerSubs.find((s) => s.ownerName?.trim())?.ownerName?.trim() ||
-      null;
-
-    const ownerEmail =
-      ownedRestaurants.find((r) => r.email?.trim())?.email?.trim() ||
-      ownerSubs.find((s) => s.restaurantEmail?.trim())?.restaurantEmail?.trim() ||
-      null;
-
     accounts.push({
       ownerId,
-      ownerName,
-      ownerEmail,
+      ownerName: firstNonEmpty(
+        ...ownedRestaurants.map((r) => r.owner_name),
+        ...ownerSubs.map((s) => s.ownerName),
+      ),
+      ownerEmail: firstNonEmpty(
+        ...ownedRestaurants.map((r) => r.email),
+        ...ownerSubs.map((s) => s.restaurantEmail),
+      ),
       plan: primary.plan,
       monthlyPrice: primary.monthlyPrice,
       currency: primary.currency,
@@ -323,11 +309,7 @@ export function groupSubscriptionsByOwner(
     });
   }
 
-  return accounts.sort((a, b) => {
-    const nameA = (a.ownerName ?? a.ownerEmail ?? a.ownerId).toLowerCase();
-    const nameB = (b.ownerName ?? b.ownerEmail ?? b.ownerId).toLowerCase();
-    return nameA.localeCompare(nameB);
-  });
+  return sortOwnerRowsByName(accounts);
 }
 
 export async function fetchOwnerSubscriptionAccounts(): Promise<

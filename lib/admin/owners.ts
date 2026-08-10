@@ -2,11 +2,20 @@ import { supabase } from "@/lib/supabase";
 import { buildCsv } from "@/lib/utils/csv";
 import type { AppRole } from "@/lib/auth/roles";
 import type { Restaurant } from "@/lib/restaurants/types";
+import {
+  firstNonEmpty,
+  groupItemsByOwnerId,
+  pickPrimaryByPlan,
+  sortOwnerRowsByName,
+} from "@/lib/admin/group-by-owner";
 
+/** Flat per-restaurant owner row (backup export / legacy). */
 export type OwnerItem = {
   ownerId: string;
+  ownerName: string | null;
   restaurantId: string;
   restaurantName: string | null;
+  slug: string | null;
   email: string | null;
   phone: string | null;
   plan: string | null;
@@ -14,6 +23,29 @@ export type OwnerItem = {
   isActive: boolean;
   city: string | null;
   createdAt: string;
+};
+
+export type OwnerAccountRestaurant = {
+  restaurantId: string;
+  restaurantName: string | null;
+  slug: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
+/** One CRM row per owner account (multi-restaurant aware). */
+export type OwnerAccount = {
+  ownerId: string;
+  ownerName: string | null;
+  email: string | null;
+  phone: string | null;
+  plan: string;
+  isActive: boolean;
+  joinedAt: string;
+  restaurantCount: number;
+  restaurants: OwnerAccountRestaurant[];
+  role: AppRole;
+  city: string | null;
 };
 
 type ProfileRow = {
@@ -26,8 +58,10 @@ const ERROR = "Unable to load restaurant owners. Please try again.";
 function mapOwner(restaurant: Restaurant, role: AppRole | undefined): OwnerItem {
   return {
     ownerId: restaurant.owner_id,
+    ownerName: restaurant.owner_name ?? null,
     restaurantId: restaurant.id,
     restaurantName: restaurant.restaurant_name,
+    slug: restaurant.slug ?? null,
     email: restaurant.email,
     phone: restaurant.phone,
     plan: restaurant.subscription_plan ?? "Starter",
@@ -36,6 +70,53 @@ function mapOwner(restaurant: Restaurant, role: AppRole | undefined): OwnerItem 
     city: restaurant.city ?? null,
     createdAt: restaurant.created_at,
   };
+}
+
+export function groupOwnersByAccount(items: OwnerItem[]): OwnerAccount[] {
+  const byOwner = groupItemsByOwnerId(items);
+  const accounts: OwnerAccount[] = [];
+
+  for (const [ownerId, ownerItems] of byOwner) {
+    const primary = pickPrimaryByPlan(
+      ownerItems.map((item) => ({
+        ...item,
+        plan: item.plan ?? "Starter",
+      })),
+      (item) => item.createdAt,
+    );
+
+    const restaurants = [...ownerItems]
+      .sort((a, b) =>
+        (a.restaurantName ?? "").localeCompare(b.restaurantName ?? ""),
+      )
+      .map((item) => ({
+        restaurantId: item.restaurantId,
+        restaurantName: item.restaurantName,
+        slug: item.slug,
+        isActive: item.isActive,
+        createdAt: item.createdAt,
+      }));
+
+    const joinedAt = [...ownerItems].sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt),
+    )[0]!.createdAt;
+
+    accounts.push({
+      ownerId,
+      ownerName: firstNonEmpty(...ownerItems.map((i) => i.ownerName)),
+      email: firstNonEmpty(...ownerItems.map((i) => i.email)),
+      phone: firstNonEmpty(...ownerItems.map((i) => i.phone)),
+      plan: primary.plan ?? "Starter",
+      isActive: ownerItems.some((item) => item.isActive),
+      joinedAt,
+      restaurantCount: restaurants.length,
+      restaurants,
+      role: primary.role,
+      city: firstNonEmpty(...ownerItems.map((i) => i.city)),
+    });
+  }
+
+  return sortOwnerRowsByName(accounts);
 }
 
 export async function fetchOwners(): Promise<
@@ -79,6 +160,14 @@ export async function fetchOwners(): Promise<
   }
 }
 
+export async function fetchOwnerAccounts(): Promise<
+  { ok: true; data: OwnerAccount[] } | { ok: false; message: string }
+> {
+  const result = await fetchOwners();
+  if (!result.ok) return result;
+  return { ok: true, data: groupOwnersByAccount(result.data) };
+}
+
 export function exportOwnersToCsv(items: OwnerItem[]): string {
   const headers = [
     "Restaurant",
@@ -98,6 +187,34 @@ export function exportOwnersToCsv(items: OwnerItem[]): string {
     item.isActive ? "Active" : "Suspended",
     item.city ?? "",
     item.createdAt,
+  ]);
+
+  return buildCsv(headers, rows);
+}
+
+export function exportOwnerAccountsToCsv(items: OwnerAccount[]): string {
+  const headers = [
+    "Owner Name",
+    "Owner Email",
+    "Phone",
+    "Plan",
+    "Status",
+    "Joined",
+    "Restaurant Count",
+    "Restaurants",
+  ];
+
+  const rows = items.map((item) => [
+    item.ownerName?.trim() || "Unnamed owner",
+    item.email ?? "",
+    item.phone ?? "",
+    item.plan,
+    item.isActive ? "Active" : "Suspended",
+    item.joinedAt,
+    String(item.restaurantCount),
+    item.restaurants
+      .map((r) => r.restaurantName?.trim() || "Unnamed restaurant")
+      .join(", "),
   ]);
 
   return buildCsv(headers, rows);

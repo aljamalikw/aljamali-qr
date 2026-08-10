@@ -25,6 +25,7 @@ import {
   formatPlanPriceLabel,
   getPlanMonthlyAmount,
 } from "@/lib/subscriptions/plans";
+import { restaurantCountLabel } from "@/lib/admin/group-by-owner";
 import { getCatalogMonthlyPrices } from "@/lib/subscriptions/pricing";
 import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
 
@@ -47,10 +48,6 @@ function statusClass(status: SubscriptionStatus): string {
     default:
       return "text-white/60";
   }
-}
-
-function restaurantCountLabel(count: number): string {
-  return `${count} Restaurant${count === 1 ? "" : "s"}`;
 }
 
 export function AdminSubscriptionsPage() {

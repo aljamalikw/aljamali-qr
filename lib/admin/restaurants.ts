@@ -11,6 +11,12 @@ import {
   type RestaurantManagementKpis,
   type RestaurantStatusFilter,
 } from "@/lib/admin/restaurant-status";
+import {
+  firstNonEmpty,
+  groupItemsByOwnerId,
+  pickPrimaryByPlan,
+  sortOwnerRowsByName,
+} from "@/lib/admin/group-by-owner";
 import { buildCsv } from "@/lib/utils/csv";
 import type { Restaurant } from "@/lib/restaurants/types";
 
@@ -40,6 +46,16 @@ export type AdminRestaurantManagementRow = {
   slug: string | null;
   logoUrl: string | null;
   raw: Restaurant;
+};
+
+/** Owner-grouped restaurant management row for the admin list. */
+export type OwnerRestaurantManagementGroup = {
+  ownerId: string;
+  ownerName: string | null;
+  email: string | null;
+  plan: string;
+  restaurantCount: number;
+  restaurants: AdminRestaurantManagementRow[];
 };
 
 export type RestaurantEditInput = {
@@ -175,6 +191,31 @@ export function getRestaurantManagementKpis(
   rows: AdminRestaurantManagementRow[],
 ): RestaurantManagementKpis {
   return computeRestaurantManagementKpis(rows);
+}
+
+export function groupRestaurantManagementByOwner(
+  rows: AdminRestaurantManagementRow[],
+): OwnerRestaurantManagementGroup[] {
+  const byOwner = groupItemsByOwnerId(rows);
+  const groups: OwnerRestaurantManagementGroup[] = [];
+
+  for (const [ownerId, restaurants] of byOwner) {
+    const primary = pickPrimaryByPlan(restaurants, (item) => item.createdAt);
+    const sorted = [...restaurants].sort((a, b) =>
+      (a.restaurantName ?? "").localeCompare(b.restaurantName ?? ""),
+    );
+
+    groups.push({
+      ownerId,
+      ownerName: firstNonEmpty(...restaurants.map((r) => r.ownerName)),
+      email: firstNonEmpty(...restaurants.map((r) => r.email)),
+      plan: primary.plan,
+      restaurantCount: sorted.length,
+      restaurants: sorted,
+    });
+  }
+
+  return sortOwnerRowsByName(groups);
 }
 
 export async function setRestaurantActive(
