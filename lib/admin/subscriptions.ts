@@ -31,6 +31,8 @@ export type RestaurantSubscription = {
   restaurantId: string;
   restaurantName: string | null;
   restaurantEmail: string | null;
+  ownerId: string;
+  ownerName: string | null;
   plan: SubscriptionPlan;
   monthlyPrice: number;
   currency: string;
@@ -44,6 +46,30 @@ export type RestaurantSubscription = {
   createdAt: string;
   updatedAt: string;
   isActiveRestaurant: boolean;
+};
+
+export type OwnerRestaurantSummary = {
+  restaurantId: string;
+  restaurantName: string | null;
+  subscriptionId: string | null;
+};
+
+/** One admin-list row per owner account (multi-restaurant aware). */
+export type OwnerSubscriptionAccount = {
+  ownerId: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  plan: SubscriptionPlan;
+  monthlyPrice: number;
+  currency: string;
+  status: SubscriptionStatus;
+  renewalDate: string | null;
+  restaurantCount: number;
+  restaurants: OwnerRestaurantSummary[];
+  primarySubscriptionId: string;
+  primaryRestaurantId: string;
+  subscriptionIds: string[];
+  restaurantIds: string[];
 };
 
 /** @deprecated Prefer getPlanMonthlyPrices() from lib/subscriptions/pricing */
@@ -66,11 +92,15 @@ type SubscriptionRow = {
   updated_at: string;
   restaurants:
     | {
+        owner_id: string;
+        owner_name: string | null;
         restaurant_name: string | null;
         email: string | null;
         is_active: boolean | null;
       }
     | {
+        owner_id: string;
+        owner_name: string | null;
         restaurant_name: string | null;
         email: string | null;
         is_active: boolean | null;
@@ -80,7 +110,13 @@ type SubscriptionRow = {
 
 const ERROR = "Unable to load subscriptions. Please try again.";
 const SELECT_WITH_RESTAURANT =
-  "*, restaurants(restaurant_name, email, is_active)";
+  "*, restaurants(owner_id, owner_name, restaurant_name, email, is_active)";
+
+const PLAN_RANK: Record<SubscriptionPlan, number> = {
+  Starter: 1,
+  Professional: 2,
+  Enterprise: 3,
+};
 
 function restaurantFromJoin(row: SubscriptionRow) {
   if (Array.isArray(row.restaurants)) return row.restaurants[0] ?? null;
@@ -104,6 +140,8 @@ function mapRow(row: SubscriptionRow): RestaurantSubscription {
     restaurantId: row.restaurant_id,
     restaurantName: restaurant?.restaurant_name ?? null,
     restaurantEmail: restaurant?.email ?? null,
+    ownerId: restaurant?.owner_id ?? "",
+    ownerName: restaurant?.owner_name ?? null,
     plan: row.plan,
     monthlyPrice: Number(row.monthly_price ?? 0),
     currency: row.currency || "KWD",
@@ -169,7 +207,163 @@ export async function fetchSubscriptions(): Promise<
 
     const rows = (data ?? []) as SubscriptionRow[];
     const synced = await Promise.all(rows.map((row) => syncStoredStatus(row)));
-    return { ok: true, data: synced.map(mapRow) };
+    return { ok: true, data: synced.map(mapRow).filter((row) => Boolean(row.ownerId)) };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+function pickPrimarySubscription(
+  subscriptions: RestaurantSubscription[],
+): RestaurantSubscription {
+  return [...subscriptions].sort((a, b) => {
+    const planDiff = PLAN_RANK[b.plan] - PLAN_RANK[a.plan];
+    if (planDiff !== 0) return planDiff;
+    return b.updatedAt.localeCompare(a.updatedAt);
+  })[0]!;
+}
+
+/**
+ * Group per-restaurant subscription rows into one account row per owner.
+ * Subscription fields come from a single canonical (highest-plan) row.
+ * Restaurant names come from all owned restaurants (subscription join + extras).
+ */
+export function groupSubscriptionsByOwner(
+  subscriptions: RestaurantSubscription[],
+  restaurants: Array<{
+    id: string;
+    owner_id: string;
+    owner_name: string | null;
+    email: string | null;
+    restaurant_name: string | null;
+  }> = [],
+): OwnerSubscriptionAccount[] {
+  const subsByOwner = new Map<string, RestaurantSubscription[]>();
+  for (const sub of subscriptions) {
+    if (!sub.ownerId) continue;
+    const list = subsByOwner.get(sub.ownerId) ?? [];
+    list.push(sub);
+    subsByOwner.set(sub.ownerId, list);
+  }
+
+  const restaurantsByOwner = new Map<
+    string,
+    Array<{
+      id: string;
+      owner_name: string | null;
+      email: string | null;
+      restaurant_name: string | null;
+    }>
+  >();
+  for (const restaurant of restaurants) {
+    const list = restaurantsByOwner.get(restaurant.owner_id) ?? [];
+    list.push(restaurant);
+    restaurantsByOwner.set(restaurant.owner_id, list);
+  }
+
+  const ownerIds = new Set([
+    ...subsByOwner.keys(),
+    ...restaurantsByOwner.keys(),
+  ]);
+
+  const accounts: OwnerSubscriptionAccount[] = [];
+
+  for (const ownerId of ownerIds) {
+    const ownerSubs = subsByOwner.get(ownerId) ?? [];
+    if (ownerSubs.length === 0) continue;
+
+    const primary = pickPrimarySubscription(ownerSubs);
+    const ownedRestaurants = restaurantsByOwner.get(ownerId) ?? [];
+
+    const restaurantMap = new Map<string, OwnerRestaurantSummary>();
+    for (const restaurant of ownedRestaurants) {
+      restaurantMap.set(restaurant.id, {
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.restaurant_name,
+        subscriptionId: null,
+      });
+    }
+    for (const sub of ownerSubs) {
+      restaurantMap.set(sub.restaurantId, {
+        restaurantId: sub.restaurantId,
+        restaurantName: sub.restaurantName,
+        subscriptionId: sub.id,
+      });
+    }
+
+    const restaurantSummaries = [...restaurantMap.values()].sort((a, b) =>
+      (a.restaurantName ?? "").localeCompare(b.restaurantName ?? ""),
+    );
+
+    const ownerName =
+      ownedRestaurants.find((r) => r.owner_name?.trim())?.owner_name?.trim() ||
+      ownerSubs.find((s) => s.ownerName?.trim())?.ownerName?.trim() ||
+      null;
+
+    const ownerEmail =
+      ownedRestaurants.find((r) => r.email?.trim())?.email?.trim() ||
+      ownerSubs.find((s) => s.restaurantEmail?.trim())?.restaurantEmail?.trim() ||
+      null;
+
+    accounts.push({
+      ownerId,
+      ownerName,
+      ownerEmail,
+      plan: primary.plan,
+      monthlyPrice: primary.monthlyPrice,
+      currency: primary.currency,
+      status: primary.status,
+      renewalDate: primary.renewalDate,
+      restaurantCount: restaurantSummaries.length,
+      restaurants: restaurantSummaries,
+      primarySubscriptionId: primary.id,
+      primaryRestaurantId: primary.restaurantId,
+      subscriptionIds: ownerSubs.map((s) => s.id),
+      restaurantIds: restaurantSummaries.map((r) => r.restaurantId),
+    });
+  }
+
+  return accounts.sort((a, b) => {
+    const nameA = (a.ownerName ?? a.ownerEmail ?? a.ownerId).toLowerCase();
+    const nameB = (b.ownerName ?? b.ownerEmail ?? b.ownerId).toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+}
+
+export async function fetchOwnerSubscriptionAccounts(): Promise<
+  | { ok: true; data: OwnerSubscriptionAccount[] }
+  | { ok: false; message: string }
+> {
+  try {
+    const [subsResult, restaurantsResult] = await Promise.all([
+      fetchSubscriptions(),
+      supabase
+        .from("restaurants")
+        .select("id, owner_id, owner_name, email, restaurant_name")
+        .order("created_at", { ascending: true }),
+    ]);
+
+    if (!subsResult.ok) return subsResult;
+    if (restaurantsResult.error) {
+      return {
+        ok: false,
+        message: restaurantsResult.error.message || ERROR,
+      };
+    }
+
+    return {
+      ok: true,
+      data: groupSubscriptionsByOwner(
+        subsResult.data,
+        (restaurantsResult.data ?? []) as Array<{
+          id: string;
+          owner_id: string;
+          owner_name: string | null;
+          email: string | null;
+          restaurant_name: string | null;
+        }>,
+      ),
+    };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -292,6 +486,92 @@ export async function updateSubscription(params: {
   }
 }
 
+/**
+ * Update an owner's subscription across all of their restaurant_subscriptions
+ * rows (account-level billing for multi-restaurant owners).
+ */
+export async function updateOwnerSubscription(params: {
+  ownerId: string;
+  subscriptionIds: string[];
+  restaurantIds: string[];
+  plan?: SubscriptionPlan;
+  status?: SubscriptionStatus;
+  monthlyPrice?: number;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    if (params.subscriptionIds.length === 0) {
+      return { ok: false, message: "No subscriptions found for this owner." };
+    }
+
+    const plan = params.plan;
+    const prices = await getPlanMonthlyPrices();
+    const monthlyPrice =
+      params.monthlyPrice ?? (plan ? prices[plan] : undefined);
+
+    const payload: Record<string, unknown> = {};
+    if (plan) payload.plan = plan;
+    if (params.status) {
+      payload.status = params.status;
+      payload.cancelled_at =
+        params.status === "cancelled" ? new Date().toISOString() : null;
+
+      if (params.status === "trial") {
+        const window = trialWindowIso();
+        payload.trial_started_at = window.trialStartedAt;
+        payload.trial_ends_at = window.trialEndsAt;
+        payload.renewal_date = window.renewalDate;
+      }
+
+      if (params.status === "active") {
+        payload.renewal_date = new Date(Date.now() + 30 * 86400000)
+          .toISOString()
+          .slice(0, 10);
+      }
+    }
+    if (monthlyPrice !== undefined) payload.monthly_price = monthlyPrice;
+
+    const { error } = await supabase
+      .from("restaurant_subscriptions")
+      .update(payload)
+      .in("id", params.subscriptionIds);
+
+    if (error) return { ok: false, message: error.message || ERROR };
+
+    if (params.restaurantIds.length > 0) {
+      const restaurantPayload: Record<string, unknown> = {};
+      if (plan) restaurantPayload.subscription_plan = plan;
+
+      if (params.status === "active" || params.status === "trial") {
+        restaurantPayload.is_active = true;
+        restaurantPayload.is_archived = false;
+      }
+
+      if (
+        params.status === "suspended" ||
+        params.status === "expired" ||
+        params.status === "cancelled"
+      ) {
+        restaurantPayload.is_active = false;
+      }
+
+      if (Object.keys(restaurantPayload).length > 0) {
+        const { error: restaurantError } = await supabase
+          .from("restaurants")
+          .update(restaurantPayload)
+          .in("id", params.restaurantIds);
+
+        if (restaurantError) {
+          return { ok: false, message: restaurantError.message || ERROR };
+        }
+      }
+    }
+
+    return { ok: true };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
 export async function ensureRestaurantSubscription(
   restaurantId: string,
   plan: SubscriptionPlan = "Starter",
@@ -392,6 +672,38 @@ export function exportSubscriptionsToCsv(
     String(item.gracePeriodDays),
     item.renewalDate ?? "",
     item.startedAt,
+  ]);
+
+  return buildCsv(headers, rows);
+}
+
+export function exportOwnerSubscriptionsToCsv(
+  items: OwnerSubscriptionAccount[],
+): string {
+  const headers = [
+    "Owner Name",
+    "Owner Email",
+    "Plan",
+    "Price",
+    "Currency",
+    "Status",
+    "Renewal",
+    "Restaurant Count",
+    "Restaurants",
+  ];
+
+  const rows = items.map((item) => [
+    item.ownerName?.trim() || "Unnamed owner",
+    item.ownerEmail ?? "",
+    item.plan,
+    String(item.monthlyPrice),
+    item.currency,
+    item.status,
+    item.renewalDate ?? "",
+    String(item.restaurantCount),
+    item.restaurants
+      .map((r) => r.restaurantName?.trim() || "Unnamed restaurant")
+      .join(", "),
   ]);
 
   return buildCsv(headers, rows);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -8,12 +8,12 @@ import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
   bulkUpdateSubscriptionStatus,
-  exportSubscriptionsToCsv,
-  fetchSubscriptions,
+  exportOwnerSubscriptionsToCsv,
+  fetchOwnerSubscriptionAccounts,
   SUBSCRIPTION_PLANS,
   SUBSCRIPTION_STATUSES,
-  updateSubscription,
-  type RestaurantSubscription,
+  updateOwnerSubscription,
+  type OwnerSubscriptionAccount,
   type SubscriptionPlan,
   type SubscriptionStatus,
 } from "@/lib/admin/subscriptions";
@@ -49,20 +49,27 @@ function statusClass(status: SubscriptionStatus): string {
   }
 }
 
+function restaurantCountLabel(count: number): string {
+  return `${count} Restaurant${count === 1 ? "" : "s"}`;
+}
+
 export function AdminSubscriptionsPage() {
   const { showToast } = useToast();
-  const [items, setItems] = useState<RestaurantSubscription[]>([]);
+  const [items, setItems] = useState<OwnerSubscriptionAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<SubscriptionStatus | "all">("all");
   const [plan, setPlan] = useState<SubscriptionPlan | "all">("all");
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState<RestaurantSubscription | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<OwnerSubscriptionAccount | null>(null);
   const [nextPlan, setNextPlan] = useState<SubscriptionPlan>("Starter");
   const [nextStatus, setNextStatus] = useState<SubscriptionStatus>("active");
   const [saving, setSaving] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [bulkStatus, setBulkStatus] = useState<SubscriptionStatus | null>(null);
   const [bulkTarget, setBulkTarget] = useState<SubscriptionStatus>("active");
   const [actionLoading, setActionLoading] = useState(false);
@@ -71,7 +78,7 @@ export function AdminSubscriptionsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await fetchSubscriptions();
+    const result = await fetchOwnerSubscriptionAccounts();
     setLoading(false);
     if (!result.ok) {
       setError(result.message);
@@ -95,11 +102,16 @@ export function AdminSubscriptionsPage() {
       if (status !== "all" && item.status !== status) return false;
       if (plan !== "all" && item.plan !== plan) return false;
       if (!query) return true;
-      return (
-        (item.restaurantName?.toLowerCase().includes(query) ?? false) ||
-        (item.restaurantEmail?.toLowerCase().includes(query) ?? false) ||
-        item.plan.toLowerCase().includes(query)
+
+      const ownerNameMatch =
+        item.ownerName?.toLowerCase().includes(query) ?? false;
+      const ownerEmailMatch =
+        item.ownerEmail?.toLowerCase().includes(query) ?? false;
+      const restaurantMatch = item.restaurants.some((restaurant) =>
+        (restaurant.restaurantName ?? "").toLowerCase().includes(query),
       );
+
+      return ownerNameMatch || ownerEmailMatch || restaurantMatch;
     });
   }, [items, search, status, plan]);
 
@@ -108,18 +120,28 @@ export function AdminSubscriptionsPage() {
     [filtered, page],
   );
 
-  const openEdit = (item: RestaurantSubscription) => {
+  const openEdit = (item: OwnerSubscriptionAccount) => {
     setEditing(item);
     setNextPlan(item.plan);
     setNextStatus(item.status);
   };
 
+  const toggleExpanded = useCallback((ownerId: string) => {
+    setExpandedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(ownerId)) next.delete(ownerId);
+      else next.add(ownerId);
+      return next;
+    });
+  }, []);
+
   const handleConfirm = async () => {
     if (!editing) return;
     setSaving(true);
-    const result = await updateSubscription({
-      id: editing.id,
-      restaurantId: editing.restaurantId,
+    const result = await updateOwnerSubscription({
+      ownerId: editing.ownerId,
+      subscriptionIds: editing.subscriptionIds,
+      restaurantIds: editing.restaurantIds,
       plan: nextPlan,
       status: nextStatus,
       monthlyPrice: getPlanMonthlyAmount(nextPlan) ?? planPrices[nextPlan],
@@ -129,25 +151,23 @@ export function AdminSubscriptionsPage() {
       showToast(result.message, "error");
       return;
     }
-    setItems((prev) =>
-      prev.map((item) => (item.id === result.data.id ? result.data : item)),
-    );
     setEditing(null);
-    showToast("Subscription updated");
+    await load();
+    showToast("Owner subscription updated");
   };
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((previous) => {
+  const toggleSelect = useCallback((ownerId: string) => {
+    setSelectedOwnerIds((previous) => {
       const next = new Set(previous);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(ownerId)) next.delete(ownerId);
+      else next.add(ownerId);
       return next;
     });
   }, []);
 
   const toggleSelectAll = useCallback(() => {
-    setSelectedIds((previous) => {
-      const pageIds = pageItems.map((item) => item.id);
+    setSelectedOwnerIds((previous) => {
+      const pageIds = pageItems.map((item) => item.ownerId);
       const allSelected = pageIds.every((id) => previous.has(id));
       if (allSelected) {
         const next = new Set(previous);
@@ -158,11 +178,21 @@ export function AdminSubscriptionsPage() {
     });
   }, [pageItems]);
 
+  const selectedSubscriptionIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const item of items) {
+      if (!selectedOwnerIds.has(item.ownerId)) continue;
+      ids.push(...item.subscriptionIds);
+    }
+    return ids;
+  }, [items, selectedOwnerIds]);
+
   const handleBulkStatusConfirm = async () => {
-    if (!bulkStatus || selectedIds.size === 0) return;
+    if (!bulkStatus || selectedSubscriptionIds.length === 0) return;
+    const ownerCount = selectedOwnerIds.size;
     setActionLoading(true);
     const result = await bulkUpdateSubscriptionStatus(
-      [...selectedIds],
+      selectedSubscriptionIds,
       bulkTarget,
     );
     setActionLoading(false);
@@ -171,9 +201,9 @@ export function AdminSubscriptionsPage() {
       showToast(result.message, "error");
       return;
     }
-    setSelectedIds(new Set());
+    setSelectedOwnerIds(new Set());
     await load();
-    showToast(`Updated ${selectedIds.size} subscription(s) to ${bulkTarget}`);
+    showToast(`Updated ${ownerCount} owner subscription(s) to ${bulkTarget}`);
   };
 
   const handleExport = () => {
@@ -181,18 +211,19 @@ export function AdminSubscriptionsPage() {
       showToast("No rows available to export", "error");
       return;
     }
-    const csv = exportSubscriptionsToCsv(filtered);
+    const csv = exportOwnerSubscriptionsToCsv(filtered);
     downloadCsv(`subscriptions-${csvTimestamp()}.csv`, csv);
-    showToast(`Exported ${filtered.length} subscriptions`);
+    showToast(`Exported ${filtered.length} owner subscriptions`);
   };
 
   const allPageSelected =
-    pageItems.length > 0 && pageItems.every((item) => selectedIds.has(item.id));
+    pageItems.length > 0 &&
+    pageItems.every((item) => selectedOwnerIds.has(item.ownerId));
 
   return (
     <AdminPlaceholder
       title="Subscriptions"
-      description="Track plan tiers, renewals and subscription status."
+      description="Track owner plans, renewals, and restaurants under each account."
     >
       <div className="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -200,7 +231,7 @@ export function AdminSubscriptionsPage() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search restaurant, email, or plan…"
+            placeholder="Search owner, email, or restaurant…"
             aria-label="Search subscriptions"
             className="w-full max-w-md rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/30 focus:outline-none"
           />
@@ -268,10 +299,11 @@ export function AdminSubscriptionsPage() {
           </div>
         ) : (
           <>
-            {selectedIds.size > 0 ? (
+            {selectedOwnerIds.size > 0 ? (
               <div className="dashboard-card flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
                 <p className="text-sm text-white/70">
-                  {selectedIds.size} selected
+                  {selectedOwnerIds.size} owner
+                  {selectedOwnerIds.size === 1 ? "" : "s"} selected
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <select
@@ -298,7 +330,7 @@ export function AdminSubscriptionsPage() {
                   <button
                     type="button"
                     className="menu-btn-secondary"
-                    onClick={() => setSelectedIds(new Set())}
+                    onClick={() => setSelectedOwnerIds(new Set())}
                   >
                     Clear
                   </button>
@@ -307,7 +339,7 @@ export function AdminSubscriptionsPage() {
             ) : null}
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-left">
+              <table className="w-full min-w-[1080px] text-left">
                 <thead>
                   <tr className="border-b border-gold/10">
                     <th className="px-3 py-3">
@@ -315,17 +347,17 @@ export function AdminSubscriptionsPage() {
                         type="checkbox"
                         checked={allPageSelected}
                         onChange={toggleSelectAll}
-                        aria-label="Select all subscriptions on this page"
+                        aria-label="Select all owners on this page"
                         className="h-4 w-4 accent-gold"
                       />
                     </th>
                     {[
-                      "Restaurant",
+                      "Owner",
                       "Plan",
                       "Price",
                       "Status",
                       "Renewal",
-                      "Started",
+                      "Restaurants",
                       "Actions",
                     ].map((heading) => (
                       <th
@@ -338,53 +370,105 @@ export function AdminSubscriptionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((item) => (
-                    <tr key={item.id} className="table-row-hover border-b border-white/5">
-                      <td className="px-3 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(item.id)}
-                          onChange={() => toggleSelect(item.id)}
-                          aria-label={`Select ${item.restaurantName ?? "subscription"}`}
-                          className="h-4 w-4 accent-gold"
-                        />
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white">
-                        <p>
-                          {item.restaurantName?.trim() || "Unnamed restaurant"}
-                        </p>
-                        <p className="text-xs text-white/40">
-                          {item.restaurantEmail ?? "—"}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/70">
-                        {item.plan}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/70">
-                        {formatPlanPriceLabel(item.plan)}
-                      </td>
-                      <td
-                        className={`px-3 py-3 text-sm capitalize ${statusClass(item.status)}`}
-                      >
-                        {item.status}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/50">
-                        {formatDemoDate(item.renewalDate)}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/50">
-                        {formatDemoDate(item.startedAt)}
-                      </td>
-                      <td className="px-3 py-3">
-                        <button
-                          type="button"
-                          className="menu-btn-secondary !px-2.5 !py-1.5 text-xs"
-                          onClick={() => openEdit(item)}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {pageItems.map((item) => {
+                    const expanded = expandedIds.has(item.ownerId);
+                    const ownerLabel =
+                      item.ownerName?.trim() || "Unnamed owner";
+
+                    return (
+                      <Fragment key={item.ownerId}>
+                        <tr className="table-row-hover border-b border-white/5">
+                          <td className="px-3 py-3 align-top">
+                            <input
+                              type="checkbox"
+                              checked={selectedOwnerIds.has(item.ownerId)}
+                              onChange={() => toggleSelect(item.ownerId)}
+                              aria-label={`Select ${ownerLabel}`}
+                              className="mt-1 h-4 w-4 accent-gold"
+                            />
+                          </td>
+                          <td className="px-3 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(item.ownerId)}
+                              aria-expanded={expanded}
+                              className="flex max-w-xs items-start gap-2 text-start"
+                            >
+                              <span
+                                className="mt-0.5 inline-block w-3 shrink-0 text-gold/80"
+                                aria-hidden="true"
+                              >
+                                {expanded ? "▼" : "▶"}
+                              </span>
+                              <span>
+                                <span className="block text-sm font-medium text-white">
+                                  {ownerLabel}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-white/40">
+                                  {item.ownerEmail ?? "—"}
+                                </span>
+                              </span>
+                            </button>
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/70">
+                            {item.plan}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/70">
+                            {formatPlanPriceLabel(item.plan)}
+                          </td>
+                          <td
+                            className={`px-3 py-3 text-sm capitalize ${statusClass(item.status)}`}
+                          >
+                            {item.status}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/50">
+                            {formatDemoDate(item.renewalDate)}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/70">
+                            {restaurantCountLabel(item.restaurantCount)}
+                          </td>
+                          <td className="px-3 py-3">
+                            <button
+                              type="button"
+                              className="menu-btn-secondary !px-2.5 !py-1.5 text-xs"
+                              onClick={() => openEdit(item)}
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded ? (
+                          <tr className="border-b border-white/5 bg-black/20">
+                            <td />
+                            <td colSpan={7} className="px-3 py-3">
+                              <p className="mb-2 text-[11px] uppercase tracking-wider text-white/35">
+                                Restaurants under this account
+                              </p>
+                              <ul className="space-y-1.5">
+                                {item.restaurants.map((restaurant) => (
+                                  <li
+                                    key={restaurant.restaurantId}
+                                    className="flex items-center gap-2 text-sm text-white/70"
+                                  >
+                                    <span
+                                      className="text-gold/70"
+                                      aria-hidden="true"
+                                    >
+                                      •
+                                    </span>
+                                    <span>
+                                      {restaurant.restaurantName?.trim() ||
+                                        "Unnamed restaurant"}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -401,13 +485,22 @@ export function AdminSubscriptionsPage() {
 
       <ConfirmModal
         open={Boolean(editing)}
-        title="Update Subscription"
+        title="Update Owner Subscription"
         description={
           editing ? (
             <div className="space-y-3 text-left">
-              <p className="text-sm text-white/60">
-                {editing.restaurantName?.trim() || "Restaurant"}
-              </p>
+              <div>
+                <p className="text-sm text-white/80">
+                  {editing.ownerName?.trim() || "Unnamed owner"}
+                </p>
+                <p className="mt-0.5 text-xs text-white/45">
+                  {editing.ownerEmail ?? "—"} ·{" "}
+                  {restaurantCountLabel(editing.restaurantCount)}
+                </p>
+                <p className="mt-2 text-xs text-white/40">
+                  Changes apply to every restaurant under this owner account.
+                </p>
+              </div>
               <label className="block text-xs uppercase tracking-wider text-white/40">
                 Plan
                 <select
@@ -451,8 +544,8 @@ export function AdminSubscriptionsPage() {
 
       <ConfirmModal
         open={Boolean(bulkStatus)}
-        title="Update Selected Subscriptions?"
-        description={`${selectedIds.size} subscription(s) will be set to "${bulkTarget}".`}
+        title="Update Selected Owner Subscriptions?"
+        description={`${selectedOwnerIds.size} owner account(s) (${selectedSubscriptionIds.length} restaurant subscription row(s)) will be set to "${bulkTarget}".`}
         confirmLabel="Apply"
         variant={bulkTarget === "cancelled" ? "danger" : "default"}
         loading={actionLoading}
