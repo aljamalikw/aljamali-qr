@@ -5,6 +5,23 @@ import { mapReservationRow } from "./mappers";
 import type { CreateReservationInput, ReservationItem, ReservationRow } from "./types";
 import { RESERVATION_TYPES } from "./types";
 
+function syncReservationCustomer(reservation: ReservationItem): void {
+  void fetch("/api/customers/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      restaurantId: reservation.restaurantId,
+      fullName: reservation.customerName,
+      phone: reservation.mobileNumber,
+      email: reservation.email,
+      visitAt: reservation.createdAt,
+      reservationIncrement: 1,
+    }),
+  }).catch(() => {
+    // CRM sync must never break reservation creation.
+  });
+}
+
 const CREATE_ERROR = "Unable to submit reservation. Please try again.";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -71,6 +88,8 @@ export async function createReservation(
         reservation_time: reservation.reservationTime,
       },
     });
+
+    syncReservationCustomer(reservation);
 
     void notifyRestaurantOwner(input.restaurantId, {
       type: "new_reservation",

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { syncCustomerEvent } from "@/lib/customers/sync-customer";
 import { notifyRestaurantOwner } from "@/lib/notifications/createNotification";
 import { planAllowsOnlineOrdering } from "@/lib/subscriptions/plans";
 import { mapOrderRow } from "./mappers";
@@ -229,6 +230,24 @@ export async function createOrderWithClient(
         }),
         href: "/dashboard/orders",
         meta: { orderId: orderRow.id, orderNumber: orderRow.order_number },
+      },
+      client,
+    );
+
+    // CRM: auto-create/update restaurant customer (phone/email identity).
+    void syncCustomerEvent(
+      {
+        restaurantId: input.restaurantId,
+        fullName: orderRow.customer_name,
+        phone: orderRow.customer_phone,
+        email: orderRow.customer_email,
+        visitAt: orderRow.created_at ?? new Date().toISOString(),
+        orderSpent: grandTotal,
+        items: finalItems.map((item) => ({
+          itemName: item.item_name,
+          menuItemId: item.menu_item_id,
+          quantity: item.quantity,
+        })),
       },
       client,
     );
