@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { NO_COLUMNS_AVAILABLE, updateWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { deleteMenuItem } from "./deleteMenuItem";
 import type { MenuItemRow } from "./types";
@@ -19,6 +20,14 @@ export async function softDeleteMenuItem(
     );
 
     if (result.ok) {
+      void logActivity({
+        action: "menu_item_deleted",
+        restaurantId: result.data.restaurant_id,
+        entityType: "menu_item",
+        entityId: id,
+        oldValues: { id, name: result.data.name },
+        metadata: { soft: true },
+      });
       return { ok: true, hard: false };
     }
 

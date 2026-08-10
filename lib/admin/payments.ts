@@ -95,6 +95,26 @@ export async function fetchPaymentsForRestaurant(
   }
 }
 
+/** Batch payments for multiple restaurants (owner CRM). */
+export async function fetchPaymentsForRestaurants(
+  restaurantIds: string[],
+): Promise<{ ok: true; data: PaymentItem[] } | { ok: false; message: string }> {
+  try {
+    if (restaurantIds.length === 0) return { ok: true, data: [] };
+
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*, restaurants(restaurant_name)")
+      .in("restaurant_id", restaurantIds)
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, message: error.message || ERROR };
+    return { ok: true, data: ((data ?? []) as PaymentRow[]).map(mapRow) };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
 export function filterPayments(
   items: PaymentItem[],
   params: {

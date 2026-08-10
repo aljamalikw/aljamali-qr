@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
 import { queueEmailNotification } from "@/lib/email/framework";
 
@@ -17,6 +18,29 @@ export async function createRestaurantForOwner(
     if (error) {
       return { ok: false, message: RESTAURANT_SETUP_ERROR };
     }
+
+    const { data: created } = await supabase
+      .from("restaurants")
+      .select("id, restaurant_name")
+      .eq("owner_id", ownerId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    void logActivity({
+      action: "restaurant_created",
+      ownerId,
+      actorId: ownerId,
+      actorEmail: email.trim(),
+      actorRole: "restaurant_owner",
+      restaurantId: (created as { id?: string } | null)?.id ?? null,
+      restaurantName:
+        (created as { restaurant_name?: string | null } | null)
+          ?.restaurant_name ?? null,
+      entityType: "restaurant",
+      entityId: (created as { id?: string } | null)?.id ?? null,
+      newValues: { email: email.trim() },
+    });
 
     // Framework-only: queue welcome / trial emails (no provider connected yet).
     void queueEmailNotification({

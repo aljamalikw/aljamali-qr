@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { NO_COLUMNS_AVAILABLE, updateWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { deleteQrCode } from "./deleteQrCode";
 import type { QrCodeRow } from "./types";
@@ -15,6 +16,14 @@ export async function softDeleteQrCode(
     );
 
     if (result.ok) {
+      void logActivity({
+        action: "qr_deleted",
+        restaurantId: result.data.restaurant_id,
+        entityType: "qr_code",
+        entityId: id,
+        oldValues: { id },
+        metadata: { soft: true },
+      });
       return { ok: true, hard: false };
     }
 

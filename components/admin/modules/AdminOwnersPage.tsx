@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
@@ -32,7 +33,6 @@ export function AdminOwnersPage() {
   const [page, setPage] = useState(1);
   const [ownerFilter, setOwnerFilter] = useState<string | null>(ownerIdParam);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<OwnerAccount | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -244,13 +244,12 @@ export function AdminOwnersPage() {
                             {restaurantCountLabel(item.restaurantCount)}
                           </td>
                           <td className="px-3 py-3">
-                            <button
-                              type="button"
+                            <Link
+                              href={`/admin/owners/${item.ownerId}`}
                               className="menu-btn-secondary !px-2.5 !py-1.5 text-xs"
-                              onClick={() => setSelected(item)}
                             >
                               View
-                            </button>
+                            </Link>
                           </td>
                         </tr>
                         {expanded ? (
@@ -313,50 +312,6 @@ export function AdminOwnersPage() {
           </>
         )}
       </div>
-
-      {selected ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="dashboard-card w-full max-w-md rounded-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="font-serif text-xl font-bold text-white">
-              {selected.ownerName?.trim() || "Unnamed owner"}
-            </h2>
-            <div className="mt-4 space-y-2 text-sm text-white/70">
-              <p>Email: {selected.email ?? "—"}</p>
-              <p>Phone: {selected.phone ?? "—"}</p>
-              <p>Plan: {selected.plan}</p>
-              <p>Status: {selected.isActive ? "Active" : "Suspended"}</p>
-              <p>City: {selected.city ?? "—"}</p>
-              <p>Joined: {formatDemoDate(selected.joinedAt)}</p>
-              <p>{restaurantCountLabel(selected.restaurantCount)}</p>
-            </div>
-            <ul className="mt-4 max-h-40 space-y-1.5 overflow-y-auto rounded-xl border border-white/5 bg-black/25 p-3 text-sm text-white/65">
-              {selected.restaurants.map((restaurant) => (
-                <li key={restaurant.restaurantId}>
-                  {restaurant.restaurantName?.trim() || "Unnamed restaurant"}
-                  {restaurant.slug ? (
-                    <span className="text-white/35"> /{restaurant.slug}</span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="menu-btn-secondary mt-6 w-full"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      ) : null}
     </AdminPlaceholder>
   );
 }

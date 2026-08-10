@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/admin/activity-log";
 import { buildCsv } from "@/lib/utils/csv";
 import {
   firstNonEmpty,
@@ -239,6 +240,35 @@ export async function fetchSupportTickets(): Promise<
   }
 }
 
+/** Owner CRM: tickets for an owner account and/or their restaurants. */
+export async function fetchSupportTicketsForOwner(
+  ownerId: string,
+  restaurantIds: string[],
+): Promise<
+  { ok: true; data: SupportTicket[] } | { ok: false; message: string }
+> {
+  try {
+    const filters: string[] = [`created_by.eq.${ownerId}`];
+    if (restaurantIds.length > 0) {
+      filters.push(`restaurant_id.in.(${restaurantIds.join(",")})`);
+    }
+
+    const { data, error } = await supabase
+      .from("support_tickets")
+      .select(SELECT_WITH_RESTAURANT)
+      .or(filters.join(","))
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, message: error.message || ERROR };
+
+    const mapped = ((data ?? []) as TicketRow[]).map(mapTicket);
+    const byId = new Map(mapped.map((ticket) => [ticket.id, ticket]));
+    return { ok: true, data: Array.from(byId.values()) };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
 export async function fetchOwnerSupportTickets(
   restaurantId: string,
 ): Promise<
@@ -297,6 +327,20 @@ export async function createSupportTicket(params: {
 
     const ticket = mapTicket(data as TicketRow);
     const details = params.body?.trim() ?? "";
+
+    void logActivity({
+      action: "support_ticket_created",
+      restaurantId: params.restaurantId,
+      ownerId: params.ownerId ?? ticket.ownerId,
+      entityType: "support_ticket",
+      entityId: ticket.id,
+      newValues: {
+        subject: ticket.subject,
+        priority: ticket.priority,
+        category: ticket.category,
+        ticket_number: ticket.ticketNumber,
+      },
+    });
 
     // Context (restaurant_id, restaurant_name, owner_id, owner_email) is stored
     // via restaurant_id + created_by and loaded for admin from the restaurant join.
@@ -380,6 +424,16 @@ export async function createTicketReply(
     }
 
     await supabase.from("support_tickets").update(payload).eq("id", ticketId);
+
+    void logActivity({
+      action: "support_ticket_replied",
+      entityType: "support_ticket",
+      entityId: ticketId,
+      newValues: {
+        reply_id: (data as ReplyRow).id,
+        next_status: options?.nextStatus ?? null,
+      },
+    });
 
     return { ok: true, data: mapReply(data as ReplyRow) };
   } catch {
@@ -497,7 +551,20 @@ export async function updateSupportTicketStatus(
     if (error || !data) {
       return { ok: false, message: error?.message ?? ERROR };
     }
-    return { ok: true, data: mapTicket(data as TicketRow) };
+
+    const ticket = mapTicket(data as TicketRow);
+    if (status === "Resolved" || status === "Closed") {
+      void logActivity({
+        action: "support_ticket_resolved",
+        restaurantId: ticket.restaurantId,
+        ownerId: ticket.ownerId,
+        entityType: "support_ticket",
+        entityId: ticket.id,
+        newValues: { status },
+      });
+    }
+
+    return { ok: true, data: ticket };
   } catch {
     return { ok: false, message: ERROR };
   }

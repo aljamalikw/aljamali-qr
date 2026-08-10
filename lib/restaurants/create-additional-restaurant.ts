@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
 import { STARTER_RESTAURANT_LIMIT_MESSAGE } from "@/lib/subscriptions/plans";
 import type { Restaurant } from "./types";
@@ -49,6 +50,19 @@ export async function createAdditionalRestaurant(
             : "Unable to create restaurant."),
       };
     }
+
+    void logActivity({
+      action: "restaurant_created",
+      restaurantId: body.data.id,
+      ownerId: body.data.owner_id,
+      restaurantName: body.data.restaurant_name,
+      entityType: "restaurant",
+      entityId: body.data.id,
+      newValues: {
+        restaurant_name: body.data.restaurant_name,
+        subscription_plan: body.data.subscription_plan,
+      },
+    });
 
     return { ok: true, restaurant: body.data };
   } catch {

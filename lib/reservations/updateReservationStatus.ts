@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
 import { mapReservationRow } from "./mappers";
 import type {
@@ -14,6 +15,12 @@ export async function updateReservationStatus(
   status: ReservationStatus,
 ): Promise<{ ok: true; data: ReservationItem } | { ok: false; message: string }> {
   try {
+    const { data: previous } = await supabase
+      .from("reservations")
+      .select("status, restaurant_id")
+      .eq("id", id)
+      .maybeSingle();
+
     const payload: Record<string, unknown> = { status };
 
     if (status === "Confirmed") {
@@ -33,7 +40,21 @@ export async function updateReservationStatus(
       return { ok: false, message: error?.message ?? ERROR };
     }
 
-    return { ok: true, data: mapReservationRow(data as ReservationRow) };
+    const reservation = mapReservationRow(data as ReservationRow);
+    void logActivity({
+      action: "reservation_updated",
+      restaurantId:
+        reservation.restaurantId ||
+        (previous as { restaurant_id?: string } | null)?.restaurant_id,
+      entityType: "reservation",
+      entityId: id,
+      oldValues: {
+        status: (previous as { status?: string } | null)?.status ?? null,
+      },
+      newValues: { status },
+    });
+
+    return { ok: true, data: reservation };
   } catch {
     return { ok: false, message: ERROR };
   }

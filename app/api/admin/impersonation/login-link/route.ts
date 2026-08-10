@@ -5,6 +5,7 @@ import {
   requireSuperAdmin,
   serverError,
 } from "@/lib/admin/api-auth";
+import { logActivity } from "@/lib/admin/activity-log";
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 
 type Body = {
@@ -82,13 +83,30 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const ip = getRequestIp(request);
+
   await supabase.from("admin_impersonation_logs").insert({
     admin_user_id: auth.userId,
     restaurant_id: restaurantId,
     restaurant_name: restaurantName,
     action: "login_link",
     reason: "Generate login link",
-    ip_address: getRequestIp(request),
+    ip_address: ip,
+  });
+
+  await logActivity({
+    client: supabase,
+    action: "login_link_generated",
+    actorId: auth.userId,
+    actorEmail: auth.email,
+    actorRole: "super_admin",
+    restaurantId,
+    restaurantName,
+    entityType: "session",
+    entityId: restaurantId,
+    ipAddress: ip,
+    reason: "Generate login link",
+    userAgent: request.headers.get("user-agent"),
   });
 
   // Return link only in this one-time Super Admin response — never store it.

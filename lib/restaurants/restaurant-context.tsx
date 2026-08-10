@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { logActivity } from "@/lib/admin/activity-log";
 import { fetchImpersonationState } from "@/lib/admin/impersonation-client";
 import {
   getStoredActiveRestaurantId,
@@ -103,10 +104,25 @@ export function RestaurantProvider({
       const source = list ?? restaurants;
       const next = source.find((r) => r.id === restaurantId);
       if (!next) return;
+      const previousId = restaurant?.id ?? null;
       setStoredActiveRestaurantId(next.id);
       setRestaurant(next);
+      if (previousId && previousId !== next.id) {
+        void logActivity({
+          action: "restaurant_switched",
+          restaurantId: next.id,
+          ownerId: next.owner_id,
+          entityType: "restaurant",
+          entityId: next.id,
+          oldValues: { restaurant_id: previousId },
+          newValues: { restaurant_id: next.id },
+          metadata: {
+            restaurantName: next.restaurant_name,
+          },
+        });
+      }
     },
-    [restaurants],
+    [restaurant?.id, restaurants],
   );
 
   const value = useMemo<RestaurantContextValue>(() => {

@@ -10,6 +10,7 @@ import {
   requireSuperAdmin,
   serverError,
 } from "@/lib/admin/api-auth";
+import { logActivity } from "@/lib/admin/activity-log";
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 
 type StartBody = {
@@ -116,6 +117,22 @@ export async function POST(request: NextRequest) {
     details: { session: "impersonation" },
     reason,
     ip_address: ip,
+  });
+
+  await logActivity({
+    client: supabase,
+    action: "owner_impersonation",
+    actorId: auth.userId,
+    actorEmail: auth.email,
+    actorRole: "super_admin",
+    restaurantId,
+    restaurantName,
+    entityType: "session",
+    entityId: restaurantId,
+    ipAddress: ip,
+    reason,
+    newValues: { session: "impersonation" },
+    userAgent: request.headers.get("user-agent"),
   });
 
   const response = NextResponse.json({

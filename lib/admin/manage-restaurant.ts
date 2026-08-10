@@ -140,10 +140,34 @@ export async function adminUpgradeRestaurantPlan(
     });
 
     if (!updated.ok) return updated;
+
+    const previousPlan = ensured.data.plan;
+    const rank: Record<string, number> = {
+      Starter: 1,
+      Professional: 2,
+      Enterprise: 3,
+    };
+    const action =
+      (rank[plan] ?? 0) < (rank[previousPlan] ?? 0)
+        ? "plan_downgraded"
+        : "plan_upgraded";
+
     void logAdminActivity({
-      action: "plan_upgraded",
+      action,
       restaurantId,
-      details: { plan },
+      entityType: "subscription",
+      entityId: ensured.data.id,
+      oldValues: { plan: previousPlan },
+      newValues: { plan },
+      details: { plan, previousPlan },
+    });
+    void logAdminActivity({
+      action: "subscription_changed",
+      restaurantId,
+      entityType: "subscription",
+      entityId: ensured.data.id,
+      oldValues: { plan: previousPlan },
+      newValues: { plan, status: "active" },
     });
     return { ok: true };
   } catch {
@@ -201,6 +225,15 @@ export async function adminResetTrial(
     });
 
     if (!updated.ok) return updated;
+    void logAdminActivity({
+      action: "subscription_changed",
+      restaurantId,
+      entityType: "subscription",
+      entityId: ensured.data.id,
+      oldValues: { status: ensured.data.status },
+      newValues: { status: "trial" },
+      details: { resetTrial: true },
+    });
     return { ok: true };
   } catch {
     return { ok: false, message: "Unable to reset trial." };

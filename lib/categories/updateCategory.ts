@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import type { CategoryFormData, DashboardCategory } from "@/lib/dashboard/categories/types";
 import { supabase } from "@/lib/supabase";
 import { mapCategoryInputToRow, mapCategoryRowToDashboard } from "./mappers";
@@ -23,6 +24,17 @@ export async function updateCategory(
     if (error || !data) {
       return { ok: false, message: UPDATE_ERROR };
     }
+
+    void logActivity({
+      action: "category_updated",
+      restaurantId: (data as { restaurant_id?: string }).restaurant_id,
+      entityType: "category",
+      entityId: id,
+      newValues: {
+        name_en: input.nameEn,
+        name_ar: input.nameAr,
+      },
+    });
 
     return { ok: true, data: mapCategoryRowToDashboard(data) };
   } catch {

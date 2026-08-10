@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
 import { SupportConversation } from "@/components/support/SupportConversation";
@@ -41,6 +42,8 @@ const PAGE_SIZE = 10;
 
 export function AdminSupportPage() {
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
+  const ticketParam = searchParams.get("ticket");
   const [items, setItems] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,15 @@ export function AdminSupportPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkClose, setBulkClose] = useState(false);
 
+  const openTicket = useCallback(async (ticket: SupportTicket) => {
+    setSelected(ticket);
+    setAssignName(ticket.assignedStaff ?? "");
+    setReplyBody("");
+    const result = await fetchTicketReplies(ticket.id);
+    if (result.ok) setReplies(result.data);
+    else setReplies([]);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -74,6 +86,16 @@ export function AdminSupportPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!ticketParam || items.length === 0) return;
+    const ticket = items.find((item) => item.id === ticketParam);
+    if (!ticket) return;
+    if (ticket.ownerId) {
+      setExpandedIds((previous) => new Set(previous).add(ticket.ownerId!));
+    }
+    void openTicket(ticket);
+  }, [ticketParam, items, openTicket]);
 
   useEffect(() => {
     setPage(1);
@@ -114,14 +136,6 @@ export function AdminSupportPage() {
       return next;
     });
   }, []);
-
-  const openTicket = async (ticket: SupportTicket) => {
-    setSelected(ticket);
-    setAssignName(ticket.assignedStaff ?? "");
-    setReplyBody("");
-    const result = await fetchTicketReplies(ticket.id);
-    setReplies(result.ok ? result.data : []);
-  };
 
   const replaceTicket = (ticket: SupportTicket) => {
     setItems((prev) => prev.map((t) => (t.id === ticket.id ? ticket : t)));

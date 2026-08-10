@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { notifyRestaurantOwner } from "@/lib/notifications/createNotification";
 import { supabase } from "@/lib/supabase";
 import { mapReservationRow } from "./mappers";
@@ -57,6 +58,19 @@ export async function createReservation(
     }
 
     const reservation = mapReservationRow(data as ReservationRow);
+
+    void logActivity({
+      action: "reservation_created",
+      restaurantId: input.restaurantId,
+      entityType: "reservation",
+      entityId: reservation.id,
+      newValues: {
+        customer_name: reservation.customerName,
+        guests: reservation.guests,
+        reservation_date: reservation.reservationDate,
+        reservation_time: reservation.reservationTime,
+      },
+    });
 
     void notifyRestaurantOwner(input.restaurantId, {
       type: "new_reservation",

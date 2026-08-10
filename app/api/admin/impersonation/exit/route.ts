@@ -6,6 +6,7 @@ import {
   requireSuperAdmin,
   serverError,
 } from "@/lib/admin/api-auth";
+import { logActivity } from "@/lib/admin/activity-log";
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
@@ -60,6 +61,21 @@ export async function POST(request: NextRequest) {
         details: {},
         reason: "Exit impersonation",
         ip_address: ip,
+      });
+
+      await logActivity({
+        client: supabase,
+        action: "exit_impersonation",
+        actorId: auth.userId,
+        actorEmail: auth.email,
+        actorRole: "super_admin",
+        restaurantId: session.restaurant_id as string,
+        restaurantName: session.restaurant_name as string | null,
+        entityType: "session",
+        entityId: session.restaurant_id as string,
+        ipAddress: ip,
+        reason: "Exit impersonation",
+        userAgent: request.headers.get("user-agent"),
       });
     }
   }

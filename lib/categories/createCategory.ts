@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import type { CategoryFormData, DashboardCategory } from "@/lib/dashboard/categories/types";
 import { supabase } from "@/lib/supabase";
 import { getCurrentRestaurantId } from "./get-restaurant-id";
@@ -41,6 +42,17 @@ export async function createCategory(
     if (error || !data) {
       return { ok: false, message: CREATE_ERROR };
     }
+
+    void logActivity({
+      action: "category_created",
+      restaurantId,
+      entityType: "category",
+      entityId: (data as { id: string }).id,
+      newValues: {
+        name_en: input.nameEn,
+        name_ar: input.nameAr,
+      },
+    });
 
     return { ok: true, data: mapCategoryRowToDashboard(data) };
   } catch {

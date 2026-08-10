@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import type { QrCodeItem, QrCreateFormData } from "@/lib/dashboard/qr/types";
 import {
   buildQrDestinationUrl,
@@ -55,6 +56,18 @@ export async function createQrCode(
     const scanSummary = scanSummaries.ok
       ? scanSummaries.data.get(row.id)
       : undefined;
+
+    void logActivity({
+      action: "qr_generated",
+      restaurantId: restaurant.id,
+      ownerId: restaurant.owner_id,
+      entityType: "qr_code",
+      entityId: row.id,
+      newValues: {
+        table_number: form.tableNumber ?? null,
+        destination_url: destinationUrl,
+      },
+    });
 
     return { ok: true, data: mapQrCodeRowToItem(row, scanSummary) };
   } catch {

@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
 import { mapOrderRow } from "./mappers";
 import type { Order, OrderRecord, OrderStatus, PaymentStatus } from "./types";
@@ -17,6 +18,12 @@ export async function updateOrderStatus(
   status: OrderStatus,
 ): Promise<{ ok: true; data: Order } | { ok: false; message: string }> {
   try {
+    const { data: previous } = await supabase
+      .from("orders")
+      .select("status, restaurant_id")
+      .eq("id", orderId)
+      .maybeSingle();
+
     const payload: Record<string, unknown> = { status };
     const timestampField = STATUS_TIMESTAMP_FIELD[status];
     if (timestampField) payload[timestampField] = new Date().toISOString();
@@ -32,7 +39,21 @@ export async function updateOrderStatus(
       return { ok: false, message: error?.message || UPDATE_ERROR };
     }
 
-    return { ok: true, data: mapOrderRow(data as OrderRecord) };
+    const order = mapOrderRow(data as OrderRecord);
+    void logActivity({
+      action: "order_status_changed",
+      restaurantId:
+        order.restaurantId ||
+        (previous as { restaurant_id?: string } | null)?.restaurant_id,
+      entityType: "order",
+      entityId: orderId,
+      oldValues: {
+        status: (previous as { status?: string } | null)?.status ?? null,
+      },
+      newValues: { status },
+    });
+
+    return { ok: true, data: order };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
   }

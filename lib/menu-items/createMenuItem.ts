@@ -1,3 +1,4 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import type { DashboardMenuItem, MenuFormData } from "@/lib/dashboard/menu/types";
 import { supabase } from "@/lib/supabase";
 import { insertWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
@@ -39,6 +40,18 @@ export async function createMenuItem(
     if (!result.ok) {
       return { ok: false, message: result.message === "NO_COLUMNS_AVAILABLE" ? CREATE_ERROR : result.message };
     }
+
+    void logActivity({
+      action: "menu_item_created",
+      restaurantId,
+      entityType: "menu_item",
+      entityId: result.data.id,
+      newValues: {
+        name_en: input.nameEn,
+        name_ar: input.nameAr,
+        category_id: input.categoryId,
+      },
+    });
 
     return { ok: true, data: mapMenuItemRowToDashboard(result.data) };
   } catch {

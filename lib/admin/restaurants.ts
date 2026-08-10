@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/admin/activity-log";
 import {
   ensureRestaurantSubscription,
   updateSubscription,
@@ -187,6 +188,35 @@ export async function fetchAdminRestaurantManagementRows(): Promise<
   }
 }
 
+/** Owner-scoped restaurant management rows (avoids loading the full platform). */
+export async function fetchAdminRestaurantsByOwnerId(
+  ownerId: string,
+): Promise<
+  | { ok: true; data: AdminRestaurantManagementRow[] }
+  | { ok: false; message: string }
+> {
+  try {
+    const { data, error } = await supabase
+      .from("restaurants")
+      .select(
+        "*, restaurant_subscriptions(plan, trial_ends_at, trial_started_at, status, renewal_date, grace_period_days, cancelled_at, monthly_price), qr_codes(id, is_active, is_archived)",
+      )
+      .eq("owner_id", ownerId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+
+    return {
+      ok: true,
+      data: ((data ?? []) as RestaurantManagementRow[]).map(mapManagementRow),
+    };
+  } catch {
+    return { ok: false, message: "Unable to load restaurants." };
+  }
+}
+
 export function getRestaurantManagementKpis(
   rows: AdminRestaurantManagementRow[],
 ): RestaurantManagementKpis {
@@ -237,7 +267,18 @@ export async function setRestaurantActive(
       return { ok: false, message: error?.message ?? ERROR };
     }
 
-    return { ok: true, data: data as Restaurant };
+    const restaurant = data as Restaurant;
+    void logActivity({
+      action: isActive ? "restaurant_activated" : "restaurant_suspended",
+      restaurantId,
+      restaurantName: restaurant.restaurant_name,
+      ownerId: restaurant.owner_id,
+      entityType: "restaurant",
+      entityId: restaurantId,
+      newValues: { is_active: isActive, is_archived: restaurant.is_archived },
+    });
+
+    return { ok: true, data: restaurant };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -262,7 +303,21 @@ export async function setRestaurantArchived(
       return { ok: false, message: error?.message ?? ERROR };
     }
 
-    return { ok: true, data: data as Restaurant };
+    const restaurant = data as Restaurant;
+    void logActivity({
+      action: archived ? "restaurant_archived" : "restaurant_restored",
+      restaurantId,
+      restaurantName: restaurant.restaurant_name,
+      ownerId: restaurant.owner_id,
+      entityType: "restaurant",
+      entityId: restaurantId,
+      newValues: {
+        is_archived: archived,
+        is_active: restaurant.is_active,
+      },
+    });
+
+    return { ok: true, data: restaurant };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -291,9 +346,27 @@ export async function updateRestaurantDetails(
       return { ok: false, message: error?.message ?? ERROR };
     }
 
+    const restaurant = data as Restaurant;
     await changeRestaurantPlan(restaurantId, input.plan);
 
-    return { ok: true, data: data as Restaurant };
+    void logActivity({
+      action: "restaurant_updated",
+      restaurantId,
+      restaurantName: restaurant.restaurant_name,
+      ownerId: restaurant.owner_id,
+      entityType: "restaurant",
+      entityId: restaurantId,
+      newValues: {
+        restaurant_name: input.restaurantName,
+        owner_name: input.ownerName,
+        email: input.email,
+        phone: input.phone,
+        city: input.city,
+        plan: input.plan,
+      },
+    });
+
+    return { ok: true, data: restaurant };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -343,6 +416,15 @@ export async function permanentlyDeleteRestaurant(
     if (error) {
       return { ok: false, message: error.message || DELETE_ERROR };
     }
+
+    void logActivity({
+      action: "restaurant_deleted",
+      restaurantId,
+      ownerId,
+      entityType: "restaurant",
+      entityId: restaurantId,
+      metadata: { confirmName: confirmName.trim() },
+    });
 
     return { ok: true };
   } catch {
