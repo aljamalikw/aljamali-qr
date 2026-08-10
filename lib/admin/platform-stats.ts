@@ -125,7 +125,10 @@ export async function fetchPlatformStats(): Promise<
         activeSubscriptions,
         monthlyRevenue: formatPaymentAmount(monthlyRevenueAmount, "KWD"),
         pendingSupportTickets: tickets.filter(
-          (t) => t.status === "Open" || t.status === "In Progress",
+          (t) =>
+            t.status === "Open" ||
+            t.status === "Waiting for Admin" ||
+            t.status === "Waiting for Customer",
         ).length,
         recentDemoRequests: [...demos]
           .filter((d) => !d.deletedAt)

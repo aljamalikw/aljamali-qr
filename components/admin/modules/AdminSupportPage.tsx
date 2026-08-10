@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
+import { SupportConversation } from "@/components/support/SupportConversation";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
+import { restaurantCountLabel } from "@/lib/admin/group-by-owner";
 import {
   assignSupportTicket,
   bulkCloseSupportTickets,
@@ -14,9 +16,13 @@ import {
   exportSupportTicketsToCsv,
   fetchSupportTickets,
   fetchTicketReplies,
+  getTicketCategoryBadgeClass,
+  getTicketStatusBadgeClass,
+  groupSupportTicketsByOwner,
   TICKET_PRIORITIES,
   TICKET_STATUSES,
   updateSupportTicketStatus,
+  type SupportOwnerGroup,
   type SupportTicket,
   type SupportTicketReply,
   type TicketPriority,
@@ -42,6 +48,7 @@ export function AdminSupportPage() {
   const [status, setStatus] = useState<TicketStatus | "all">("all");
   const [priority, setPriority] = useState<TicketPriority | "all">("all");
   const [page, setPage] = useState(1);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<SupportTicket | null>(null);
   const [replies, setReplies] = useState<SupportTicketReply[]>([]);
   const [replyBody, setReplyBody] = useState("");
@@ -72,7 +79,7 @@ export function AdminSupportPage() {
     setPage(1);
   }, [search, status, priority]);
 
-  const filtered = useMemo(() => {
+  const filteredTickets = useMemo(() => {
     const query = search.trim().toLowerCase();
     return items.filter((item) => {
       if (status !== "all" && item.status !== status) return false;
@@ -81,16 +88,32 @@ export function AdminSupportPage() {
       return (
         item.ticketNumber.toLowerCase().includes(query) ||
         item.subject.toLowerCase().includes(query) ||
+        (item.ownerName?.toLowerCase().includes(query) ?? false) ||
+        (item.ownerEmail?.toLowerCase().includes(query) ?? false) ||
         (item.restaurantName?.toLowerCase().includes(query) ?? false) ||
         (item.assignedStaff?.toLowerCase().includes(query) ?? false)
       );
     });
   }, [items, search, status, priority]);
 
-  const { pageItems, totalPages, page: safePage } = useMemo(
-    () => paginateDemoRequests(filtered, page, PAGE_SIZE),
-    [filtered, page],
+  const ownerGroups = useMemo(
+    () => groupSupportTicketsByOwner(filteredTickets),
+    [filteredTickets],
   );
+
+  const { pageItems, totalPages, page: safePage } = useMemo(
+    () => paginateDemoRequests(ownerGroups, page, PAGE_SIZE),
+    [ownerGroups, page],
+  );
+
+  const toggleExpanded = useCallback((ownerId: string) => {
+    setExpandedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(ownerId)) next.delete(ownerId);
+      else next.add(ownerId);
+      return next;
+    });
+  }, []);
 
   const openTicket = async (ticket: SupportTicket) => {
     setSelected(ticket);
@@ -134,7 +157,9 @@ export function AdminSupportPage() {
   const handleReply = async () => {
     if (!selected || !replyBody.trim()) return;
     setActionLoading(true);
-    const result = await createTicketReply(selected.id, replyBody);
+    const result = await createTicketReply(selected.id, replyBody, {
+      nextStatus: "Waiting for Customer",
+    });
     setActionLoading(false);
     if (!result.ok) {
       showToast(result.message, "error");
@@ -142,6 +167,12 @@ export function AdminSupportPage() {
     }
     setReplies((prev) => [...prev, result.data]);
     setReplyBody("");
+    const updated = {
+      ...selected,
+      status: "Waiting for Customer" as const,
+      updatedAt: new Date().toISOString(),
+    };
+    replaceTicket(updated);
     showToast("Reply sent");
 
     if (selected.restaurantId) {
@@ -168,6 +199,11 @@ export function AdminSupportPage() {
     showToast("Ticket closed");
   };
 
+  const ticketsOnPage = useMemo(
+    () => pageItems.flatMap((group) => group.tickets),
+    [pageItems],
+  );
+
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((previous) => {
       const next = new Set(previous);
@@ -179,8 +215,9 @@ export function AdminSupportPage() {
 
   const toggleSelectAll = useCallback(() => {
     setSelectedIds((previous) => {
-      const pageIds = pageItems.map((item) => item.id);
-      const allSelected = pageIds.every((id) => previous.has(id));
+      const pageIds = ticketsOnPage.map((item) => item.id);
+      const allSelected =
+        pageIds.length > 0 && pageIds.every((id) => previous.has(id));
       if (allSelected) {
         const next = new Set(previous);
         pageIds.forEach((id) => next.delete(id));
@@ -188,7 +225,7 @@ export function AdminSupportPage() {
       }
       return new Set([...previous, ...pageIds]);
     });
-  }, [pageItems]);
+  }, [ticketsOnPage]);
 
   const handleBulkClose = async () => {
     if (selectedIds.size === 0) return;
@@ -206,22 +243,23 @@ export function AdminSupportPage() {
   };
 
   const handleExport = () => {
-    if (filtered.length === 0) {
+    if (filteredTickets.length === 0) {
       showToast("No rows available to export", "error");
       return;
     }
-    const csv = exportSupportTicketsToCsv(filtered);
+    const csv = exportSupportTicketsToCsv(filteredTickets);
     downloadCsv(`support-tickets-${csvTimestamp()}.csv`, csv);
-    showToast(`Exported ${filtered.length} tickets`);
+    showToast(`Exported ${filteredTickets.length} tickets`);
   };
 
   const allPageSelected =
-    pageItems.length > 0 && pageItems.every((item) => selectedIds.has(item.id));
+    ticketsOnPage.length > 0 &&
+    ticketsOnPage.every((item) => selectedIds.has(item.id));
 
   return (
     <AdminPlaceholder
       title="Support"
-      description="Ticket system for status, priority, assignment and closure."
+      description="Owner-grouped tickets with conversation, status, and assignment."
     >
       <div className="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -229,7 +267,7 @@ export function AdminSupportPage() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search ticket, subject, restaurant…"
+            placeholder="Search owner, email, or restaurant…"
             aria-label="Search support tickets"
             className="w-full max-w-md rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/30 focus:outline-none"
           />
@@ -287,7 +325,7 @@ export function AdminSupportPage() {
               Try Again
             </button>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : ownerGroups.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-white/50">
               {search || status !== "all" || priority !== "all"
@@ -320,8 +358,9 @@ export function AdminSupportPage() {
                 </div>
               </div>
             ) : null}
+
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-left">
+              <table className="w-full min-w-[980px] text-left">
                 <thead>
                   <tr className="border-b border-gold/10">
                     <th className="px-3 py-3">
@@ -334,13 +373,11 @@ export function AdminSupportPage() {
                       />
                     </th>
                     {[
-                      "Ticket",
-                      "Subject",
-                      "Restaurant",
-                      "Status",
-                      "Priority",
-                      "Assigned",
-                      "Closed",
+                      "Owner",
+                      "Email",
+                      "Phone",
+                      "Restaurants",
+                      "Tickets",
                     ].map((heading) => (
                       <th
                         key={heading}
@@ -352,58 +389,161 @@ export function AdminSupportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((ticket) => (
-                    <tr
-                      key={ticket.id}
-                      className="table-row-hover cursor-pointer border-b border-white/5"
-                      onClick={() => void openTicket(ticket)}
-                    >
-                      <td
-                        className="px-3 py-3"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(ticket.id)}
-                          onChange={() => toggleSelect(ticket.id)}
-                          aria-label={`Select ${ticket.ticketNumber}`}
-                          className="h-4 w-4 accent-gold"
-                        />
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white">
-                        {ticket.ticketNumber}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/70">
-                        {ticket.subject}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/50">
-                        {ticket.restaurantName ?? "—"}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-orange-300">
-                        {ticket.status}
-                      </td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getPriorityBadgeClass(ticket.priority)}`}
-                        >
-                          {ticket.priority}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/70">
-                        {ticket.assignedStaff ?? "Unassigned"}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-white/40">
-                        {formatDemoDate(ticket.closedAt)}
-                      </td>
-                    </tr>
-                  ))}
+                  {pageItems.map((group: SupportOwnerGroup) => {
+                    const expanded = expandedIds.has(group.ownerId);
+                    const ownerLabel =
+                      group.ownerName?.trim() || "Unnamed owner";
+
+                    return (
+                      <Fragment key={group.ownerId}>
+                        <tr className="table-row-hover border-b border-white/5">
+                          <td className="px-3 py-3" />
+                          <td className="px-3 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(group.ownerId)}
+                              aria-expanded={expanded}
+                              className="flex max-w-xs items-start gap-2 text-start"
+                            >
+                              <span
+                                className="mt-0.5 inline-block w-3 shrink-0 text-gold/80"
+                                aria-hidden="true"
+                              >
+                                {expanded ? "▼" : "▶"}
+                              </span>
+                              <span className="text-sm font-medium text-white">
+                                {ownerLabel}
+                              </span>
+                            </button>
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/70">
+                            {group.ownerEmail ?? "—"}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/70">
+                            {group.ownerPhone ?? "—"}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/70">
+                            {restaurantCountLabel(group.restaurantCount)}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-white/70">
+                            {group.ticketCount} ticket
+                            {group.ticketCount === 1 ? "" : "s"}
+                          </td>
+                        </tr>
+                        {expanded ? (
+                          <tr className="border-b border-white/5 bg-black/20">
+                            <td colSpan={6} className="px-3 py-3">
+                              <div className="mb-4">
+                                <p className="mb-2 text-[11px] uppercase tracking-wider text-white/35">
+                                  Restaurants
+                                </p>
+                                <ul className="mb-4 space-y-1">
+                                  {group.restaurants.map((restaurant) => (
+                                    <li
+                                      key={restaurant.id}
+                                      className="flex items-center gap-2 text-sm text-white/70"
+                                    >
+                                      <span className="text-gold/70">•</span>
+                                      {restaurant.name?.trim() ||
+                                        "Unnamed restaurant"}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              <p className="mb-2 text-[11px] uppercase tracking-wider text-white/35">
+                                Tickets
+                              </p>
+                              <div className="overflow-x-auto rounded-xl border border-white/5">
+                                <table className="w-full min-w-[900px] text-left">
+                                  <thead>
+                                    <tr className="border-b border-white/5">
+                                      <th className="px-3 py-2" />
+                                      {[
+                                        "Ticket",
+                                        "Subject",
+                                        "Restaurant",
+                                        "Status",
+                                        "Priority",
+                                        "Updated",
+                                      ].map((heading) => (
+                                        <th
+                                          key={heading}
+                                          className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-white/35"
+                                        >
+                                          {heading}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {group.tickets.map((ticket) => (
+                                      <tr
+                                        key={ticket.id}
+                                        className="cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/[0.02]"
+                                        onClick={() => void openTicket(ticket)}
+                                      >
+                                        <td
+                                          className="px-3 py-2.5"
+                                          onClick={(event) =>
+                                            event.stopPropagation()
+                                          }
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(ticket.id)}
+                                            onChange={() =>
+                                              toggleSelect(ticket.id)
+                                            }
+                                            aria-label={`Select ${ticket.ticketNumber}`}
+                                            className="h-4 w-4 accent-gold"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-white">
+                                          {ticket.ticketNumber}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-white/75">
+                                          {ticket.subject}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-white/50">
+                                          {ticket.restaurantName ?? "—"}
+                                        </td>
+                                        <td className="px-3 py-2.5">
+                                          <span
+                                            className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${getTicketStatusBadgeClass(ticket.status)}`}
+                                          >
+                                            {ticket.status}
+                                          </span>
+                                        </td>
+                                        <td className="px-3 py-2.5">
+                                          <span
+                                            className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getPriorityBadgeClass(ticket.priority)}`}
+                                          >
+                                            {ticket.priority}
+                                          </span>
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-white/40">
+                                          {formatDemoDate(ticket.updatedAt)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+
             <DemoRequestPagination
               page={safePage}
               totalPages={totalPages}
-              totalItems={filtered.length}
+              totalItems={ownerGroups.length}
               pageSize={PAGE_SIZE}
               onPageChange={setPage}
             />
@@ -420,9 +560,53 @@ export function AdminSupportPage() {
                 <h3 className="mt-1 font-serif text-xl text-white">
                   {selected.subject}
                 </h3>
-                <p className="mt-1 text-sm text-white/45">
-                  {selected.restaurantName ?? "No restaurant"} ·{" "}
-                  {formatDemoDateTime(selected.createdAt)}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${getTicketStatusBadgeClass(selected.status)}`}
+                  >
+                    {selected.status}
+                  </span>
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getPriorityBadgeClass(selected.priority)}`}
+                  >
+                    {selected.priority}
+                  </span>
+                  {selected.category ? (
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${getTicketCategoryBadgeClass()}`}
+                    >
+                      {selected.category}
+                    </span>
+                  ) : null}
+                </div>
+                <dl className="mt-3 grid gap-1 text-sm text-white/55 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-wider text-white/35">
+                      Owner
+                    </dt>
+                    <dd>{selected.ownerName ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-wider text-white/35">
+                      Restaurant
+                    </dt>
+                    <dd>{selected.restaurantName ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-wider text-white/35">
+                      Email
+                    </dt>
+                    <dd>{selected.ownerEmail ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-wider text-white/35">
+                      Phone
+                    </dt>
+                    <dd>{selected.ownerPhone ?? "—"}</dd>
+                  </div>
+                </dl>
+                <p className="mt-2 text-xs text-white/40">
+                  Last updated {formatDemoDateTime(selected.updatedAt)}
                 </p>
               </div>
               <button
@@ -466,27 +650,11 @@ export function AdminSupportPage() {
               </div>
             </div>
 
-            <div className="mt-5 space-y-3">
-              <p className="text-xs uppercase tracking-wider text-white/40">
-                Replies
+            <div className="mt-5">
+              <p className="mb-3 text-xs uppercase tracking-wider text-white/40">
+                Conversation
               </p>
-              {replies.length === 0 ? (
-                <p className="text-sm text-white/45">No replies yet.</p>
-              ) : (
-                replies.map((reply) => (
-                  <div
-                    key={reply.id}
-                    className="rounded-xl border border-white/5 bg-black/20 px-3 py-3"
-                  >
-                    <p className="text-sm text-white/80 whitespace-pre-wrap">
-                      {reply.body}
-                    </p>
-                    <p className="mt-2 text-xs text-white/35">
-                      {formatDemoDateTime(reply.createdAt)}
-                    </p>
-                  </div>
-                ))
-              )}
+              <SupportConversation ticket={selected} replies={replies} />
             </div>
 
             <div className="mt-4 space-y-3">
