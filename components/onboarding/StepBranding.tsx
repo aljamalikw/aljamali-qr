@@ -13,6 +13,7 @@ interface StepBrandingProps {
   restaurant: Restaurant | null;
   onBack: () => void;
   onContinue: (values: BrandingFormData) => Promise<string | null>;
+  onSkip?: () => Promise<string | null> | string | null | Promise<void> | void;
 }
 
 const selectClass = "auth-input w-full appearance-none cursor-pointer";
@@ -108,6 +109,7 @@ export function StepBranding({
   restaurant,
   onBack,
   onContinue,
+  onSkip,
 }: StepBrandingProps) {
   const [form, setForm] = useState<BrandingFormData>(() =>
     buildInitialForm(restaurant),
@@ -144,10 +146,10 @@ export function StepBranding({
     <div>
       <div className="mb-6 text-center">
         <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
-          Brand your digital menu
+          Upload your logo
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-white/50">
-          Add your visuals and colors — you can always refine these later.
+          Add a logo and optional branding. You can skip and finish this later.
         </p>
       </div>
 
@@ -294,12 +296,29 @@ export function StepBranding({
           </p>
         )}
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row">
           <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1">
             Back
           </AuthButton>
+          {onSkip ? (
+            <AuthButton
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                setFormError("");
+                const message = await onSkip();
+                setLoading(false);
+                if (typeof message === "string" && message) setFormError(message);
+              }}
+            >
+              Skip for now
+            </AuthButton>
+          ) : null}
           <AuthButton type="submit" loading={loading} className="flex-1">
-            Continue
+            Save & Continue
           </AuthButton>
         </div>
       </form>

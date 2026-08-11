@@ -34,6 +34,10 @@ export type Restaurant = {
   dark_mode_default?: boolean;
   onboarding_completed?: boolean;
   onboarding_step?: number;
+  /** Completed/skipped Setup Wizard step numbers (1–11). */
+  onboarding_completed_steps?: number[] | null;
+  onboarding_completed_at?: string | null;
+  onboarding_last_updated?: string | null;
   restaurant_type?: string | null;
   owner_name?: string | null;
   website?: string | null;

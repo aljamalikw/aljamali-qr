@@ -14,6 +14,8 @@ import { fetchAnalyticsDashboard } from "@/lib/qr-analytics";
 import type { AnalyticsDashboardData } from "@/lib/qr-analytics";
 import type { Restaurant } from "@/lib/restaurants/types";
 import type { ActivityItem } from "@/lib/dashboard/types";
+import { getOnboardingProgress } from "@/lib/onboarding/progress";
+import { isRestaurantSetupComplete } from "@/lib/restaurants/setup";
 import { formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { supabase } from "@/lib/supabase";
 
@@ -161,6 +163,9 @@ export function DashboardHome() {
     data.restaurant?.restaurant_name?.trim() || "Your Restaurant";
   const isActive = Boolean(data.restaurant?.restaurant_name?.trim());
   const analytics = data.analytics;
+  const onboardingIncomplete =
+    Boolean(data.restaurant) && !isRestaurantSetupComplete(data.restaurant);
+  const onboardingPercent = getOnboardingProgress(data.restaurant).percent;
 
   const kpis = useMemo(
     () => [
@@ -238,6 +243,22 @@ export function DashboardHome() {
           restaurant in real time.
         </p>
       </motion.div>
+
+      {!loading && onboardingIncomplete ? (
+        <DashboardCard className="flex flex-col gap-4 border-gold/25 bg-gold/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold">
+              Setup in progress
+            </p>
+            <p className="mt-2 text-sm text-white/80 sm:text-base">
+              Complete your restaurant setup ({onboardingPercent}%)
+            </p>
+          </div>
+          <Link href="/restaurant/setup" className="menu-btn-primary inline-flex shrink-0">
+            Continue Setup
+          </Link>
+        </DashboardCard>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {loading

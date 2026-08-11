@@ -6,25 +6,47 @@ interface WizardProgressProps {
   currentStep: number;
   totalSteps: number;
   labels: readonly string[];
+  percent?: number;
+  completedSteps?: number[];
+  onSaveAndExit?: () => void;
 }
 
 export function WizardProgress({
   currentStep,
   totalSteps,
   labels,
+  percent,
+  completedSteps = [],
+  onSaveAndExit,
 }: WizardProgressProps) {
-  const progress = (currentStep / totalSteps) * 100;
+  const progress =
+    typeof percent === "number"
+      ? percent
+      : (currentStep / totalSteps) * 100;
   const activeLabel = labels[currentStep - 1] ?? "";
+  const completedSet = new Set(completedSteps);
 
   return (
     <div className="mb-8">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium uppercase tracking-wider text-gold">
           Step {currentStep} of {totalSteps}
+          <span className="ms-2 text-white/40">· {Math.round(progress)}%</span>
         </p>
-        <p className="text-xs uppercase tracking-wider text-white/40">
-          {activeLabel}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs uppercase tracking-wider text-white/40">
+            {activeLabel}
+          </p>
+          {onSaveAndExit ? (
+            <button
+              type="button"
+              onClick={onSaveAndExit}
+              className="text-xs text-white/45 underline-offset-2 transition hover:text-gold hover:underline"
+            >
+              Save & Exit
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -36,16 +58,18 @@ export function WizardProgress({
         />
       </div>
 
-      <div className="mt-3 hidden gap-1 lg:flex">
+      <div className="mt-3 hidden gap-1 xl:flex">
         {labels.map((stepLabel, index) => {
           const stepNumber = index + 1;
-          const isComplete = stepNumber < currentStep;
+          const isComplete =
+            completedSet.has(stepNumber) || stepNumber < currentStep;
           const isActive = stepNumber === currentStep;
 
           return (
             <div
               key={stepLabel}
               className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+              title={stepLabel}
             >
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold transition-colors duration-300 ${

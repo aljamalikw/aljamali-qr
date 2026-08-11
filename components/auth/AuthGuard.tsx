@@ -6,10 +6,6 @@ import { DashboardShellSkeleton } from "@/components/ui/Skeleton";
 import { isEmailVerified } from "@/lib/auth/errors";
 import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
 import { fetchImpersonationState } from "@/lib/admin/impersonation-client";
-import {
-  fetchUserRestaurant,
-  isRestaurantSetupComplete,
-} from "@/lib/restaurants/setup";
 import { supabase } from "@/lib/supabase";
 
 interface AuthGuardProps {
@@ -57,13 +53,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
           return;
         }
         router.replace("/admin/dashboard");
-        return;
-      }
-
-      const restaurant = await fetchUserRestaurant();
-
-      if (!isRestaurantSetupComplete(restaurant)) {
-        router.replace("/restaurant/setup");
         return;
       }
 

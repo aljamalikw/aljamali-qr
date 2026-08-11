@@ -186,6 +186,10 @@ export function StepCategories({ onBack, onContinue }: StepCategoriesProps) {
   };
 
   const handleContinue = async () => {
+    if (items.length < 1) {
+      showToast("Add at least one category to continue.", "error");
+      return;
+    }
     setContinuing(true);
     await onContinue();
     setContinuing(false);
@@ -198,8 +202,8 @@ export function StepCategories({ onBack, onContinue }: StepCategoriesProps) {
           Organize your menu
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-white/50">
-          Create categories to group your dishes. You can skip this and add
-          categories later from the dashboard.
+          Create at least one category (for example Burgers, Pizza, Desserts, or
+          Drinks).
         </p>
       </div>
 

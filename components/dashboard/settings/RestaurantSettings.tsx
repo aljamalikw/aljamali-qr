@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
   defaultSettings,
   type RestaurantSettings as SettingsForm,
@@ -14,8 +15,10 @@ import {
 } from "@/lib/restaurants/settings";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { CURRENCY_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/restaurants/constants";
+import { restartOnboarding } from "@/lib/onboarding/progress-actions";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { ListEditor } from "./ListEditor";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 const tabs = [
   { id: "general", label: "General" },
@@ -51,12 +54,15 @@ function Field({
 }
 
 export function RestaurantSettings() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
   const [settings, setSettings] = useState<SettingsForm>(defaultSettings);
   const [savedSnapshot, setSavedSnapshot] = useState(defaultSettings);
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [saving, setSaving] = useState(false);
+  const [restartOpen, setRestartOpen] = useState(false);
+  const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
     if (!restaurant) return;
@@ -111,6 +117,23 @@ export function RestaurantSettings() {
   const handleReset = () => {
     setSettings(savedSnapshot);
     showToast("Changes discarded", "info");
+  };
+
+  const handleRestartWizard = async () => {
+    if (!restaurant?.id) {
+      showToast("Restaurant not found", "error");
+      return;
+    }
+    setRestarting(true);
+    const result = await restartOnboarding(restaurant.id);
+    setRestarting(false);
+    setRestartOpen(false);
+    if (!result.ok) {
+      showToast(result.message, "error");
+      return;
+    }
+    showToast("Setup Wizard restarted");
+    router.push("/restaurant/setup");
   };
 
   if (restaurantLoading) {
@@ -630,6 +653,31 @@ export function RestaurantSettings() {
           {saving ? "Saving…" : "Save Settings"}
         </button>
       </div>
+
+      <div className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-5">
+        <h3 className="text-sm font-semibold text-white">Setup Wizard</h3>
+        <p className="mt-1 text-sm text-white/50">
+          Restart the guided restaurant onboarding for this location only.
+          Existing menu data is kept.
+        </p>
+        <button
+          type="button"
+          onClick={() => setRestartOpen(true)}
+          className="menu-btn-secondary mt-4 inline-flex"
+        >
+          Restart Setup Wizard
+        </button>
+      </div>
+
+      <ConfirmModal
+        open={restartOpen}
+        title="Restart Setup Wizard?"
+        description="Progress will reset for this restaurant. You can walk through setup again without deleting menu items or QR codes."
+        confirmLabel="Restart Wizard"
+        loading={restarting}
+        onConfirm={() => void handleRestartWizard()}
+        onCancel={() => setRestartOpen(false)}
+      />
     </div>
   );
 }

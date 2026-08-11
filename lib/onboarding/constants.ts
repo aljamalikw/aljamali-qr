@@ -1,13 +1,22 @@
-export const TOTAL_ONBOARDING_STEPS = 8;
+export const TOTAL_ONBOARDING_STEPS = 11;
+
+export const ONBOARDING_STEP_IDS = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+] as const;
+
+export type OnboardingStepId = (typeof ONBOARDING_STEP_IDS)[number];
 
 export const ONBOARDING_STEP_LABELS = [
-  "Welcome",
   "Restaurant",
-  "Branding",
+  "Logo",
   "Categories",
   "Menu",
   "QR Code",
   "Preview",
+  "Reservations",
+  "Ordering",
+  "Loyalty",
+  "Marketing",
   "Finish",
 ] as const;
 
@@ -21,6 +30,18 @@ export const RESTAURANT_TYPE_OPTIONS = [
   "Cloud Kitchen",
   "Bar & Lounge",
   "Buffet",
+  "Other",
+] as const;
+
+export const CUISINE_OPTIONS = [
+  "Kuwaiti",
+  "Arabic",
+  "Indian",
+  "Italian",
+  "American",
+  "Asian",
+  "Seafood",
+  "International",
   "Other",
 ] as const;
 
@@ -42,13 +63,13 @@ export type CategorySeedSuggestion = {
 };
 
 export const CATEGORY_SEED_SUGGESTIONS: CategorySeedSuggestion[] = [
-  { nameEn: "Starters", nameAr: "المقبلات", icon: "🥗" },
-  { nameEn: "Main Course", nameAr: "الأطباق الرئيسية", icon: "🍽️" },
+  { nameEn: "Burgers", nameAr: "برغر", icon: "🍔" },
+  { nameEn: "Pizza", nameAr: "بيتزا", icon: "🍕" },
   { nameEn: "Desserts", nameAr: "الحلويات", icon: "🍰" },
   { nameEn: "Drinks", nameAr: "المشروبات", icon: "🥤" },
+  { nameEn: "Starters", nameAr: "المقبلات", icon: "🥗" },
+  { nameEn: "Main Course", nameAr: "الأطباق الرئيسية", icon: "🍽️" },
   { nameEn: "Breakfast", nameAr: "الإفطار", icon: "🍳" },
-  { nameEn: "Lunch", nameAr: "الغداء", icon: "🍛" },
-  { nameEn: "Dinner", nameAr: "العشاء", icon: "🍷" },
 ];
 
 export type QrPresetOption = {

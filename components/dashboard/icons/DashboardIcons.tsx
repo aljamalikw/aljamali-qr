@@ -25,6 +25,7 @@ type DashboardIconName =
   | "customers"
   | "loyalty"
   | "marketing"
+  | "setup-wizard"
   | "kitchen"
   | "logo";
 
@@ -44,6 +45,13 @@ export function DashboardIcon({
         <rect x="14" y="3" width="7" height="5" rx="1.5" />
         <rect x="14" y="12" width="7" height="9" rx="1.5" />
         <rect x="3" y="16" width="7" height="5" rx="1.5" />
+      </svg>
+    ),
+    "setup-wizard": (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3z" />
+        <path d="M5 16l1 2.2L8.2 19 6 20l-1 2.2L4 20 1.8 19 4 17.8 5 16z" />
+        <path d="M17.5 14.5l.8 1.8 1.9.3-1.4 1.4.4 1.9-1.7-1-1.7 1 .4-1.9-1.4-1.4 1.9-.3.8-1.8z" />
       </svg>
     ),
     "menu-items": (
@@ -203,6 +211,7 @@ export function DashboardIcon({
 export function getNavIcon(id: string): DashboardIconName {
   const map: Record<string, DashboardIconName> = {
     dashboard: "dashboard",
+    "setup-wizard": "setup-wizard",
     "menu-items": "menu-items",
     categories: "categories",
     reservations: "tables",

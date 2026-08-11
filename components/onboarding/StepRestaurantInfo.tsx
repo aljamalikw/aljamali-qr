@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthInput } from "@/components/auth/AuthInput";
 import {
+  CUISINE_OPTIONS,
   PREFERRED_LANGUAGE_OPTIONS,
   RESTAURANT_TYPE_OPTIONS,
 } from "@/lib/onboarding/constants";
@@ -22,6 +23,7 @@ function buildInitialForm(restaurant: Restaurant | null): RestaurantInfoFormData
   return {
     restaurantName: restaurant?.restaurant_name?.trim() ?? "",
     restaurantType: restaurant?.restaurant_type?.trim() ?? "",
+    cuisineType: restaurant?.cuisine_type?.trim() ?? "",
     ownerName: restaurant?.owner_name?.trim() ?? "",
     phone: restaurant?.phone?.trim() ?? "",
     whatsapp: restaurant?.whatsapp_number?.trim() ?? "",
@@ -102,21 +104,39 @@ export function StepRestaurantInfo({
           />
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-wider text-white/45">
-              Restaurant Type
+              Cuisine
             </label>
             <select
-              value={form.restaurantType}
-              onChange={(event) => update("restaurantType", event.target.value)}
+              value={form.cuisineType}
+              onChange={(event) => update("cuisineType", event.target.value)}
               className={selectClass}
             >
-              <option value="">Select a type</option>
-              {RESTAURANT_TYPE_OPTIONS.map((type) => (
+              <option value="">Select cuisine</option>
+              {CUISINE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
               ))}
             </select>
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-white/45">
+            Restaurant Type
+          </label>
+          <select
+            value={form.restaurantType}
+            onChange={(event) => update("restaurantType", event.target.value)}
+            className={selectClass}
+          >
+            <option value="">Select a type</option>
+            {RESTAURANT_TYPE_OPTIONS.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
         </div>
 
         <AuthInput
@@ -247,7 +267,7 @@ export function StepRestaurantInfo({
         )}
 
         <AuthButton type="submit" loading={loading} className="mt-2">
-          Continue
+          Save & Continue
         </AuthButton>
       </form>
     </div>

@@ -1,18 +1,20 @@
+import { logActivity } from "@/lib/admin/activity-log";
 import { DEFAULT_CURRENCY } from "@/lib/restaurants/constants";
 import { generateUniqueSlug } from "@/lib/restaurants/slug";
 import { fetchUserRestaurant } from "@/lib/restaurants/setup";
 import type { Restaurant } from "@/lib/restaurants/types";
 import { supabase } from "@/lib/supabase";
+import {
+  mergeCompletedSteps,
+  parseCompletedSteps,
+} from "@/lib/onboarding/progress";
 import type { RestaurantInfoFormData } from "./types";
 
 const SAVE_ERROR =
   "We couldn't save your restaurant details. Please try again.";
 
 /**
- * Persists step 1 of the onboarding wizard (core restaurant info) and advances
- * `onboarding_step` to 2. Restaurant rows are normally created automatically at
- * sign-up, so this typically updates the existing row — but it will create one
- * as a fallback if it's somehow missing.
+ * Persists Setup Wizard step 1 (restaurant info) and advances to step 2.
  */
 export async function saveRestaurantInfo(
   input: RestaurantInfoFormData,
@@ -32,9 +34,16 @@ export async function saveRestaurantInfo(
     const slug =
       existing?.slug?.trim() || (await generateUniqueSlug(input.restaurantName));
 
+    const completedSteps = mergeCompletedSteps(
+      parseCompletedSteps(existing?.onboarding_completed_steps),
+      1,
+    );
+    const now = new Date().toISOString();
+
     const payload = {
       restaurant_name: input.restaurantName.trim(),
       restaurant_type: input.restaurantType.trim() || null,
+      cuisine_type: input.cuisineType.trim() || null,
       owner_name: input.ownerName.trim() || null,
       phone: input.phone.trim() || null,
       whatsapp_number: input.whatsapp.trim() || null,
@@ -48,7 +57,9 @@ export async function saveRestaurantInfo(
       timezone: input.timezone,
       preferred_language: input.preferredLanguage,
       slug,
-      onboarding_step: Math.max(existing?.onboarding_step ?? 1, 3),
+      onboarding_step: Math.max(existing?.onboarding_step ?? 1, 2),
+      onboarding_completed_steps: completedSteps,
+      onboarding_last_updated: now,
     };
 
     const { data, error } = existing
@@ -72,7 +83,18 @@ export async function saveRestaurantInfo(
       return { ok: false, message: SAVE_ERROR };
     }
 
-    return { ok: true, restaurant: data as Restaurant };
+    const restaurant = data as Restaurant;
+    void logActivity({
+      action: "onboarding_step_completed",
+      restaurantId: restaurant.id,
+      restaurantName: restaurant.restaurant_name,
+      ownerId: restaurant.owner_id,
+      entityType: "restaurant",
+      entityId: restaurant.id,
+      newValues: { step: 1, nextStep: 2 },
+    });
+
+    return { ok: true, restaurant };
   } catch {
     return { ok: false, message: SAVE_ERROR };
   }

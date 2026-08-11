@@ -197,6 +197,10 @@ export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
   };
 
   const handleContinue = async () => {
+    if (items.length < 1) {
+      showToast("Add at least one menu item to continue.", "error");
+      return;
+    }
     setContinuing(true);
     await onContinue();
     setContinuing(false);
@@ -209,8 +213,8 @@ export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
           Add your first dishes
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-white/50">
-          Add a few menu items now, or skip and manage your full menu from the
-          dashboard.
+          Add at least one menu item. Images are optional and can be uploaded
+          later.
         </p>
       </div>
 

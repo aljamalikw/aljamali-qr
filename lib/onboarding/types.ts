@@ -1,6 +1,7 @@
 export type RestaurantInfoFormData = {
   restaurantName: string;
   restaurantType: string;
+  cuisineType: string;
   ownerName: string;
   phone: string;
   whatsapp: string;
@@ -28,4 +29,9 @@ export type BrandingFormData = {
 export type OnboardingQrResult = {
   name: string;
   url: string;
+};
+
+export type AdvanceOnboardingOptions = {
+  /** Mark the previous step as skipped in activity + completed_steps. */
+  skipped?: boolean;
 };

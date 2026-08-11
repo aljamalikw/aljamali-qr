@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isEmailVerified } from "@/lib/auth/errors";
 import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
-import {
-  fetchUserRestaurant,
-  isRestaurantSetupComplete,
-} from "@/lib/restaurants/setup";
+import { fetchUserRestaurant } from "@/lib/restaurants/setup";
 import { supabase } from "@/lib/supabase";
 import { AuthCardSkeleton } from "@/components/ui/Skeleton";
 
@@ -15,6 +12,10 @@ interface RestaurantSetupGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * Auth gate for /restaurant/setup.
+ * Allows incomplete AND completed restaurants (continue / restart wizard).
+ */
 export function RestaurantSetupGuard({ children }: RestaurantSetupGuardProps) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -46,12 +47,8 @@ export function RestaurantSetupGuard({ children }: RestaurantSetupGuardProps) {
         return;
       }
 
-      const restaurant = await fetchUserRestaurant();
-
-      if (isRestaurantSetupComplete(restaurant)) {
-        router.replace("/dashboard");
-        return;
-      }
+      // Ensure a restaurant context exists (created at signup).
+      await fetchUserRestaurant();
 
       setReady(true);
     }

@@ -2,6 +2,7 @@ import type { DashboardNavItem } from "./types";
 
 export const dashboardNavItems: DashboardNavItem[] = [
   { id: "dashboard", label: "Dashboard", href: "/dashboard" },
+  { id: "setup-wizard", label: "Setup Wizard", href: "/restaurant/setup" },
   { id: "menu-items", label: "Menu Items", href: "/dashboard/menu-items" },
   { id: "categories", label: "Categories", href: "/dashboard/categories" },
   { id: "reservations", label: "Reservations", href: "/dashboard/reservations" },

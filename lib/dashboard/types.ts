@@ -1,5 +1,6 @@
 export type DashboardNavId =
   | "dashboard"
+  | "setup-wizard"
   | "menu-items"
   | "categories"
   | "reservations"
