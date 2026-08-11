@@ -100,29 +100,57 @@ export function isPayablePlan(
 export type PlanFeatures = {
   onlineOrdering: boolean;
   loyalty: boolean;
+  marketing: boolean;
+  /** Future — gift card programs. */
+  giftCards: boolean;
+  /** Future — coupon / promo codes. */
+  coupons: boolean;
+  /** Future — AI assistant tooling. */
+  aiAssistant: boolean;
+  /** Future — advanced analytics beyond the base dashboard. */
+  advancedAnalytics: boolean;
+  /** Whether the plan may own more than one restaurant. */
+  multiRestaurant: boolean;
   /** Use Number.POSITIVE_INFINITY for unlimited. */
   maxRestaurants: number;
 };
 
 /**
- * Canonical plan capability table — single source for feature gates
- * (online ordering, loyalty, restaurant limits). Prefer helpers below over
- * comparing plan name strings in feature code.
+ * Canonical plan capability table — single source for feature gates.
+ * Prefer helpers below over comparing plan name strings in feature code.
  */
 export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
   Starter: {
     onlineOrdering: false,
     loyalty: false,
+    marketing: false,
+    giftCards: false,
+    coupons: false,
+    aiAssistant: false,
+    advancedAnalytics: false,
+    multiRestaurant: false,
     maxRestaurants: 1,
   },
   Professional: {
     onlineOrdering: true,
     loyalty: true,
+    marketing: true,
+    giftCards: false,
+    coupons: false,
+    aiAssistant: false,
+    advancedAnalytics: false,
+    multiRestaurant: true,
     maxRestaurants: Number.POSITIVE_INFINITY,
   },
   Enterprise: {
     onlineOrdering: true,
     loyalty: true,
+    marketing: true,
+    giftCards: true,
+    coupons: true,
+    aiAssistant: true,
+    advancedAnalytics: true,
+    multiRestaurant: true,
     maxRestaurants: Number.POSITIVE_INFINITY,
   },
 };
@@ -165,6 +193,55 @@ export function planAllowsLoyalty(
   return getPlanFeatures(plan).loyalty;
 }
 
+/**
+ * Marketing tools (campaigns, promos surface).
+ * Driven by PLAN_FEATURES — not ad-hoc plan name checks.
+ */
+export function planAllowsMarketing(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).marketing;
+}
+
+/** Future — gift cards. Driven by PLAN_FEATURES. */
+export function planAllowsGiftCards(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).giftCards;
+}
+
+/** Future — coupons / promo codes. Driven by PLAN_FEATURES. */
+export function planAllowsCoupons(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).coupons;
+}
+
+/** Future — AI assistant. Driven by PLAN_FEATURES. */
+export function planAllowsAiAssistant(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).aiAssistant;
+}
+
+/** Future — advanced analytics. Driven by PLAN_FEATURES. */
+export function planAllowsAdvancedAnalytics(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).advancedAnalytics;
+}
+
+/**
+ * Multi-restaurant ownership (more than one restaurant).
+ * Driven by PLAN_FEATURES.multiRestaurant — not ad-hoc plan name checks.
+ * Numeric limits still use getMaxRestaurants / canCreateRestaurant.
+ */
+export function planAllowsMultiRestaurant(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).multiRestaurant;
+}
+
 export const LOYALTY_UPGRADE_MESSAGE =
   "Loyalty & Rewards is available on Professional and Enterprise plans.";
 
@@ -176,6 +253,9 @@ export function canCreateRestaurant(
   const count = Number.isFinite(restaurantCount)
     ? Math.max(0, Math.floor(restaurantCount))
     : 0;
+  if (!planAllowsMultiRestaurant(plan) && count >= 1) {
+    return false;
+  }
   return count < getMaxRestaurants(plan);
 }
 
