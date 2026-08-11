@@ -7,6 +7,7 @@ export const dashboardNavItems: DashboardNavItem[] = [
   { id: "reservations", label: "Reservations", href: "/dashboard/reservations" },
   { id: "orders", label: "Orders", href: "/dashboard/orders" },
   { id: "customers", label: "Customers", href: "/dashboard/customers" },
+  { id: "loyalty", label: "Loyalty", href: "/dashboard/loyalty" },
   { id: "kitchen", label: "Kitchen Display", href: "/dashboard/kitchen" },
   { id: "qr-codes", label: "QR Codes", href: "/dashboard/qr-codes" },
   { id: "analytics", label: "Analytics", href: "/dashboard/analytics" },

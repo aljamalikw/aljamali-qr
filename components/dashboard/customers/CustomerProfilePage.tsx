@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
+import { isAdminRole } from "@/lib/auth/roles";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 import {
   CUSTOMER_TAG_PRESETS,
   fetchCustomerById,
@@ -20,6 +23,7 @@ import {
 } from "@/lib/customers/queries";
 import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
+import { planAllowsLoyalty } from "@/lib/subscriptions/plans";
 
 type ProfileTab =
   | "overview"
@@ -29,13 +33,12 @@ type ProfileTab =
   | "timeline"
   | "loyalty";
 
-const TABS: { id: ProfileTab; label: string }[] = [
+const BASE_TABS: { id: ProfileTab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "orders", label: "Orders" },
   { id: "reservations", label: "Reservations" },
   { id: "notes", label: "Notes" },
   { id: "timeline", label: "Timeline" },
-  { id: "loyalty", label: "Future Loyalty" },
 ];
 
 type CustomerProfilePageProps = {
@@ -45,6 +48,8 @@ type CustomerProfilePageProps = {
 export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
+  const { access, loading: accessLoading } = useSubscriptionAccess();
+  const { role, loading: authLoading } = useAuthUser();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +79,22 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
       createdAt: string;
     }>
   >([]);
+
+  const loyaltyAllowed =
+    isAdminRole(role) || planAllowsLoyalty(access.plan);
+
+  const tabs = useMemo(() => {
+    if (loyaltyAllowed) {
+      return [...BASE_TABS, { id: "loyalty" as const, label: "Loyalty" }];
+    }
+    return BASE_TABS;
+  }, [loyaltyAllowed]);
+
+  useEffect(() => {
+    if (!loyaltyAllowed && tab === "loyalty") {
+      setTab("overview");
+    }
+  }, [loyaltyAllowed, tab]);
 
   const load = useCallback(async () => {
     if (!restaurant?.id) {
@@ -191,7 +212,7 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
     showToast("Profile updated");
   };
 
-  if (restaurantLoading || loading) {
+  if (restaurantLoading || accessLoading || authLoading || loading) {
     return (
       <div className="space-y-6">
         <TableSkeleton rows={6} />
@@ -240,7 +261,7 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -255,6 +276,20 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
           </button>
         ))}
       </div>
+
+      {!loyaltyAllowed ? (
+        <DashboardCard className="p-5">
+          <p className="text-sm text-white/60">
+            Upgrade to Professional to unlock Loyalty & Rewards.
+          </p>
+          <Link
+            href="/dashboard/subscription"
+            className="menu-btn-secondary mt-4 inline-flex"
+          >
+            Upgrade Plan
+          </Link>
+        </DashboardCard>
+      ) : null}
 
       {tab === "overview" ? (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -527,10 +562,10 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
         </DashboardCard>
       ) : null}
 
-      {tab === "loyalty" ? (
+      {tab === "loyalty" && loyaltyAllowed ? (
         <DashboardCard className="space-y-4 p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">
-            Loyalty (prepared)
+            Loyalty & Rewards
           </h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <Info

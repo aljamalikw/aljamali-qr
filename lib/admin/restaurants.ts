@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { logActivity } from "@/lib/admin/activity-log";
+import { logActivity, logAdminActivity } from "@/lib/admin/activity-log";
 import {
   ensureRestaurantSubscription,
   updateSubscription,
@@ -18,6 +18,7 @@ import {
   pickPrimaryByPlan,
   sortOwnerRowsByName,
 } from "@/lib/admin/group-by-owner";
+import { planAllowsLoyalty } from "@/lib/subscriptions/plans";
 import { buildCsv } from "@/lib/utils/csv";
 import type { Restaurant } from "@/lib/restaurants/types";
 
@@ -380,6 +381,7 @@ export async function changeRestaurantPlan(
     const ensured = await ensureRestaurantSubscription(restaurantId, plan);
     if (!ensured.ok) return ensured;
 
+    const previousPlan = ensured.data.plan;
     const updated = await updateSubscription({
       id: ensured.data.id,
       restaurantId,
@@ -388,6 +390,50 @@ export async function changeRestaurantPlan(
     });
 
     if (!updated.ok) return updated;
+
+    const rank: Record<string, number> = {
+      Starter: 1,
+      Professional: 2,
+      Enterprise: 3,
+    };
+    const action =
+      (rank[plan] ?? 0) < (rank[previousPlan] ?? 0)
+        ? "plan_downgraded"
+        : "plan_upgraded";
+
+    if (previousPlan !== plan) {
+      void logAdminActivity({
+        action,
+        restaurantId,
+        entityType: "subscription",
+        entityId: ensured.data.id,
+        oldValues: { plan: previousPlan },
+        newValues: { plan },
+      });
+
+      const loyaltyWasOn = planAllowsLoyalty(previousPlan);
+      const loyaltyNowOn = planAllowsLoyalty(plan);
+      if (!loyaltyWasOn && loyaltyNowOn) {
+        void logAdminActivity({
+          action: "loyalty_enabled",
+          restaurantId,
+          entityType: "subscription",
+          entityId: ensured.data.id,
+          oldValues: { plan: previousPlan, loyalty: false },
+          newValues: { plan, loyalty: true },
+        });
+      } else if (loyaltyWasOn && !loyaltyNowOn) {
+        void logAdminActivity({
+          action: "loyalty_disabled",
+          restaurantId,
+          entityType: "subscription",
+          entityId: ensured.data.id,
+          oldValues: { plan: previousPlan, loyalty: true },
+          newValues: { plan, loyalty: false },
+        });
+      }
+    }
+
     return { ok: true };
   } catch {
     return { ok: false, message: ERROR };

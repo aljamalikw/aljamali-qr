@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { logAdminActivity } from "@/lib/admin/activity-log";
+import { planAllowsLoyalty } from "@/lib/subscriptions/plans";
 import {
   ensureRestaurantSubscription,
   fetchOwnerSubscription,
@@ -169,6 +170,29 @@ export async function adminUpgradeRestaurantPlan(
       oldValues: { plan: previousPlan },
       newValues: { plan, status: "active" },
     });
+
+    const loyaltyWasOn = planAllowsLoyalty(previousPlan);
+    const loyaltyNowOn = planAllowsLoyalty(plan);
+    if (!loyaltyWasOn && loyaltyNowOn) {
+      void logAdminActivity({
+        action: "loyalty_enabled",
+        restaurantId,
+        entityType: "subscription",
+        entityId: ensured.data.id,
+        oldValues: { plan: previousPlan, loyalty: false },
+        newValues: { plan, loyalty: true },
+      });
+    } else if (loyaltyWasOn && !loyaltyNowOn) {
+      void logAdminActivity({
+        action: "loyalty_disabled",
+        restaurantId,
+        entityType: "subscription",
+        entityId: ensured.data.id,
+        oldValues: { plan: previousPlan, loyalty: true },
+        newValues: { plan, loyalty: false },
+      });
+    }
+
     return { ok: true };
   } catch {
     return { ok: false, message: "Unable to upgrade plan." };

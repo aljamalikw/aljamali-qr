@@ -99,26 +99,30 @@ export function isPayablePlan(
 /** Capability flags resolved from a subscription plan. */
 export type PlanFeatures = {
   onlineOrdering: boolean;
+  loyalty: boolean;
   /** Use Number.POSITIVE_INFINITY for unlimited. */
   maxRestaurants: number;
 };
 
 /**
  * Canonical plan capability table — single source for feature gates
- * (online ordering, restaurant limits). Prefer helpers below over
+ * (online ordering, loyalty, restaurant limits). Prefer helpers below over
  * comparing plan name strings in feature code.
  */
 export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
   Starter: {
     onlineOrdering: false,
+    loyalty: false,
     maxRestaurants: 1,
   },
   Professional: {
     onlineOrdering: true,
+    loyalty: true,
     maxRestaurants: Number.POSITIVE_INFINITY,
   },
   Enterprise: {
     onlineOrdering: true,
+    loyalty: true,
     maxRestaurants: Number.POSITIVE_INFINITY,
   },
 };
@@ -150,6 +154,19 @@ export function planAllowsOnlineOrdering(
 ): boolean {
   return getPlanFeatures(plan).onlineOrdering;
 }
+
+/**
+ * Loyalty & Rewards (points, rewards, membership tiers).
+ * Driven by PLAN_FEATURES — not ad-hoc plan name checks.
+ */
+export function planAllowsLoyalty(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).loyalty;
+}
+
+export const LOYALTY_UPGRADE_MESSAGE =
+  "Loyalty & Rewards is available on Professional and Enterprise plans.";
 
 /** Whether the account may create another restaurant under this plan. */
 export function canCreateRestaurant(
