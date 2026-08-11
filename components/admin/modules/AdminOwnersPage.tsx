@@ -5,6 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import { restaurantCountLabel } from "@/lib/admin/group-by-owner";
@@ -163,13 +164,19 @@ export function AdminOwnersPage() {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-white/50">
-              {search.trim() || status !== "all" || ownerFilter
-                ? "No owners match your filters."
-                : "No restaurant owners yet."}
-            </p>
-          </div>
+          <EmptyState
+            title={
+              search.trim() || status !== "all" || ownerFilter
+                ? "No matching owners"
+                : "No restaurant owners yet"
+            }
+            description={
+              search.trim() || status !== "all" || ownerFilter
+                ? "Try adjusting your search or filters."
+                : "Owners will appear here after restaurants register."
+            }
+            className="border-0 bg-transparent"
+          />
         ) : (
           <>
             <div className="overflow-x-auto">

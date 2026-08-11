@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { plansWithFeature } from "@/lib/subscriptions/plans";
 
-const INCLUDED_PLANS = ["Professional", "Enterprise"] as const;
+const INCLUDED_PLANS = plansWithFeature("loyalty");
 
 export function LoyaltyUpgradeCard() {
   return (

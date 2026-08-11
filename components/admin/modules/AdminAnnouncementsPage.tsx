@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
@@ -309,11 +310,20 @@ export function AdminAnnouncementsPage() {
           {loading ? (
             <TableSkeleton rows={4} />
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-white/45">
-              {search.trim() || status !== "all"
-                ? "No announcements match your filters."
-                : "No announcements yet."}
-            </p>
+            <EmptyState
+              compact
+              title={
+                search.trim() || status !== "all"
+                  ? "No matching announcements"
+                  : "No announcements yet"
+              }
+              description={
+                search.trim() || status !== "all"
+                  ? "Try adjusting your search or status filter."
+                  : "Create your first announcement to notify restaurant owners."
+              }
+              className="border-0 bg-transparent"
+            />
           ) : (
             <>
               <div className="space-y-3">

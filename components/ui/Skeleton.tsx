@@ -54,6 +54,23 @@ export function FormSkeleton() {
   );
 }
 
+/** Compact list placeholders for dashboard/admin side panels. */
+export function ListPanelSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-xl border border-white/5 bg-black/20 px-3 py-3"
+        >
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="mt-2 h-3 w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AuthCardSkeleton() {
   return (
     <div

@@ -170,7 +170,7 @@ export function CategoryManagement() {
                   <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${item.visible ? "bg-emerald-500/10 text-emerald-300" : "bg-white/5 text-white/40"}`}>
                     {item.visible ? "Visible" : "Hidden"}
                   </span>
-                  <div className="flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex flex-col gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                     <button
                       type="button"
                       onClick={() => moveCategory(index, -1)}
@@ -195,7 +195,7 @@ export function CategoryManagement() {
               <h3 className="mt-4 font-serif text-lg font-bold text-white">{item.nameEn}</h3>
               <p className="text-sm text-white/45" dir="rtl">{item.nameAr}</p>
               <p className="mt-3 text-xs text-white/35">{item.itemCount} items</p>
-              <div className="mt-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="mt-4 flex gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                 <button type="button" onClick={() => openEdit(item)} className="menu-btn-secondary flex-1 py-1.5 text-xs">Edit</button>
                 <button type="button" onClick={() => void handleDuplicate(item)} className="menu-btn-secondary flex-1 py-1.5 text-xs">Duplicate</button>
                 <button type="button" onClick={() => setDeleteTarget(item)} className="menu-btn-danger flex-1 py-1.5 text-xs">Delete</button>
@@ -214,8 +214,11 @@ export function CategoryManagement() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 16 }}
               className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-md -translate-y-1/2 rounded-2xl border border-gold/15 bg-surface-elevated p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="category-modal-title"
             >
-              <h2 className="font-serif text-xl font-bold text-white">{editingId ? "Edit Category" : "New Category"}</h2>
+              <h2 id="category-modal-title" className="font-serif text-xl font-bold text-white">{editingId ? "Edit Category" : "New Category"}</h2>
               <div className="mt-5 space-y-4">
                 <div>
                   <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/45">Name (English)</label>

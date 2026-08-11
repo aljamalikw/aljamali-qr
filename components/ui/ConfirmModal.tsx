@@ -1,7 +1,15 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import type { ReactNode } from "react";
+import {
+  AnimatePresence,
+  motion,
+} from "framer-motion";
+import {
+  useEffect,
+  useId,
+  useRef,
+  type ReactNode,
+} from "react";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -15,6 +23,12 @@ interface ConfirmModalProps {
   onCancel: () => void;
 }
 
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Accessible confirm dialog with focus trap, Escape, and labelled title/description.
+ */
 export function ConfirmModal({
   open,
   title,
@@ -26,6 +40,57 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+
+  useEffect(() => {
+    if (!open) return;
+
+    previouslyFocused.current =
+      typeof document !== "undefined"
+        ? (document.activeElement as HTMLElement | null)
+        : null;
+
+    const panel = panelRef.current;
+    const focusables = panel
+      ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE))
+      : [];
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    // Defer focus so the dialog is in the DOM.
+    const focusTimer = window.setTimeout(() => first?.focus(), 0);
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) {
+        event.preventDefault();
+        onCancelRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || focusables.length === 0) return;
+
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        }
+      } else if (document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused.current?.focus?.();
+    };
+  }, [open, loading]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -40,6 +105,7 @@ export function ConfirmModal({
             aria-hidden="true"
           />
           <motion.div
+            ref={panelRef}
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
@@ -49,11 +115,19 @@ export function ConfirmModal({
             }`}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
           >
-            <h2 className="text-center font-serif text-xl font-bold text-white">
+            <h2
+              id={titleId}
+              className="text-center font-serif text-xl font-bold text-white"
+            >
               {title}
             </h2>
-            <div className="mt-3 text-center text-sm leading-relaxed text-white/50">
+            <div
+              id={descriptionId}
+              className="mt-3 text-center text-sm leading-relaxed text-white/50"
+            >
               {description}
             </div>
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">

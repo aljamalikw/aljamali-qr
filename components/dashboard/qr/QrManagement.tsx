@@ -31,7 +31,6 @@ import { QrTable } from "./QrTable";
 import { CreateQrWizard } from "./CreateQrWizard";
 import { BulkGenerateQrModal } from "./BulkGenerateQrModal";
 import { QrDetailsDrawer } from "./QrDetailsDrawer";
-import { DeleteQrModal } from "./DeleteQrModal";
 import { RenameQrModal } from "./RenameQrModal";
 import { QrEmptyState } from "./QrEmptyState";
 import type { QrAction } from "./QrActionsMenu";
@@ -472,9 +471,20 @@ export function QrManagement() {
         onToggleArchive={(item) => handleAction("toggle-archive", item)}
       />
 
-      <DeleteQrModal
+      <ConfirmModal
         open={deleteTarget !== null}
-        name={deleteTarget?.name ?? ""}
+        title="Delete QR code?"
+        description={
+          <>
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-white">
+              {deleteTarget?.name ?? "this QR code"}
+            </span>
+            ? This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        variant="danger"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
@@ -489,7 +499,13 @@ export function QrManagement() {
       <ConfirmModal
         open={bulkDeleteOpen}
         title="Delete selected QR codes?"
-        description={<>Are you sure you want to delete <span className="font-medium text-white">{selectedIds.size}</span> QR codes?</>}
+        description={
+          <>
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-white">{selectedIds.size}</span> QR
+            codes?
+          </>
+        }
         confirmLabel="Delete"
         variant="danger"
         onConfirm={confirmBulkDelete}

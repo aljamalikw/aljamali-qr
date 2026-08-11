@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { FormSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
   generateRestaurantLoginLink,
@@ -208,6 +209,7 @@ export function ManageRestaurantDrawer({
               type="button"
               onClick={onClose}
               className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-white"
+              aria-label="Close"
             >
               ✕
             </button>
@@ -215,7 +217,7 @@ export function ManageRestaurantDrawer({
 
           <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6 sm:px-6">
             {loading || !details ? (
-              <p className="text-sm text-white/45">Loading restaurant details…</p>
+              <FormSkeleton />
             ) : (
               <>
                 <section>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
@@ -360,9 +361,11 @@ export function AdminActivityPage() {
         {loading ? (
           <TableSkeleton rows={5} />
         ) : rows.length === 0 ? (
-          <p className="py-12 text-center text-sm text-white/45">
-            No activity logs match your filters.
-          </p>
+          <EmptyState
+            title="No activity logs"
+            description="No activity logs match your filters. Try widening the date range or clearing filters."
+            className="border-0 bg-transparent"
+          />
         ) : (
           <>
             <div className="overflow-x-auto rounded-2xl border border-gold/15 bg-black/25">

@@ -204,6 +204,16 @@ export function planAllowsMarketing(
   return getPlanFeatures(plan).marketing;
 }
 
+/**
+ * Plans that enable a given PLAN_FEATURES flag — for upgrade-card "Included in" lists.
+ * Prefer this over hardcoding plan name arrays in UI.
+ */
+export function plansWithFeature(
+  feature: keyof PlanFeatures,
+): SubscriptionPlanId[] {
+  return SUBSCRIPTION_PLAN_ORDER.filter((id) => PLAN_FEATURES[id][feature]);
+}
+
 export const MARKETING_UPGRADE_MESSAGE =
   "Marketing Center is available on the Enterprise plan.";
 

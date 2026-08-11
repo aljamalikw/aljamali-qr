@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
-import { StatCardSkeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListPanelSkeleton, StatCardSkeleton } from "@/components/ui/Skeleton";
 import { DemoRequestStatusBadge } from "@/components/admin/demo-requests/DemoRequestStatusBadge";
 import {
   fetchPlatformStats,
@@ -148,9 +149,16 @@ export function AdminDashboardHome() {
           </div>
           <div className="space-y-3">
             {loading ? (
-              <p className="text-sm text-white/45">Loading demo requests…</p>
+              <ListPanelSkeleton rows={3} />
             ) : stats?.recentDemoRequests.length === 0 ? (
-              <p className="text-sm text-white/45">No demo requests yet.</p>
+              <EmptyState
+                compact
+                title="No demo requests"
+                description="Demo requests will appear here as they come in."
+                actionLabel="Open demos"
+                actionHref="/admin/demo-requests"
+                className="border-0 bg-transparent shadow-none"
+              />
             ) : (
               stats?.recentDemoRequests.map((item) => (
                 <div
@@ -178,9 +186,14 @@ export function AdminDashboardHome() {
           </h2>
           <div className="space-y-3">
             {loading ? (
-              <p className="text-sm text-white/45">Loading follow-ups…</p>
+              <ListPanelSkeleton rows={3} />
             ) : stats?.upcomingFollowUps.length === 0 ? (
-              <p className="text-sm text-white/45">No follow-ups scheduled.</p>
+              <EmptyState
+                compact
+                title="No follow-ups"
+                description="Scheduled follow-ups will show here."
+                className="border-0 bg-transparent shadow-none"
+              />
             ) : (
               stats?.upcomingFollowUps.map((item) => (
                 <div
@@ -211,11 +224,16 @@ export function AdminDashboardHome() {
           </div>
           <div className="space-y-3">
             {loading ? (
-              <p className="text-sm text-white/45">Loading restaurants…</p>
+              <ListPanelSkeleton rows={3} />
             ) : stats?.recentRestaurants.length === 0 ? (
-              <p className="text-sm text-white/45">
-                Restaurant directory will populate as owners complete onboarding.
-              </p>
+              <EmptyState
+                compact
+                title="No restaurants yet"
+                description="Restaurants appear after owners complete onboarding."
+                actionLabel="View restaurants"
+                actionHref="/admin/restaurants"
+                className="border-0 bg-transparent shadow-none"
+              />
             ) : (
               stats?.recentRestaurants.map((restaurant) => (
                 <div
@@ -247,9 +265,16 @@ export function AdminDashboardHome() {
           </div>
           <div className="space-y-3">
             {loading ? (
-              <p className="text-sm text-white/45">Loading payments…</p>
+              <ListPanelSkeleton rows={3} />
             ) : !stats?.recentPayments.length ? (
-              <p className="text-sm text-white/45">No payments recorded yet.</p>
+              <EmptyState
+                compact
+                title="No payments yet"
+                description="Recent payment activity will show here."
+                actionLabel="View payments"
+                actionHref="/admin/payments"
+                className="border-0 bg-transparent shadow-none"
+              />
             ) : (
               stats.recentPayments.map((payment) => (
                 <div

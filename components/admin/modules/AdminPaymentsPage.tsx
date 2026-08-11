@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
@@ -178,13 +179,19 @@ export function AdminPaymentsPage() {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-white/50">
-              {search || status !== "all"
-                ? "No payments match your filters."
-                : "No payment records yet."}
-            </p>
-          </div>
+          <EmptyState
+            title={
+              search || status !== "all"
+                ? "No matching payments"
+                : "No payment records yet"
+            }
+            description={
+              search || status !== "all"
+                ? "Try adjusting your search or status filter."
+                : "Successful and pending payments will appear here."
+            }
+            className="border-0 bg-transparent"
+          />
         ) : (
           <>
             <div className="overflow-x-auto">

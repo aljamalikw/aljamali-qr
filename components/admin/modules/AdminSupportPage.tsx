@@ -6,6 +6,7 @@ import { AdminPlaceholder } from "@/components/admin/AdminPlaceholder";
 import { DemoRequestPagination } from "@/components/admin/demo-requests/DemoRequestPagination";
 import { SupportConversation } from "@/components/support/SupportConversation";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import { restaurantCountLabel } from "@/lib/admin/group-by-owner";
@@ -340,13 +341,19 @@ export function AdminSupportPage() {
             </button>
           </div>
         ) : ownerGroups.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-white/50">
-              {search || status !== "all" || priority !== "all"
-                ? "No tickets match your filters."
-                : "No support tickets yet."}
-            </p>
-          </div>
+          <EmptyState
+            title={
+              search || status !== "all" || priority !== "all"
+                ? "No matching tickets"
+                : "No support tickets yet"
+            }
+            description={
+              search || status !== "all" || priority !== "all"
+                ? "Try adjusting your search or filters."
+                : "Owner support tickets will appear here when submitted."
+            }
+            className="border-0 bg-transparent"
+          />
         ) : (
           <>
             {selectedIds.size > 0 ? (
