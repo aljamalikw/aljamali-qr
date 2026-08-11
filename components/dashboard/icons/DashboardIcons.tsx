@@ -24,6 +24,7 @@ type DashboardIconName =
   | "order"
   | "customers"
   | "loyalty"
+  | "marketing"
   | "kitchen"
   | "logo";
 
@@ -173,6 +174,12 @@ export function DashboardIcon({
         <path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 16.8 5.6 21.2 8 14 2 9.2h7.6z" />
       </svg>
     ),
+    marketing: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M3 11l18-5v12L3 13v-2z" />
+        <path d="M11.6 16.8a3 3 0 1 1-4.2-4.2" />
+      </svg>
+    ),
     kitchen: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
         <path d="M4 4h16v4H4z" />
@@ -202,6 +209,7 @@ export function getNavIcon(id: string): DashboardIconName {
     orders: "order",
     customers: "customers",
     loyalty: "loyalty",
+    marketing: "marketing",
     kitchen: "kitchen",
     "qr-codes": "qr-codes",
     analytics: "analytics",

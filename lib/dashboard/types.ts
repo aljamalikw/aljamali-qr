@@ -6,6 +6,7 @@ export type DashboardNavId =
   | "orders"
   | "customers"
   | "loyalty"
+  | "marketing"
   | "kitchen"
   | "qr-codes"
   | "analytics"

@@ -134,7 +134,7 @@ export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
   Professional: {
     onlineOrdering: true,
     loyalty: true,
-    marketing: true,
+    marketing: false,
     giftCards: false,
     coupons: false,
     aiAssistant: false,
@@ -196,12 +196,16 @@ export function planAllowsLoyalty(
 /**
  * Marketing tools (campaigns, promos surface).
  * Driven by PLAN_FEATURES — not ad-hoc plan name checks.
+ * Currently Enterprise-only.
  */
 export function planAllowsMarketing(
   plan: string | null | undefined,
 ): boolean {
   return getPlanFeatures(plan).marketing;
 }
+
+export const MARKETING_UPGRADE_MESSAGE =
+  "Marketing Center is available on the Enterprise plan.";
 
 /** Future — gift cards. Driven by PLAN_FEATURES. */
 export function planAllowsGiftCards(

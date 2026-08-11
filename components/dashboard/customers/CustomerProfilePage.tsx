@@ -23,7 +23,14 @@ import {
 } from "@/lib/customers/queries";
 import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
-import { planAllowsLoyalty } from "@/lib/subscriptions/plans";
+import {
+  fetchCustomerMarketingHistory,
+  getCustomerCampaignEligibility,
+} from "@/lib/marketing/campaigns";
+import {
+  planAllowsLoyalty,
+  planAllowsMarketing,
+} from "@/lib/subscriptions/plans";
 
 type ProfileTab =
   | "overview"
@@ -31,7 +38,8 @@ type ProfileTab =
   | "reservations"
   | "notes"
   | "timeline"
-  | "loyalty";
+  | "loyalty"
+  | "marketing";
 
 const BASE_TABS: { id: ProfileTab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -40,6 +48,17 @@ const BASE_TABS: { id: ProfileTab; label: string }[] = [
   { id: "notes", label: "Notes" },
   { id: "timeline", label: "Timeline" },
 ];
+
+type MarketingHistoryRow = {
+  campaignId: string;
+  campaignName: string;
+  campaignType: string;
+  status: string;
+  channel: string;
+  deliveryStatus: string;
+  sentAt: string | null;
+  createdAt: string;
+};
 
 type CustomerProfilePageProps = {
   customerId: string;
@@ -79,22 +98,34 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
       createdAt: string;
     }>
   >([]);
+  const [marketingHistory, setMarketingHistory] = useState<
+    MarketingHistoryRow[]
+  >([]);
 
   const loyaltyAllowed =
     isAdminRole(role) || planAllowsLoyalty(access.plan);
+  const marketingAllowed =
+    isAdminRole(role) || planAllowsMarketing(access.plan);
 
   const tabs = useMemo(() => {
+    const next = [...BASE_TABS];
     if (loyaltyAllowed) {
-      return [...BASE_TABS, { id: "loyalty" as const, label: "Loyalty" }];
+      next.push({ id: "loyalty", label: "Loyalty" });
     }
-    return BASE_TABS;
-  }, [loyaltyAllowed]);
+    if (marketingAllowed) {
+      next.push({ id: "marketing", label: "Marketing" });
+    }
+    return next;
+  }, [loyaltyAllowed, marketingAllowed]);
 
   useEffect(() => {
-    if (!loyaltyAllowed && tab === "loyalty") {
+    if (
+      (!loyaltyAllowed && tab === "loyalty") ||
+      (!marketingAllowed && tab === "marketing")
+    ) {
       setTab("overview");
     }
-  }, [loyaltyAllowed, tab]);
+  }, [loyaltyAllowed, marketingAllowed, tab]);
 
   const load = useCallback(async () => {
     if (!restaurant?.id) {
@@ -115,16 +146,19 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
     setNotes(result.data.notes ?? "");
     setBirthday(result.data.birthday ?? "");
 
-    const [timelineResult, ordersResult, reservationsResult] =
+    const [timelineResult, ordersResult, reservationsResult, marketingResult] =
       await Promise.all([
         fetchCustomerTimeline(restaurant.id, result.data),
         fetchCustomerOrders(restaurant.id, result.data),
         fetchCustomerReservations(restaurant.id, result.data),
+        fetchCustomerMarketingHistory(restaurant.id, result.data.id),
       ]);
 
     if (timelineResult.ok) setTimeline(timelineResult.data);
     if (ordersResult.ok) setOrders(ordersResult.data);
     if (reservationsResult.ok) setReservations(reservationsResult.data);
+    if (marketingResult.ok) setMarketingHistory(marketingResult.data);
+    else setMarketingHistory([]);
 
     setLoading(false);
   }, [customerId, restaurant?.id]);
@@ -591,6 +625,89 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
             <li>Assign tiers (Bronze / Silver / Gold) in metadata</li>
           </ul>
         </DashboardCard>
+      ) : null}
+
+      {tab === "marketing" && marketingAllowed ? (
+        <div className="grid gap-4">
+          <DashboardCard className="space-y-3 p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">
+              Future campaign eligibility
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {getCustomerCampaignEligibility(customer).map((label) => (
+                <span
+                  key={label}
+                  className="rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-xs text-gold"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </DashboardCard>
+
+          <DashboardCard className="space-y-3 p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">
+              Marketing history
+            </h2>
+            <p className="text-sm text-white/45">
+              Campaigns received ({marketingHistory.length})
+            </p>
+            {marketingHistory.length === 0 ? (
+              <p className="py-6 text-center text-sm text-white/45">
+                No campaigns sent to this customer yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left">
+                  <thead>
+                    <tr className="border-b border-gold/10">
+                      {[
+                        "Campaign",
+                        "Type",
+                        "Channel",
+                        "Status",
+                        "Sent",
+                      ].map((heading) => (
+                        <th
+                          key={heading}
+                          className="px-3 py-3 text-xs uppercase tracking-wider text-white/40"
+                        >
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marketingHistory.map((row) => (
+                      <tr
+                        key={`${row.campaignId}-${row.channel}`}
+                        className="border-b border-white/5 last:border-0"
+                      >
+                        <td className="px-3 py-3 text-sm text-white/85">
+                          {row.campaignName}
+                        </td>
+                        <td className="px-3 py-3 text-sm text-white/65">
+                          {row.campaignType}
+                        </td>
+                        <td className="px-3 py-3 text-sm capitalize text-white/65">
+                          {row.channel}
+                        </td>
+                        <td className="px-3 py-3 text-sm capitalize text-white/65">
+                          {row.deliveryStatus}
+                        </td>
+                        <td className="px-3 py-3 text-sm text-white/50">
+                          {row.sentAt
+                            ? formatDemoDateTime(row.sentAt)
+                            : formatDemoDate(row.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </DashboardCard>
+        </div>
       ) : null}
     </div>
   );
