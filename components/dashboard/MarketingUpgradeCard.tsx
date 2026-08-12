@@ -16,8 +16,8 @@ export function MarketingUpgradeCard() {
           Marketing Center
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-white/55">
-          Create customer campaigns from your CRM — birthday, win-back, VIP, and
-          more — with WhatsApp and Email-ready delivery architecture.
+          Send WhatsApp campaigns to opted-in CRM customers — audience filters,
+          templates, and provider-ready delivery for Professional and Enterprise.
         </p>
 
         <div className="mx-auto mt-8 max-w-sm text-start">

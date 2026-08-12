@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { WhatsAppCampaignBuilder } from "@/components/dashboard/marketing/WhatsAppCampaignBuilder";
+import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
+import { isAdminRole } from "@/lib/auth/roles";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 import {
   backfillCustomersFromHistory,
   computeCustomerSummary,
@@ -17,6 +21,7 @@ import {
 } from "@/lib/customers/queries";
 import { formatDemoDate } from "@/lib/demo-requests/utils";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
+import { planAllowsMarketing } from "@/lib/subscriptions/plans";
 import { supabase } from "@/lib/supabase";
 
 const PAGE_SIZE = 10;
@@ -41,6 +46,8 @@ function TagChip({ tag }: { tag: string }) {
 export function CustomersManagement() {
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
+  const { access } = useSubscriptionAccess();
+  const { role } = useAuthUser();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +55,10 @@ export function CustomersManagement() {
   const [filter, setFilter] = useState<CustomerFilter>("all");
   const [birthdayMonth, setBirthdayMonth] = useState<number | "all">("all");
   const [page, setPage] = useState(1);
+  const [campaignBuilderOpen, setCampaignBuilderOpen] = useState(false);
+
+  const canCreateCampaign =
+    isAdminRole(role) || planAllowsMarketing(access.plan);
 
   const load = useCallback(async (options?: { quiet?: boolean }) => {
     if (!restaurant?.id) {
@@ -130,7 +141,7 @@ export function CustomersManagement() {
     [filtered, page],
   );
 
-  if (restaurantLoading || (loading && customers.length === 0)) {
+  if (restaurantLoading || loading) {
     return (
       <div className="space-y-6">
         <header>
@@ -157,13 +168,32 @@ export function CustomersManagement() {
             Restaurant-scoped CRM — each restaurant owns its own customers.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="menu-btn-secondary shrink-0"
-        >
-          Refresh
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {canCreateCampaign ? (
+            <button
+              type="button"
+              onClick={() => setCampaignBuilderOpen(true)}
+              className="menu-btn-primary shrink-0"
+            >
+              New Campaign
+            </button>
+          ) : (
+            <Link
+              href="/dashboard/subscription"
+              className="menu-btn-secondary shrink-0"
+              title="WhatsApp campaigns require Professional or Enterprise"
+            >
+              New Campaign
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="menu-btn-secondary shrink-0"
+          >
+            Refresh
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -336,11 +366,6 @@ export function CustomersManagement() {
                         <Link
                           href={`/dashboard/customers/${customer.id}`}
                           className="menu-btn-secondary !px-2.5 !py-1.5 text-xs"
-                          onClick={() => {
-                            if (!restaurant?.id) {
-                              showToast("Restaurant not ready", "error");
-                            }
-                          }}
                         >
                           View
                         </Link>
@@ -350,34 +375,51 @@ export function CustomersManagement() {
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between gap-3 text-sm text-white/45">
-              <p>
-                Showing {(safePage - 1) * PAGE_SIZE + 1}–
-                {Math.min(safePage * PAGE_SIZE, filtered.length)} of{" "}
-                {filtered.length}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={safePage <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="menu-btn-secondary !px-3 !py-1.5 text-xs disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="menu-btn-secondary !px-3 !py-1.5 text-xs disabled:opacity-40"
-                >
-                  Next
-                </button>
+
+            {totalPages > 1 ? (
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <p className="text-xs text-white/40">
+                  Page {safePage} of {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={safePage <= 1}
+                    className="menu-btn-secondary !px-3 !py-1.5 text-xs disabled:opacity-40"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={safePage >= totalPages}
+                    className="menu-btn-secondary !px-3 !py-1.5 text-xs disabled:opacity-40"
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : null}
           </>
         )}
       </DashboardCard>
+
+      {restaurant?.id && canCreateCampaign ? (
+        <WhatsAppCampaignBuilder
+          open={campaignBuilderOpen}
+          restaurantId={restaurant.id}
+          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          plan={access.plan}
+          bypassAdmin={isAdminRole(role)}
+          onClose={() => setCampaignBuilderOpen(false)}
+          onCreated={() => {
+            showToast("Campaign created");
+          }}
+        />
+      ) : null}
     </div>
   );
 }

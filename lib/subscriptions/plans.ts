@@ -100,7 +100,16 @@ export function isPayablePlan(
 export type PlanFeatures = {
   onlineOrdering: boolean;
   loyalty: boolean;
+  /** WhatsApp Campaign Center (Professional + Enterprise). */
   marketing: boolean;
+  /** Schedule campaigns for later (Enterprise). */
+  marketingScheduling: boolean;
+  /** Save / manage message templates (Enterprise). */
+  marketingTemplates: boolean;
+  /** Campaign delivery analytics (Enterprise). */
+  marketingAnalytics: boolean;
+  /** Future multi-channel (email/SMS/push) beyond WhatsApp (Enterprise). */
+  marketingMultiChannel: boolean;
   /** Future — gift card programs. */
   giftCards: boolean;
   /** Future — coupon / promo codes. */
@@ -124,6 +133,10 @@ export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
     onlineOrdering: false,
     loyalty: false,
     marketing: false,
+    marketingScheduling: false,
+    marketingTemplates: false,
+    marketingAnalytics: false,
+    marketingMultiChannel: false,
     giftCards: false,
     coupons: false,
     aiAssistant: false,
@@ -134,7 +147,11 @@ export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
   Professional: {
     onlineOrdering: true,
     loyalty: true,
-    marketing: false,
+    marketing: true,
+    marketingScheduling: false,
+    marketingTemplates: false,
+    marketingAnalytics: false,
+    marketingMultiChannel: false,
     giftCards: false,
     coupons: false,
     aiAssistant: false,
@@ -146,6 +163,10 @@ export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
     onlineOrdering: true,
     loyalty: true,
     marketing: true,
+    marketingScheduling: true,
+    marketingTemplates: true,
+    marketingAnalytics: true,
+    marketingMultiChannel: true,
     giftCards: true,
     coupons: true,
     aiAssistant: true,
@@ -194,14 +215,41 @@ export function planAllowsLoyalty(
 }
 
 /**
- * Marketing tools (campaigns, promos surface).
- * Driven by PLAN_FEATURES — not ad-hoc plan name checks.
- * Currently Enterprise-only.
+ * Marketing / WhatsApp Campaign Center.
+ * Driven by PLAN_FEATURES — Professional + Enterprise.
  */
 export function planAllowsMarketing(
   plan: string | null | undefined,
 ): boolean {
   return getPlanFeatures(plan).marketing;
+}
+
+/** Schedule campaigns for later — Enterprise. */
+export function planAllowsMarketingScheduling(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).marketingScheduling;
+}
+
+/** Saved marketing templates — Enterprise. */
+export function planAllowsMarketingTemplates(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).marketingTemplates;
+}
+
+/** Campaign analytics — Enterprise. */
+export function planAllowsMarketingAnalytics(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).marketingAnalytics;
+}
+
+/** Future multi-channel marketing — Enterprise. */
+export function planAllowsMarketingMultiChannel(
+  plan: string | null | undefined,
+): boolean {
+  return getPlanFeatures(plan).marketingMultiChannel;
 }
 
 /**
@@ -215,7 +263,7 @@ export function plansWithFeature(
 }
 
 export const MARKETING_UPGRADE_MESSAGE =
-  "Marketing Center is available on the Enterprise plan.";
+  "WhatsApp Campaigns are available on Professional and Enterprise plans.";
 
 /** Future — gift cards. Driven by PLAN_FEATURES. */
 export function planAllowsGiftCards(

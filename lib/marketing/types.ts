@@ -33,16 +33,50 @@ export type MarketingChannel = (typeof MARKETING_CHANNELS)[number];
 export const MARKETING_CHANNELS_UI: MarketingChannel[] = ["whatsapp", "email"];
 
 export type AudienceFilters = {
+  /** Always enforced true for campaign sends — stored for audit. */
+  requireMarketingOptIn?: boolean;
+  /** UI preset label stored for campaign history display. */
+  audiencePreset?: string | null;
   visitedWithinDays?: number | null;
   noVisitDays?: number | null;
   birthdayMonth?: number | null;
   minTotalSpent?: number | null;
   maxTotalSpent?: number | null;
   minOrderCount?: number | null;
+  maxOrderCount?: number | null;
   minReservationCount?: number | null;
   tagsAny?: string[];
   customTags?: string[];
   minLoyaltyPoints?: number | null;
+  /** Prefer customers with metadata.loyalty.enrolled. */
+  loyaltyEnrolled?: boolean | null;
+  /** totalOrders + totalReservations <= 1 */
+  newCustomersOnly?: boolean | null;
+  /** Explicit allow-list (must still be opted-in). */
+  customCustomerIds?: string[] | null;
+};
+
+export type AudiencePresetId =
+  | "all_opted_in"
+  | "loyalty"
+  | "vip"
+  | "new"
+  | "birthday_month"
+  | "inactive"
+  | "orders"
+  | "spent"
+  | "custom";
+
+export const AUDIENCE_PRESET_LABELS: Record<AudiencePresetId, string> = {
+  all_opted_in: "All opted-in customers",
+  loyalty: "Loyalty Members",
+  vip: "VIP Customers",
+  new: "New Customers",
+  birthday_month: "Birthdays this month",
+  inactive: "Inactive customers",
+  orders: "Order count",
+  spent: "Total spend",
+  custom: "Custom selection",
 };
 
 export type CampaignMetadata = {
@@ -187,6 +221,7 @@ function daysBetween(fromIso: string | null, now = Date.now()): number | null {
 
 /**
  * Batch audience matching against already-loaded CRM customers (no N+1).
+ * ALWAYS requires metadata.marketing_opt_in === true for campaign eligibility.
  */
 export function filterAudience(
   customers: Customer[],
@@ -197,8 +232,20 @@ export function filterAudience(
   const customTags = (filters.customTags ?? [])
     .map((t) => t.trim())
     .filter(Boolean);
+  const customIds = new Set(
+    (filters.customCustomerIds ?? []).map((id) => id.trim()).filter(Boolean),
+  );
 
   return customers.filter((customer) => {
+    // Hard consent gate — never include customers without opt-in.
+    if (customer.metadata?.marketing_opt_in !== true) {
+      return false;
+    }
+
+    if (customIds.size > 0 && !customIds.has(customer.id)) {
+      return false;
+    }
+
     const daysSinceVisit = daysBetween(customer.lastVisit, now);
 
     if (
@@ -250,6 +297,12 @@ export function filterAudience(
       return false;
     }
     if (
+      filters.maxOrderCount != null &&
+      customer.totalOrders > filters.maxOrderCount
+    ) {
+      return false;
+    }
+    if (
       filters.minReservationCount != null &&
       customer.totalReservations < filters.minReservationCount
     ) {
@@ -260,6 +313,15 @@ export function filterAudience(
       customer.loyaltyPoints < filters.minLoyaltyPoints
     ) {
       return false;
+    }
+
+    if (filters.loyaltyEnrolled === true) {
+      const enrolled = Boolean(customer.metadata?.loyalty?.enrolled);
+      if (!enrolled && customer.loyaltyPoints <= 0) return false;
+    }
+
+    if (filters.newCustomersOnly === true) {
+      if (customer.totalOrders + customer.totalReservations > 1) return false;
     }
 
     if (tagsAny.length > 0) {
@@ -274,6 +336,28 @@ export function filterAudience(
 
     return true;
   });
+}
+
+export function countMarketingOptIns(customers: Customer[]): number {
+  return customers.filter((c) => c.metadata?.marketing_opt_in === true).length;
+}
+
+export function describeAudienceFilters(filters: AudienceFilters): string {
+  if (filters.audiencePreset) {
+    return filters.audiencePreset;
+  }
+  const parts: string[] = ["Opted-in"];
+  if (filters.loyaltyEnrolled) parts.push("Loyalty");
+  if (filters.tagsAny?.includes("VIP")) parts.push("VIP");
+  if (filters.newCustomersOnly) parts.push("New");
+  if (filters.birthdayMonth) parts.push("Birthday month");
+  if (filters.noVisitDays) parts.push(`Inactive ${filters.noVisitDays}d+`);
+  if (filters.minOrderCount) parts.push(`${filters.minOrderCount}+ orders`);
+  if (filters.minTotalSpent) parts.push(`KD ${filters.minTotalSpent}+`);
+  if (filters.customCustomerIds?.length) {
+    parts.push(`Custom (${filters.customCustomerIds.length})`);
+  }
+  return parts.join(" · ");
 }
 
 export function estimateCampaignRevenue(

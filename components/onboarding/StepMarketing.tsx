@@ -6,7 +6,10 @@ import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { saveMarketingTemplate } from "@/lib/marketing/campaigns";
 import { DEFAULT_MARKETING_TEMPLATES } from "@/lib/marketing/templates";
-import { planAllowsMarketing } from "@/lib/subscriptions/plans";
+import {
+  planAllowsMarketing,
+  planAllowsMarketingTemplates,
+} from "@/lib/subscriptions/plans";
 import type { Restaurant } from "@/lib/restaurants/types";
 
 interface StepMarketingProps {
@@ -25,6 +28,7 @@ export function StepMarketing({
   onSkip,
 }: StepMarketingProps) {
   const allowed = planAllowsMarketing(plan);
+  const templatesAllowed = planAllowsMarketingTemplates(plan);
   const welcome = DEFAULT_MARKETING_TEMPLATES.find((t) => t.slug === "welcome")!;
   const [name, setName] = useState(welcome.name);
   const [subject, setSubject] = useState(welcome.subject);
@@ -40,21 +44,21 @@ export function StepMarketing({
             Marketing
           </p>
           <h2 className="mt-2 font-serif text-2xl font-bold text-white">
-            Marketing Center
+            WhatsApp Campaigns
           </h2>
           <p className="mt-2 text-sm text-white/55">
-            Campaigns from Customer CRM are available when Marketing is enabled
-            on your plan. Continue setup without blocking — upgrade when you are
-            ready.
+            WhatsApp campaigns for opted-in CRM customers are available on
+            Professional and Enterprise. Continue setup without blocking —
+            upgrade when you are ready.
           </p>
         </div>
 
         <div className="rounded-2xl border border-gold/20 bg-gold/5 px-4 py-5 text-sm text-white/70">
           <p className="font-medium text-gold">Included via plan features</p>
           <ul className="mt-3 list-disc space-y-1 ps-5 text-white/55">
-            <li>Audience builder</li>
-            <li>Campaign templates</li>
-            <li>WhatsApp & Email-ready delivery</li>
+            <li>WhatsApp campaigns (Professional+)</li>
+            <li>Scheduling, templates & analytics (Enterprise)</li>
+            <li>Consent-aware audience from Customer CRM</li>
           </ul>
           <Link
             href="/dashboard/subscription"
@@ -76,6 +80,40 @@ export function StepMarketing({
     );
   }
 
+  if (!templatesAllowed) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-gold">
+            Marketing
+          </p>
+          <h2 className="mt-2 font-serif text-2xl font-bold text-white">
+            WhatsApp Campaigns ready
+          </h2>
+          <p className="mt-2 text-sm text-white/55">
+            Your plan includes WhatsApp campaigns for customers who opted in at
+            checkout. Create campaigns from Customers or Marketing Center.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-sm text-white/65">
+          <ul className="list-disc space-y-1 ps-5">
+            <li>Opt-in only audiences</li>
+            <li>Live recipient estimates</li>
+            <li>Provider-ready Meta WhatsApp Cloud API</li>
+          </ul>
+        </div>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row">
+          <AuthButton type="button" variant="secondary" onClick={onBack}>
+            Back
+          </AuthButton>
+          <AuthButton type="button" onClick={() => void onContinue()}>
+            Continue
+          </AuthButton>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -86,7 +124,7 @@ export function StepMarketing({
           Create your first template
         </h2>
         <p className="mt-2 text-sm text-white/55">
-          Save a Welcome template you can reuse in Marketing Center campaigns.
+          Save a Welcome template you can reuse in WhatsApp campaigns.
         </p>
       </div>
 

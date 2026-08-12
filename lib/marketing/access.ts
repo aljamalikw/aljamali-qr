@@ -13,7 +13,7 @@ export type MarketingAccessResult =
 
 /**
  * Server-side marketing gate. Platform admins always pass.
- * Restaurant owners require planAllowsMarketing(plan) (Enterprise).
+ * Restaurant owners require planAllowsMarketing(plan) (Professional + Enterprise).
  */
 export async function resolveMarketingAccess(
   client: SupabaseClient,

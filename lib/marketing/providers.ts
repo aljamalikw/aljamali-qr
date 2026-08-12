@@ -1,17 +1,11 @@
 /**
- * Future delivery providers for Marketing Center.
- *
- * UI and campaign lifecycle do not call these yet. When integrating:
- * - WhatsApp Business API → implement sendWhatsApp
- * - Resend / SendGrid → implement sendEmail
- * - Twilio → implement sendSms
- * - Firebase Cloud Messaging → implement sendPush
- *
- * Campaign `metadata.providers` and recipient `metadata` store provider payloads /
- * message ids without changing the Marketing UI.
+ * Channel delivery adapters for Marketing Center.
+ * WhatsApp campaigns go through lib/marketing/whatsapp (sendCampaign).
+ * Email / SMS / Push remain stubs until providers are connected.
  */
 
 import type { MarketingChannel } from "@/lib/marketing/types";
+import { sendCampaign as sendWhatsAppCampaign } from "@/lib/marketing/whatsapp";
 
 export type MarketingDeliveryPayload = {
   restaurantId: string;
@@ -43,12 +37,30 @@ export const marketingProviders: Partial<
   Record<MarketingChannel, MarketingChannelProvider>
 > = {
   whatsapp: {
-    id: "whatsapp_business_api",
+    id: "whatsapp_provider_bridge",
     channel: "whatsapp",
-    async send() {
+    async send(payload) {
+      const response = await sendWhatsAppCampaign({
+        restaurantId: payload.restaurantId,
+        campaignId: payload.campaignId,
+        restaurantName: String(payload.metadata?.restaurantName ?? ""),
+        campaignName: String(payload.metadata?.campaignName ?? ""),
+        messages: [
+          {
+            recipientId: payload.recipientId,
+            customerId: payload.customerId,
+            to: payload.to,
+            body: payload.body,
+          },
+        ],
+        metadata: payload.metadata,
+      });
+      const first = response.results[0];
       return {
-        ok: false,
-        error: "WhatsApp Business API not configured yet.",
+        ok: Boolean(first?.ok),
+        providerMessageId: first?.providerMessageId,
+        error: first?.error ?? response.error,
+        raw: response,
       };
     },
   },
