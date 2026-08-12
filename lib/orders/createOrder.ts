@@ -1,7 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { syncCustomerEvent } from "@/lib/customers/sync-customer";
+import {
+  normalizePhone,
+  syncCustomerEvent,
+} from "@/lib/customers/sync-customer";
+import { adjustLoyaltyPoints } from "@/lib/loyalty/mutations";
 import { notifyRestaurantOwner } from "@/lib/notifications/createNotification";
-import { planAllowsOnlineOrdering } from "@/lib/subscriptions/plans";
+import {
+  planAllowsLoyalty,
+  planAllowsOnlineOrdering,
+} from "@/lib/subscriptions/plans";
 import { mapOrderRow } from "./mappers";
 import type { CreateOrderInput, Order, OrderItemRecord, OrderRecord } from "./types";
 import { isMissingTableError } from "./utils";
@@ -48,16 +55,20 @@ function buildNotificationBody(params: {
   currency: string;
 }): string {
   const total = `${params.grandTotal.toFixed(3)} ${params.currency}`;
+  const who = params.customerName?.trim() || "Customer";
   if (params.orderType === "Dine In") {
     const table = params.tableNumber ? `Table ${params.tableNumber}` : "Dine In";
-    return `${table} placed a Dine In order — ${total}`;
+    return `${who} · ${table} placed a Dine In order — ${total}`;
   }
   if (params.orderType === "Takeaway") {
-    const who = params.customerName?.trim() || "Guest";
     return `${who} placed a Takeaway order — ${total}`;
   }
-  const who = params.customerName?.trim() || "Customer";
   return `${who} placed a Delivery order — ${total}`;
+}
+
+/** Simple earn rate: 1 loyalty point per whole currency unit spent. */
+function loyaltyPointsForSpend(grandTotal: number): number {
+  return Math.max(0, Math.floor(grandTotal));
 }
 
 /**
@@ -124,10 +135,12 @@ export async function createOrderWithClient(
 
     const trimmedTableNumber =
       input.orderType === "Dine In" ? input.tableNumber?.trim() || null : null;
-    const trimmedCustomerName =
-      input.orderType === "Dine In" ? null : input.customerName?.trim() || null;
+    const trimmedCustomerName = input.customerName?.trim() || null;
     const trimmedCustomerPhone =
-      input.orderType === "Dine In" ? null : input.customerPhone?.trim() || null;
+      normalizePhone(input.customerPhone) ||
+      input.customerPhone?.trim() ||
+      null;
+    const trimmedCustomerEmail = input.customerEmail?.trim() || null;
     const trimmedDeliveryAddress =
       input.orderType === "Delivery"
         ? input.deliveryAddress?.trim() || null
@@ -136,6 +149,8 @@ export async function createOrderWithClient(
       input.orderType === "Delivery" ? input.landmark?.trim() || null : null;
     const trimmedSpecialInstructions =
       input.specialInstructions?.trim() || null;
+    const joinLoyalty = Boolean(input.joinLoyalty) && planAllowsLoyalty(plan);
+    const marketingOptIn = Boolean(input.marketingOptIn);
 
     let orderRow: OrderRecord | null = null;
     let lastError: { code?: string; message?: string } | null = null;
@@ -163,7 +178,7 @@ export async function createOrderWithClient(
           order_type: input.orderType,
           customer_name: trimmedCustomerName,
           customer_phone: trimmedCustomerPhone,
-          customer_email: input.customerEmail?.trim() || null,
+          customer_email: trimmedCustomerEmail,
           delivery_address: trimmedDeliveryAddress,
           landmark: trimmedLandmark,
           table_number: trimmedTableNumber,
@@ -234,8 +249,8 @@ export async function createOrderWithClient(
       client,
     );
 
-    // CRM: auto-create/update restaurant customer (phone/email identity).
-    void syncCustomerEvent(
+    // CRM: create/update customer before returning so Admin CRM sees fresh stats.
+    const syncResult = await syncCustomerEvent(
       {
         restaurantId: input.restaurantId,
         fullName: orderRow.customer_name,
@@ -248,9 +263,29 @@ export async function createOrderWithClient(
           menuItemId: item.menu_item_id,
           quantity: item.quantity,
         })),
+        joinLoyalty,
+        marketingOptIn,
+        notes: trimmedSpecialInstructions,
       },
       client,
     );
+
+    if (
+      syncResult.ok &&
+      syncResult.customerId &&
+      joinLoyalty
+    ) {
+      const points = loyaltyPointsForSpend(grandTotal);
+      if (points > 0) {
+        await adjustLoyaltyPoints({
+          restaurantId: input.restaurantId,
+          customerId: syncResult.customerId,
+          delta: points,
+          reason: `Order ${orderRow.order_number}`,
+          client,
+        });
+      }
+    }
 
     const fullOrder: OrderRecord = {
       ...orderRow,

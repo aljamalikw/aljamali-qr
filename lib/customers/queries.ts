@@ -446,15 +446,33 @@ export async function fetchCustomerOrders(
   try {
     const phone = normalizePhone(customer.phone);
     const email = normalizeEmail(customer.email);
-    const { data, error } = await supabase
+    if (!phone && !email) {
+      return { ok: true, data: [] };
+    }
+
+    // Prefer identity filters to avoid loading unrelated restaurant orders.
+    let query = supabase
       .from("orders")
       .select(
         "id, order_number, status, grand_total, currency, created_at, customer_phone, customer_email",
       )
       .eq("restaurant_id", restaurantId)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(40);
 
+    if (phone && email) {
+      const phoneLiteral = `"${phone.replace(/"/g, "")}"`;
+      const emailLiteral = `"${email.replace(/"/g, "")}"`;
+      query = query.or(
+        `customer_phone.eq.${phoneLiteral},customer_email.eq.${emailLiteral}`,
+      );
+    } else if (phone) {
+      query = query.eq("customer_phone", phone);
+    } else if (email) {
+      query = query.eq("customer_email", email);
+    }
+
+    const { data, error } = await query;
     if (error) return { ok: false, message: error.message };
 
     const rows = ((data ?? []) as Array<{

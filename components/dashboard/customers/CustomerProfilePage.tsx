@@ -27,6 +27,7 @@ import {
   fetchCustomerMarketingHistory,
   getCustomerCampaignEligibility,
 } from "@/lib/marketing/campaigns";
+import { supabase } from "@/lib/supabase";
 import {
   planAllowsLoyalty,
   planAllowsMarketing,
@@ -43,7 +44,7 @@ type ProfileTab =
 
 const BASE_TABS: { id: ProfileTab; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "orders", label: "Orders" },
+  { id: "orders", label: "Recent Orders" },
   { id: "reservations", label: "Reservations" },
   { id: "notes", label: "Notes" },
   { id: "timeline", label: "Timeline" },
@@ -127,16 +128,20 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
     }
   }, [loyaltyAllowed, marketingAllowed, tab]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { quiet?: boolean }) => {
     if (!restaurant?.id) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!options?.quiet) {
+      setLoading(true);
+    }
     setError(null);
     const result = await fetchCustomerById(restaurant.id, customerId);
     if (!result.ok) {
-      setLoading(false);
+      if (!options?.quiet) {
+        setLoading(false);
+      }
       setError(result.message);
       setCustomer(null);
       return;
@@ -160,12 +165,50 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
     if (marketingResult.ok) setMarketingHistory(marketingResult.data);
     else setMarketingHistory([]);
 
-    setLoading(false);
+    if (!options?.quiet) {
+      setLoading(false);
+    }
   }, [customerId, restaurant?.id]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!restaurant?.id || !customerId) return;
+
+    const channel = supabase
+      .channel(`customer-profile-${restaurant.id}-${customerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "customers",
+          filter: `id=eq.${customerId}`,
+        },
+        () => {
+          void load({ quiet: true });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        () => {
+          void load({ quiet: true });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [restaurant?.id, customerId, load]);
 
   const tagSet = useMemo(
     () => new Set(customer?.tags ?? []),
@@ -631,8 +674,14 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
         <div className="grid gap-4">
           <DashboardCard className="space-y-3 p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">
-              Future campaign eligibility
+              Consent & eligibility
             </h2>
+            <p className="text-sm text-white/70">
+              Promotions opt-in:{" "}
+              <span className="text-gold">
+                {customer.metadata.marketing_opt_in ? "Yes" : "No"}
+              </span>
+            </p>
             <div className="flex flex-wrap gap-2">
               {getCustomerCampaignEligibility(customer).map((label) => (
                 <span

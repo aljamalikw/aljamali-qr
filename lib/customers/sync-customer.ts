@@ -64,7 +64,10 @@ export type CustomerMetadata = {
     tier?: string | null;
     lifetimePoints?: number;
     rewardsUnlocked?: string[];
+    enrolled?: boolean;
+    enrolledAt?: string | null;
   };
+  marketing_opt_in?: boolean;
   noteHistory?: Array<{
     at: string;
     note: string;
@@ -87,6 +90,12 @@ export type CustomerSyncInput = {
   orderSpent?: number;
   reservationIncrement?: number;
   items?: CustomerSyncItem[];
+  /** Persist marketing consent on metadata.marketing_opt_in */
+  marketingOptIn?: boolean | null;
+  /** Enroll into loyalty metadata (points awarded separately). */
+  joinLoyalty?: boolean;
+  /** Optional note appended to noteHistory / notes when creating. */
+  notes?: string | null;
 };
 
 export type CustomerFilter =
@@ -304,10 +313,22 @@ export async function syncCustomerEvent(
       input.orderSpent !== undefined || (input.items?.length ?? 0) > 0;
 
     if (!existing) {
+      const note = input.notes?.trim() || null;
+      const joinLoyalty = Boolean(input.joinLoyalty);
       const metadata: CustomerMetadata = {
         itemCounts: itemIncrements,
         categoryCounts: categoryIncrements,
-        loyalty: { tier: null, lifetimePoints: 0, rewardsUnlocked: [] },
+        loyalty: {
+          tier: null,
+          lifetimePoints: 0,
+          rewardsUnlocked: [],
+          enrolled: joinLoyalty,
+          enrolledAt: joinLoyalty ? visitAt : null,
+        },
+        marketing_opt_in: Boolean(input.marketingOptIn),
+        ...(note
+          ? { noteHistory: [{ at: visitAt, note }] }
+          : {}),
       };
       const ordersCount = isOrderEvent ? 1 : 0;
       const spent = orderSpent;
@@ -325,6 +346,7 @@ export async function syncCustomerEvent(
           full_name: fullName,
           phone,
           email,
+          notes: note,
           tags,
           total_orders: ordersCount,
           total_reservations: reservationIncrement,
@@ -344,6 +366,16 @@ export async function syncCustomerEvent(
     }
 
     const current = mapCustomer(existing);
+    const alreadyEnrolled = Boolean(current.metadata.loyalty?.enrolled);
+    const joinLoyalty = Boolean(input.joinLoyalty);
+    const note = input.notes?.trim() || null;
+    const noteHistory = Array.isArray(current.metadata.noteHistory)
+      ? [...current.metadata.noteHistory]
+      : [];
+    if (note) {
+      noteHistory.unshift({ at: visitAt, note });
+    }
+
     const metadata: CustomerMetadata = {
       ...current.metadata,
       itemCounts: mergeCounts(current.metadata.itemCounts, itemIncrements),
@@ -355,7 +387,16 @@ export async function syncCustomerEvent(
         tier: current.metadata.loyalty?.tier ?? null,
         lifetimePoints: current.metadata.loyalty?.lifetimePoints ?? 0,
         rewardsUnlocked: current.metadata.loyalty?.rewardsUnlocked ?? [],
+        enrolled: alreadyEnrolled || joinLoyalty,
+        enrolledAt:
+          current.metadata.loyalty?.enrolledAt ??
+          (joinLoyalty && !alreadyEnrolled ? visitAt : null),
       },
+      marketing_opt_in:
+        input.marketingOptIn === undefined || input.marketingOptIn === null
+          ? Boolean(current.metadata.marketing_opt_in)
+          : Boolean(input.marketingOptIn),
+      noteHistory: noteHistory.slice(0, 50),
     };
 
     const nextOrders = current.totalOrders + (isOrderEvent ? 1 : 0);
@@ -375,6 +416,7 @@ export async function syncCustomerEvent(
         full_name: fullName || current.fullName,
         phone: phone || current.phone,
         email: email || current.email,
+        notes: note || current.notes,
         tags: nextTags,
         total_orders: nextOrders,
         total_reservations: nextReservations,

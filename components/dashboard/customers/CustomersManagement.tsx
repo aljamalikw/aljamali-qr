@@ -17,6 +17,7 @@ import {
 } from "@/lib/customers/queries";
 import { formatDemoDate } from "@/lib/demo-requests/utils";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
+import { supabase } from "@/lib/supabase";
 
 const PAGE_SIZE = 10;
 
@@ -48,21 +49,27 @@ export function CustomersManagement() {
   const [birthdayMonth, setBirthdayMonth] = useState<number | "all">("all");
   const [page, setPage] = useState(1);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { quiet?: boolean }) => {
     if (!restaurant?.id) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!options?.quiet) {
+      setLoading(true);
+    }
     setError(null);
 
-    const backfill = await backfillCustomersFromHistory(restaurant.id);
-    if (!backfill.ok) {
-      // Non-fatal — table may not be migrated yet.
+    if (!options?.quiet) {
+      const backfill = await backfillCustomersFromHistory(restaurant.id);
+      if (!backfill.ok) {
+        // Non-fatal — table may not be migrated yet.
+      }
     }
 
     const result = await fetchCustomers(restaurant.id);
-    setLoading(false);
+    if (!options?.quiet) {
+      setLoading(false);
+    }
     if (!result.ok) {
       setError(result.message);
       setCustomers([]);
@@ -74,6 +81,30 @@ export function CustomersManagement() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!restaurant?.id) return;
+
+    const channel = supabase
+      .channel(`customers-dashboard-${restaurant.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "customers",
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        () => {
+          void load({ quiet: true });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [restaurant?.id, load]);
 
   useEffect(() => {
     setPage(1);

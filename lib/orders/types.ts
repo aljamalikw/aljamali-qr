@@ -37,6 +37,10 @@ export type CreateOrderInput = {
   landmark?: string;
   tableNumber?: string;
   specialInstructions?: string;
+  /** Opt into loyalty rewards on this order (plan-gated server-side). */
+  joinLoyalty?: boolean;
+  /** Marketing / promotions consent stored on CRM metadata. */
+  marketingOptIn?: boolean;
   items: OrderItemInput[];
   taxRate?: number;
   discountAmount?: number;

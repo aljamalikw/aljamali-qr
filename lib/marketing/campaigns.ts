@@ -658,6 +658,7 @@ export function getCustomerCampaignEligibility(customer: Customer): string[] {
     if (customer.tags.includes("Inactive")) labels.push("Win Back");
   }
   if (customer.loyaltyPoints > 0) labels.push("Loyalty");
+  if (customer.metadata.marketing_opt_in) labels.push("Marketing Opt-In");
   if (customer.totalOrders + customer.totalReservations <= 1) {
     labels.push("New Customer");
   }
