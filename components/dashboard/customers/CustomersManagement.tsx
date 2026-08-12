@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { WhatsAppCampaignBuilder } from "@/components/dashboard/marketing/WhatsAppCampaignBuilder";
+import { WhatsAppChatModal } from "@/components/dashboard/customers/WhatsAppChatModal";
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -19,7 +20,9 @@ import {
   type Customer,
   type CustomerFilter,
 } from "@/lib/customers/queries";
+import { customerHasMarketingOptIn } from "@/lib/customers/whatsapp-chat";
 import { formatDemoDate } from "@/lib/demo-requests/utils";
+import { buildTelHref } from "@/lib/marketing/whatsapp/phone";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsMarketing } from "@/lib/subscriptions/plans";
 import { supabase } from "@/lib/supabase";
@@ -56,6 +59,9 @@ export function CustomersManagement() {
   const [birthdayMonth, setBirthdayMonth] = useState<number | "all">("all");
   const [page, setPage] = useState(1);
   const [campaignBuilderOpen, setCampaignBuilderOpen] = useState(false);
+  const [whatsAppCustomer, setWhatsAppCustomer] = useState<Customer | null>(
+    null,
+  );
 
   const canCreateCampaign =
     isAdminRole(role) || planAllowsMarketing(access.plan);
@@ -363,12 +369,60 @@ export function CustomersManagement() {
                         </div>
                       </td>
                       <td className="px-3 py-3">
-                        <Link
-                          href={`/dashboard/customers/${customer.id}`}
-                          className="menu-btn-secondary !px-2.5 !py-1.5 text-xs"
-                        >
-                          View
-                        </Link>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(() => {
+                            const optedIn = customerHasMarketingOptIn(customer);
+                            const tel = buildTelHref(customer.phone);
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!optedIn || !customer.phone}
+                                  title={
+                                    !optedIn
+                                      ? "Customer has not opted in to promotional messaging."
+                                      : !customer.phone
+                                        ? "No phone number"
+                                        : "Chat on WhatsApp"
+                                  }
+                                  onClick={() => setWhatsAppCustomer(customer)}
+                                  className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                                    optedIn && customer.phone
+                                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-400/50"
+                                      : "cursor-not-allowed border-white/10 bg-white/5 text-white/30"
+                                  }`}
+                                >
+                                  <span aria-hidden="true">🟢</span>
+                                  Chat on WhatsApp
+                                </button>
+                                {tel ? (
+                                  <a
+                                    href={tel}
+                                    className="menu-btn-secondary !px-2.5 !py-1.5 text-xs"
+                                    title="Call Customer"
+                                  >
+                                    Call Customer
+                                  </a>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled
+                                    title="No phone number"
+                                    className="cursor-not-allowed rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/30"
+                                  >
+                                    Call Customer
+                                  </button>
+                                )}
+                                <Link
+                                  href={`/dashboard/customers/${customer.id}`}
+                                  className="menu-btn-secondary !px-2.5 !py-1.5 text-xs"
+                                >
+                                  View Profile
+                                </Link>
+                              </>
+                            );
+                          })()}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -418,6 +472,16 @@ export function CustomersManagement() {
           onCreated={() => {
             showToast("Campaign created");
           }}
+        />
+      ) : null}
+
+      {restaurant?.id ? (
+        <WhatsAppChatModal
+          open={Boolean(whatsAppCustomer)}
+          restaurantId={restaurant.id}
+          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          customer={whatsAppCustomer}
+          onClose={() => setWhatsAppCustomer(null)}
         />
       ) : null}
     </div>

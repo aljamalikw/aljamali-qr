@@ -1,6 +1,10 @@
 import { logActivity } from "@/lib/admin/activity-log";
 import { fetchCustomers } from "@/lib/customers/queries";
-import type { Customer } from "@/lib/customers/sync-customer";
+import {
+  mapCustomer,
+  type Customer,
+  type CustomerRecord,
+} from "@/lib/customers/sync-customer";
 import { resolveMarketingAccess } from "@/lib/marketing/access";
 import { prepareChannel } from "@/lib/marketing/channels";
 import {
@@ -83,13 +87,15 @@ function renderShareMessage(
   restaurantName: string,
   sample?: Customer | null,
 ): string {
+  const lastVisit = sample?.lastVisit
+    ? new Date(sample.lastVisit).toLocaleDateString()
+    : "recently";
   return applyCampaignPlaceholders(template, {
     customerName: sample?.fullName?.trim() || "valued guest",
     restaurantName: restaurantName || "our restaurant",
     loyaltyPoints: sample?.loyaltyPoints ?? 0,
-    lastOrderDate: sample?.lastVisit
-      ? new Date(sample.lastVisit).toLocaleDateString()
-      : "recently",
+    lastOrderDate: lastVisit,
+    lastVisit,
     totalOrders: sample?.totalOrders ?? 0,
   });
 }
@@ -850,6 +856,156 @@ export async function fetchCampaignAnalytics(
     }
 
     return { ok: true, data: analytics };
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+export type CampaignRecipientListItem = {
+  customerId: string;
+  customer: Customer;
+  channel: string;
+  status: string;
+};
+
+export async function fetchCampaignRecipients(
+  restaurantId: string,
+  campaignId: string,
+): Promise<
+  | {
+      ok: true;
+      data: {
+        campaignId: string;
+        campaignName: string;
+        campaignMessage: string;
+        recipients: CampaignRecipientListItem[];
+      };
+    }
+  | { ok: false; message: string }
+> {
+  try {
+    const { access } = await requireMarketingAccess(restaurantId);
+    if (!access.ok) return { ok: false, message: access.message };
+
+    const [{ data: campaignRow, error: campaignError }, { data, error }] =
+      await Promise.all([
+        supabase
+          .from("marketing_campaigns")
+          .select("id, name, message")
+          .eq("id", campaignId)
+          .eq("restaurant_id", restaurantId)
+          .maybeSingle(),
+        supabase
+          .from("marketing_campaign_recipients")
+          .select("customer_id, channel, status, metadata")
+          .eq("restaurant_id", restaurantId)
+          .eq("campaign_id", campaignId)
+          .order("created_at", { ascending: true })
+          .limit(500),
+      ]);
+
+    if (campaignError || !campaignRow) {
+      return {
+        ok: false,
+        message: campaignError?.message || "Campaign not found.",
+      };
+    }
+    if (error) return { ok: false, message: error.message || ERROR };
+
+    const rows = (data ?? []) as Array<{
+      customer_id: string;
+      channel: string;
+      status: string;
+      metadata: Record<string, unknown> | null;
+    }>;
+
+    const customerIds = Array.from(
+      new Set(rows.map((row) => row.customer_id).filter(Boolean)),
+    );
+
+    const customersById = new Map<string, Customer>();
+    if (customerIds.length > 0) {
+      const { data: customerRows, error: customersError } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .in("id", customerIds);
+
+      if (customersError) {
+        return { ok: false, message: customersError.message || ERROR };
+      }
+
+      for (const row of (customerRows ?? []) as CustomerRecord[]) {
+        customersById.set(row.id, mapCustomer(row));
+      }
+    }
+
+    const recipients: CampaignRecipientListItem[] = [];
+    const seen = new Set<string>();
+    for (const row of rows) {
+      if (seen.has(row.customer_id)) continue;
+      seen.add(row.customer_id);
+      const customer = customersById.get(row.customer_id);
+      if (!customer) {
+        const metaName =
+          typeof row.metadata?.customerName === "string"
+            ? row.metadata.customerName
+            : null;
+        const metaPhone =
+          typeof row.metadata?.phone === "string" ? row.metadata.phone : null;
+        recipients.push({
+          customerId: row.customer_id,
+          customer: {
+            id: row.customer_id,
+            restaurantId,
+            fullName: metaName,
+            phone: metaPhone,
+            email:
+              typeof row.metadata?.email === "string"
+                ? row.metadata.email
+                : null,
+            birthday: null,
+            notes: null,
+            tags: [],
+            loyaltyPoints: 0,
+            totalOrders: 0,
+            totalReservations: 0,
+            totalSpent: 0,
+            averageOrder: 0,
+            firstVisit: null,
+            lastVisit: null,
+            favoriteItem: null,
+            favoriteCategory: null,
+            metadata: { marketing_opt_in: true },
+            createdAt: new Date(0).toISOString(),
+            updatedAt: new Date(0).toISOString(),
+          },
+          channel: row.channel,
+          status: row.status,
+        });
+        continue;
+      }
+      recipients.push({
+        customerId: customer.id,
+        customer,
+        channel: row.channel,
+        status: row.status,
+      });
+    }
+
+    return {
+      ok: true,
+      data: {
+        campaignId: String((campaignRow as { id: string }).id),
+        campaignName: String(
+          (campaignRow as { name: string }).name ?? "Campaign",
+        ),
+        campaignMessage: String(
+          (campaignRow as { message: string }).message ?? "",
+        ),
+        recipients,
+      },
+    };
   } catch {
     return { ok: false, message: ERROR };
   }

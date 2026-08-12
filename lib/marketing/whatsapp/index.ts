@@ -12,6 +12,11 @@ export {
 } from "@/lib/marketing/whatsapp/share";
 
 export {
+  buildTelHref,
+  normalizeWhatsAppPhone,
+} from "@/lib/marketing/whatsapp/phone";
+
+export {
   prepareChannel,
   getChannelAdapter,
 } from "@/lib/marketing/channels";

@@ -10,10 +10,12 @@ import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import { isAdminRole } from "@/lib/auth/roles";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { WhatsAppChatModal } from "@/components/dashboard/customers/WhatsAppChatModal";
 import {
   cancelMarketingCampaign,
   deleteMarketingCampaign,
   fetchCampaignAnalytics,
+  fetchCampaignRecipients,
   fetchMarketingCampaigns,
   fetchMarketingTemplates,
   getMarketingSummary,
@@ -21,6 +23,7 @@ import {
   scheduleMarketingCampaign,
   shareMarketingCampaign,
   type CampaignAnalytics,
+  type CampaignRecipientListItem,
 } from "@/lib/marketing/campaigns";
 import {
   campaignStatusLabel,
@@ -29,6 +32,8 @@ import {
   type MarketingCampaign,
   type MarketingTemplate,
 } from "@/lib/marketing/types";
+import { customerHasMarketingOptIn } from "@/lib/customers/whatsapp-chat";
+import type { Customer } from "@/lib/customers/sync-customer";
 import { openWhatsAppShare } from "@/lib/marketing/whatsapp/share";
 import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
@@ -97,6 +102,15 @@ function MarketingManagementContent() {
     date: "",
     time: "10:00",
   });
+  const [recipientsOpen, setRecipientsOpen] = useState(false);
+  const [recipientsLoading, setRecipientsLoading] = useState(false);
+  const [recipientsCampaignName, setRecipientsCampaignName] = useState("");
+  const [recipientsCampaignId, setRecipientsCampaignId] = useState<string | null>(
+    null,
+  );
+  const [recipientsMessage, setRecipientsMessage] = useState("");
+  const [recipients, setRecipients] = useState<CampaignRecipientListItem[]>([]);
+  const [chatCustomer, setChatCustomer] = useState<Customer | null>(null);
 
   const load = useCallback(async () => {
     if (!restaurant?.id) {
@@ -355,6 +369,35 @@ function MarketingManagementContent() {
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              disabled={busy || recipientsLoading}
+                              className="menu-btn-secondary !px-2 !py-1 text-[11px]"
+                              onClick={async () => {
+                                if (!restaurant?.id) return;
+                                setRecipientsLoading(true);
+                                const result = await fetchCampaignRecipients(
+                                  restaurant.id,
+                                  campaign.id,
+                                );
+                                setRecipientsLoading(false);
+                                if (!result.ok) {
+                                  showToast(result.message, "error");
+                                  return;
+                                }
+                                setRecipientsCampaignId(result.data.campaignId);
+                                setRecipientsCampaignName(
+                                  result.data.campaignName,
+                                );
+                                setRecipientsMessage(
+                                  result.data.campaignMessage,
+                                );
+                                setRecipients(result.data.recipients);
+                                setRecipientsOpen(true);
+                              }}
+                            >
+                              View Recipients
+                            </button>
                             {!isCampaignSharedStatus(campaign.status) &&
                             campaign.status !== "cancelled" ? (
                               <>
@@ -711,6 +754,98 @@ function MarketingManagementContent() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {recipientsOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            aria-label="Close"
+            onClick={() => setRecipientsOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="recipient-list-title"
+            className="dashboard-card relative z-10 max-h-[85vh] w-full max-w-lg overflow-hidden rounded-t-2xl border border-gold/15 sm:rounded-2xl"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-white/5 px-5 py-4">
+              <div>
+                <h3
+                  id="recipient-list-title"
+                  className="font-serif text-xl font-bold text-white"
+                >
+                  Recipient List
+                </h3>
+                <p className="mt-1 text-sm text-white/50">
+                  {recipientsCampaignName} · {recipients.length} recipient
+                  {recipients.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRecipientsOpen(false)}
+                className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-white"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto px-5 py-4">
+              {recipients.length === 0 ? (
+                <p className="py-8 text-center text-sm text-white/45">
+                  No recipients for this campaign.
+                </p>
+              ) : (
+                recipients.map((row) => {
+                  const optedIn = customerHasMarketingOptIn(row.customer);
+                  const name = row.customer.fullName?.trim() || "Guest";
+                  return (
+                    <div
+                      key={row.customerId}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/25 px-3 py-2.5"
+                    >
+                      <p className="min-w-0 truncate text-sm font-medium text-white">
+                        {name}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={!optedIn || !row.customer.phone}
+                        title={
+                          !optedIn
+                            ? "Customer has not opted in to promotional messaging."
+                            : "Chat on WhatsApp"
+                        }
+                        onClick={() => setChatCustomer(row.customer)}
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
+                          optedIn && row.customer.phone
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-400/50"
+                            : "cursor-not-allowed border-white/10 bg-white/5 text-white/30"
+                        }`}
+                      >
+                        <span aria-hidden="true">🟢</span>
+                        Chat
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {restaurant?.id ? (
+        <WhatsAppChatModal
+          open={Boolean(chatCustomer)}
+          restaurantId={restaurant.id}
+          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          customer={chatCustomer}
+          campaignId={recipientsCampaignId}
+          campaignMessage={recipientsMessage}
+          onClose={() => setChatCustomer(null)}
+        />
       ) : null}
     </div>
   );

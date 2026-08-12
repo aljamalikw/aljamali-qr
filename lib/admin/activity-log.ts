@@ -23,6 +23,7 @@ export const ACTIVITY_ACTIONS = [
   "campaign_deleted",
   "campaign_scheduled",
   "campaign_sent",
+  "whatsapp_opened",
   "onboarding_started",
   "onboarding_step_completed",
   "onboarding_step_skipped",

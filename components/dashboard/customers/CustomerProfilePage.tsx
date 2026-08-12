@@ -21,7 +21,12 @@ import {
   type Customer,
   type CustomerTimelineItem,
 } from "@/lib/customers/queries";
+import {
+  customerHasMarketingOptIn,
+} from "@/lib/customers/whatsapp-chat";
+import { WhatsAppChatModal } from "@/components/dashboard/customers/WhatsAppChatModal";
 import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
+import { buildTelHref } from "@/lib/marketing/whatsapp/phone";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
   fetchCustomerMarketingHistory,
@@ -102,6 +107,7 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
   const [marketingHistory, setMarketingHistory] = useState<
     MarketingHistoryRow[]
   >([]);
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
 
   const loyaltyAllowed =
     isAdminRole(role) || planAllowsLoyalty(access.plan);
@@ -336,6 +342,65 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
           ))}
         </div>
       </div>
+
+      <DashboardCard className="p-4 sm:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">
+          Quick Actions
+        </h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(() => {
+            const optedIn = customerHasMarketingOptIn(customer);
+            const tel = buildTelHref(customer.phone);
+            return (
+              <>
+                <button
+                  type="button"
+                  disabled={!optedIn || !customer.phone}
+                  title={
+                    !optedIn
+                      ? "Customer has not opted in to promotional messaging."
+                      : "Chat on WhatsApp"
+                  }
+                  onClick={() => setWhatsAppOpen(true)}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium ${
+                    optedIn && customer.phone
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-400/50"
+                      : "cursor-not-allowed border-white/10 bg-white/5 text-white/30"
+                  }`}
+                >
+                  <span aria-hidden="true">🟢</span>
+                  Chat on WhatsApp
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  title="Coming soon"
+                  className="cursor-not-allowed rounded-xl border border-white/10 px-3 py-2 text-sm text-white/30"
+                >
+                  ✉ Email (Coming Soon)
+                </button>
+                {tel ? (
+                  <a
+                    href={tel}
+                    className="menu-btn-secondary inline-flex items-center gap-1.5 !px-3 !py-2 text-sm"
+                  >
+                    📞 Call Customer
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title="Call is unavailable without a phone number"
+                    className="cursor-not-allowed rounded-xl border border-white/10 px-3 py-2 text-sm text-white/30"
+                  >
+                    📞 Call Customer
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      </DashboardCard>
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((item) => (
@@ -624,8 +689,21 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
                 className="rounded-xl border border-white/5 bg-black/25 px-4 py-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-white">{item.title}</p>
-                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] uppercase tracking-wider text-white/45">
+                  <p className="text-sm font-medium text-white">
+                    {item.type === "whatsapp" ? (
+                      <span className="me-1.5" aria-hidden="true">
+                        🟢
+                      </span>
+                    ) : null}
+                    {item.title}
+                  </p>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wider ${
+                      item.type === "whatsapp"
+                        ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+                        : "border-white/10 text-white/45"
+                    }`}
+                  >
                     {item.type}
                   </span>
                 </div>
@@ -668,6 +746,21 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
             <li>Assign tiers (Bronze / Silver / Gold) in metadata</li>
           </ul>
         </DashboardCard>
+      ) : null}
+
+      {restaurant?.id && customer ? (
+        <WhatsAppChatModal
+          open={whatsAppOpen}
+          restaurantId={restaurant.id}
+          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          customer={customer}
+          onClose={() => setWhatsAppOpen(false)}
+          onOpened={() => {
+            void fetchCustomerTimeline(restaurant.id, customer).then((result) => {
+              if (result.ok) setTimeline(result.data);
+            });
+          }}
+        />
       ) : null}
 
       {tab === "marketing" && marketingAllowed ? (

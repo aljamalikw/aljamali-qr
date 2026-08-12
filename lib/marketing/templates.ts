@@ -80,6 +80,8 @@ export type CampaignPlaceholderVars = {
   restaurantName?: string | null;
   loyaltyPoints?: number | null;
   lastOrderDate?: string | null;
+  /** Alias for {{last_visit}} — falls back to lastOrderDate. */
+  lastVisit?: string | null;
   totalOrders?: number | null;
 };
 
@@ -91,7 +93,7 @@ function firstNameFrom(fullName: string): string {
 /**
  * Apply campaign placeholders for WhatsApp / email bodies.
  * Supports: {{customer_name}} {{restaurant_name}} {{loyalty_points}}
- * {{first_name}} {{last_order_date}} {{total_orders}} and legacy {{name}}.
+ * {{first_name}} {{last_order_date}} {{last_visit}} {{total_orders}} and legacy {{name}}.
  */
 export function applyCampaignPlaceholders(
   text: string,
@@ -101,6 +103,7 @@ export function applyCampaignPlaceholders(
   const restaurantName = vars.restaurantName?.trim() || "our restaurant";
   const loyaltyPoints = String(Math.max(0, Number(vars.loyaltyPoints ?? 0)));
   const lastOrderDate = vars.lastOrderDate?.trim() || "recently";
+  const lastVisit = vars.lastVisit?.trim() || lastOrderDate;
   const totalOrders = String(Math.max(0, Number(vars.totalOrders ?? 0)));
   const firstName = firstNameFrom(customerName);
 
@@ -111,6 +114,7 @@ export function applyCampaignPlaceholders(
     .replaceAll("{{restaurant_name}}", restaurantName)
     .replaceAll("{{loyalty_points}}", loyaltyPoints)
     .replaceAll("{{last_order_date}}", lastOrderDate)
+    .replaceAll("{{last_visit}}", lastVisit)
     .replaceAll("{{total_orders}}", totalOrders);
 }
 

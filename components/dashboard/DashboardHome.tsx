@@ -16,6 +16,10 @@ import type { Restaurant } from "@/lib/restaurants/types";
 import type { ActivityItem } from "@/lib/dashboard/types";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { isRestaurantSetupComplete } from "@/lib/restaurants/setup";
+import {
+  fetchRecentCustomerActivity,
+  type RecentCustomerActivityItem,
+} from "@/lib/customers/recent-activity";
 import { formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { supabase } from "@/lib/supabase";
 
@@ -33,6 +37,7 @@ type DashboardData = {
   categoryCount: number;
   analytics: AnalyticsDashboardData | null;
   announcements: Announcement[];
+  customerActivity: Array<RecentCustomerActivityItem & { time: string }>;
 };
 
 const EMPTY_DATA: DashboardData = {
@@ -42,6 +47,7 @@ const EMPTY_DATA: DashboardData = {
   categoryCount: 0,
   analytics: null,
   announcements: [],
+  customerActivity: [],
 };
 
 const QUICK_ACTIONS = [
@@ -143,6 +149,10 @@ export function DashboardHome() {
       fetchPublishedAnnouncements(),
     ]);
 
+    const customerActivityResult = restaurant?.id
+      ? await fetchRecentCustomerActivity(restaurant.id)
+      : { ok: false as const, message: "" };
+
     setData({
       restaurant,
       qrCount: qrResult.ok ? qrResult.data.length : 0,
@@ -150,6 +160,9 @@ export function DashboardHome() {
       categoryCount: categoriesResult.ok ? categoriesResult.data.length : 0,
       analytics: analyticsResult.ok ? analyticsResult.data : null,
       announcements,
+      customerActivity: customerActivityResult.ok
+        ? customerActivityResult.data
+        : [],
     });
 
     setLoading(false);
@@ -302,6 +315,44 @@ export function DashboardHome() {
               </p>
             </DashboardCard>
           )}
+
+          {!loading ? (
+            <DashboardCard delay={0.2} hover={false} className="p-5 sm:p-6">
+              <h2 className="font-serif text-xl font-bold text-white">
+                Recent Customer Activity
+              </h2>
+              <p className="mt-1 text-sm text-white/45">
+                WhatsApp chats and orders from your CRM
+              </p>
+              {data.customerActivity.length === 0 ? (
+                <p className="mt-5 text-sm text-white/45">
+                  Customer activity will appear here once guests place orders or
+                  you open WhatsApp chats.
+                </p>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  {data.customerActivity.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-start justify-between gap-3 rounded-xl border border-white/5 bg-black/20 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-white">
+                          {item.customerName}
+                        </p>
+                        <p className="mt-0.5 text-sm text-white/50">
+                          {item.label}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs text-white/35">
+                        {item.time}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DashboardCard>
+          ) : null}
 
           {!loading && data.announcements.length > 0 && (
             <DashboardCard delay={0.2} className="p-5 sm:p-6">

@@ -116,7 +116,7 @@ export type CustomerSummary = {
 
 export type CustomerTimelineItem = {
   id: string;
-  type: "order" | "reservation" | "support" | "loyalty";
+  type: "order" | "reservation" | "support" | "loyalty" | "whatsapp";
   title: string;
   description: string;
   at: string;

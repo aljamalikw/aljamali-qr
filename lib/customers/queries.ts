@@ -353,9 +353,17 @@ export async function fetchCustomerTimeline(
       .order("created_at", { ascending: false })
       .limit(100);
 
-    const [ordersResult, reservationsResult] = await Promise.all([
+    const [ordersResult, reservationsResult, activityResult] = await Promise.all([
       ordersQuery,
       reservationsQuery,
+      supabase
+        .from("activity_logs")
+        .select("id, action, new_values, created_at, actor_name")
+        .eq("restaurant_id", restaurantId)
+        .eq("action", "whatsapp_opened")
+        .eq("entity_id", customer.id)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
 
     if (ordersResult.error) {
@@ -401,6 +409,34 @@ export async function fetchCustomerTimeline(
       );
     });
 
+    const whatsappEvents = (
+      (activityResult.data ?? []) as Array<{
+        id: string;
+        action: string;
+        new_values: Record<string, unknown> | null;
+        created_at: string;
+        actor_name: string | null;
+      }>
+    ).map((row) => {
+      const preview =
+        typeof row.new_values?.message_preview === "string"
+          ? row.new_values.message_preview
+          : "";
+      const by = row.actor_name?.trim() || "Staff";
+      return {
+        id: `whatsapp-${row.id}`,
+        type: "whatsapp" as const,
+        title: "WhatsApp Opened",
+        description: preview
+          ? `${by} · ${preview.slice(0, 80)}${preview.length > 80 ? "…" : ""}`
+          : `Opened by ${by}`,
+        at: row.created_at,
+        meta: {
+          campaignId: row.new_values?.campaign_id ?? null,
+        },
+      };
+    });
+
     const timeline: CustomerTimelineItem[] = [
       ...orders.map((order) => ({
         id: `order-${order.id}`,
@@ -418,6 +454,7 @@ export async function fetchCustomerTimeline(
         at: reservation.created_at,
         meta: { reservationId: reservation.id, status: reservation.status },
       })),
+      ...whatsappEvents,
     ].sort((a, b) => b.at.localeCompare(a.at));
 
     return { ok: true, data: timeline };
