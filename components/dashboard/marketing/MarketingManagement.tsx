@@ -19,14 +19,17 @@ import {
   getMarketingSummary,
   saveMarketingTemplate,
   scheduleMarketingCampaign,
-  sendMarketingCampaign,
+  shareMarketingCampaign,
   type CampaignAnalytics,
 } from "@/lib/marketing/campaigns";
 import {
+  campaignStatusLabel,
   describeAudienceFilters,
+  isCampaignSharedStatus,
   type MarketingCampaign,
   type MarketingTemplate,
 } from "@/lib/marketing/types";
+import { openWhatsAppShare } from "@/lib/marketing/whatsapp/share";
 import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
@@ -211,8 +214,8 @@ function MarketingManagementContent() {
             Marketing Center
           </h1>
           <p className="mt-1 text-sm text-white/45">
-            WhatsApp campaigns for opted-in CRM customers — provider-ready for
-            Meta Cloud API.
+            WhatsApp Share campaigns for opted-in CRM customers — free, no API
+            credentials required.
           </p>
         </div>
         <button
@@ -247,7 +250,7 @@ function MarketingManagementContent() {
             {[
               { label: "Campaigns", value: String(totalCampaigns) },
               { label: "Recipients", value: String(summary.recipients) },
-              { label: "Messages Sent", value: String(summary.messagesSent) },
+              { label: "Messages Shared", value: String(summary.messagesSent) },
               {
                 label: "Estimated Revenue",
                 value: `KD ${summary.estimatedRevenue.toFixed(3)}`,
@@ -352,7 +355,7 @@ function MarketingManagementContent() {
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex flex-wrap gap-1.5">
-                            {campaign.status !== "sent" &&
+                            {!isCampaignSharedStatus(campaign.status) &&
                             campaign.status !== "cancelled" ? (
                               <>
                                 <button
@@ -361,24 +364,25 @@ function MarketingManagementContent() {
                                   className="menu-btn-secondary !px-2 !py-1 text-[11px]"
                                   onClick={async () => {
                                     setBusy(true);
-                                    const result = await sendMarketingCampaign({
+                                    const result = await shareMarketingCampaign({
                                       restaurantId: restaurant!.id,
                                       campaignId: campaign.id,
+                                      restaurantName:
+                                        restaurant?.restaurant_name ?? undefined,
                                     });
                                     setBusy(false);
                                     if (!result.ok) {
                                       showToast(result.message, "error");
                                       return;
                                     }
-                                    if (result.deliveryWarning) {
-                                      showToast(result.deliveryWarning, "info");
-                                    } else {
-                                      showToast("Campaign sent");
-                                    }
+                                    openWhatsAppShare(result.shareText);
+                                    showToast(
+                                      "Campaign shared — WhatsApp opened with your message.",
+                                    );
                                     await load();
                                   }}
                                 >
-                                  Send
+                                  Share on WhatsApp
                                 </button>
                                 {schedulingAllowed ? (
                                   <button
@@ -516,12 +520,12 @@ function MarketingManagementContent() {
           </DashboardCard>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[
+              { label: "Created", value: analytics?.created ?? 0 },
+              { label: "Shared", value: analytics?.shared ?? 0 },
+              { label: "Scheduled", value: analytics?.scheduled ?? 0 },
+              { label: "Cancelled", value: analytics?.cancelled ?? 0 },
               { label: "Recipients", value: analytics?.recipients ?? 0 },
-              { label: "Delivered", value: analytics?.delivered ?? 0 },
-              { label: "Failed", value: analytics?.failed ?? 0 },
-              { label: "Pending / Skipped", value: (analytics?.pending ?? 0) + (analytics?.skipped ?? 0) },
-              { label: "Read (future)", value: analytics?.read ?? 0 },
-              { label: "Clicks (future)", value: analytics?.clicks ?? 0 },
+              { label: "Read / Clicks (future)", value: `${analytics?.read ?? 0} / ${analytics?.clicks ?? 0}` },
             ].map((card, index) => (
               <DashboardCard key={card.label} delay={index * 0.04} className="p-5">
                 <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/45">
@@ -716,16 +720,17 @@ function StatusPill({ status }: { status: string }) {
   const styles: Record<string, string> = {
     draft: "border-white/15 bg-white/5 text-white/70",
     scheduled: "border-sky-400/30 bg-sky-400/10 text-sky-200",
+    shared: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
     sent: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
     cancelled: "border-red-400/30 bg-red-400/10 text-red-200",
   };
   return (
     <span
-      className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize ${
+      className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
         styles[status] ?? styles.draft
       }`}
     >
-      {status}
+      {campaignStatusLabel(status)}
     </span>
   );
 }

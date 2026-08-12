@@ -99,7 +99,7 @@ export function StepMarketing({
           <ul className="list-disc space-y-1 ps-5">
             <li>Opt-in only audiences</li>
             <li>Live recipient estimates</li>
-            <li>Provider-ready Meta WhatsApp Cloud API</li>
+            <li>Free WhatsApp Share (no API credentials)</li>
           </ul>
         </div>
         <div className="flex flex-col-reverse gap-3 sm:flex-row">

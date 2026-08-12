@@ -14,11 +14,25 @@ export type CampaignType = (typeof CAMPAIGN_TYPES)[number];
 export const CAMPAIGN_STATUSES = [
   "draft",
   "scheduled",
-  "sent",
+  "shared",
+  "sent", // legacy API-era rows — display as Shared
   "cancelled",
 ] as const;
 
 export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number];
+
+/** UI label for campaign status (legacy "sent" → Shared). */
+export function campaignStatusLabel(status: string): string {
+  if (status === "sent" || status === "shared") return "Shared";
+  if (status === "draft") return "Draft";
+  if (status === "scheduled") return "Scheduled";
+  if (status === "cancelled") return "Cancelled";
+  return status;
+}
+
+export function isCampaignSharedStatus(status: string): boolean {
+  return status === "shared" || status === "sent";
+}
 
 export const MARKETING_CHANNELS = [
   "whatsapp",
@@ -374,9 +388,9 @@ export function computeMarketingSummary(
   campaigns: MarketingCampaign[],
 ): MarketingSummary {
   const recipients = campaigns.reduce((sum, c) => sum + c.recipientCount, 0);
-  const messagesSent = campaigns
-    .filter((c) => c.status === "sent")
-    .reduce((sum, c) => sum + c.recipientCount * Math.max(1, c.channels.length), 0);
+  const messagesShared = campaigns
+    .filter((c) => c.status === "shared" || c.status === "sent")
+    .reduce((sum, c) => sum + c.recipientCount, 0);
   const estimatedRevenue = campaigns.reduce(
     (sum, c) => sum + (c.status === "cancelled" ? 0 : c.estimatedRevenue),
     0,
@@ -390,7 +404,7 @@ export function computeMarketingSummary(
   return {
     campaigns: campaigns.length,
     recipients,
-    messagesSent,
+    messagesSent: messagesShared,
     estimatedRevenue,
     upcoming,
   };

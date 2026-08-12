@@ -23,6 +23,10 @@ import {
   type MarketingTemplate,
 } from "@/lib/marketing/types";
 import {
+  copyTextToClipboard,
+  openWhatsAppShare,
+} from "@/lib/marketing/whatsapp/share";
+import {
   planAllowsMarketingScheduling,
   planAllowsMarketingTemplates,
 } from "@/lib/subscriptions/plans";
@@ -134,7 +138,10 @@ export function WhatsAppCampaignBuilder({
   const [customIds, setCustomIds] = useState<string[]>([]);
   const [optedInCustomers, setOptedInCustomers] = useState<Customer[]>([]);
   const [optedInTotal, setOptedInTotal] = useState(0);
+  const [excludedCount, setExcludedCount] = useState(0);
   const [previewCount, setPreviewCount] = useState(0);
+  const [enableWhatsAppShare, setEnableWhatsAppShare] = useState(true);
+  const [enableCopy, setEnableCopy] = useState(true);
   const [scheduleMode, setScheduleMode] = useState<"now" | "later" | "draft">(
     "draft",
   );
@@ -169,6 +176,7 @@ export function WhatsAppCampaignBuilder({
     if (!result.ok) return;
     setPreviewCount(result.count);
     setOptedInTotal(result.optedInTotal);
+    setExcludedCount(result.excludedCount);
   }, [restaurantId, filters]);
 
   useEffect(() => {
@@ -184,6 +192,7 @@ export function WhatsAppCampaignBuilder({
         );
         setOptedInCustomers(opted);
         setOptedInTotal(opted.length);
+        setExcludedCount(customersResult.data.length - opted.length);
       }
       if (templatesResult.ok) setTemplates(templatesResult.data);
     })();
@@ -213,6 +222,8 @@ export function WhatsAppCampaignBuilder({
     setScheduleMode("draft");
     setScheduledDate("");
     setScheduledTime("10:00");
+    setEnableWhatsAppShare(true);
+    setEnableCopy(true);
   };
 
   const insertPlaceholder = (token: string) => {
@@ -224,26 +235,35 @@ export function WhatsAppCampaignBuilder({
     if (!name.trim()) setName(template.name);
     const matched = CAMPAIGN_TYPES.find((type) => type === template.name);
     if (matched) setCampaignType(matched);
-    else if (template.slug === "weekend-offer") setCampaignType("Custom");
     showToast(`Loaded “${template.name}” template`);
   };
 
-  const handleSubmit = async () => {
+  const handleCopyCampaign = async () => {
+    const ok = await copyTextToClipboard(previewText);
+    if (ok) showToast("Message copied successfully.");
+    else showToast("Unable to copy message.", "error");
+  };
+
+  const handleSubmit = async (mode: "draft" | "later" | "now" = scheduleMode) => {
     if (!name.trim() || !message.trim()) {
       showToast("Campaign name and message are required.", "error");
+      return;
+    }
+    if (!enableWhatsAppShare && !enableCopy) {
+      showToast("Enable WhatsApp Share or Copy Message.", "error");
       return;
     }
     if (preset === "custom" && customIds.length === 0) {
       showToast("Select at least one opted-in customer.", "error");
       return;
     }
-    if (scheduleMode === "later" && !scheduledDate) {
+    if (mode === "later" && !scheduledDate) {
       showToast("Choose a schedule date.", "error");
       return;
     }
 
     let scheduledAt: string | null = null;
-    if (scheduleMode === "later" && scheduledDate) {
+    if (mode === "later" && scheduledDate) {
       scheduledAt = new Date(
         `${scheduledDate}T${scheduledTime || "10:00"}:00`,
       ).toISOString();
@@ -257,7 +277,7 @@ export function WhatsAppCampaignBuilder({
       message,
       channels: ["whatsapp"],
       audienceFilters: filters,
-      scheduleMode,
+      scheduleMode: mode,
       scheduledAt,
       estimatedRevenue: 0,
     });
@@ -268,15 +288,17 @@ export function WhatsAppCampaignBuilder({
       return;
     }
 
-    if (result.deliveryWarning) {
-      showToast(result.deliveryWarning, "info");
+    if (mode === "now" && enableWhatsAppShare && result.shareText) {
+      openWhatsAppShare(result.shareText);
+      showToast("Campaign shared — WhatsApp opened with your message.");
+    } else if (mode === "now" && enableCopy && result.shareText) {
+      await copyTextToClipboard(result.shareText);
+      showToast("Message copied successfully.");
     } else {
       showToast(
-        scheduleMode === "later"
-          ? "Campaign scheduled"
-          : scheduleMode === "now"
-            ? "Campaign created"
-            : "Draft saved",
+        mode === "later"
+          ? "Campaign scheduled — share from history when ready."
+          : "Draft saved",
       );
     }
 
@@ -308,7 +330,7 @@ export function WhatsAppCampaignBuilder({
               Create WhatsApp Campaign
             </h2>
             <p className="mt-1 text-sm text-white/45">
-              Only customers who opted in to promotions are eligible.
+              Free WhatsApp Share — no API credentials required.
             </p>
           </div>
           <button
@@ -355,11 +377,16 @@ export function WhatsAppCampaignBuilder({
 
               <div>
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">
-                  Recipients
+                  Recipient summary
                 </p>
-                <p className="rounded-xl border border-gold/20 bg-gold/10 px-4 py-3 text-sm text-gold">
-                  {optedInTotal} customers opted in
-                </p>
+                <div className="space-y-2 rounded-xl border border-gold/20 bg-gold/10 px-4 py-3 text-sm">
+                  <p className="text-gold">
+                    {previewCount} eligible · {optedInTotal} customers opted in
+                  </p>
+                  <p className="text-xs text-white/55">
+                    {excludedCount} excluded (no marketing consent)
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -478,11 +505,44 @@ export function WhatsAppCampaignBuilder({
                     )}
                   </div>
                 ) : null}
+              </div>
 
-                <p className="mt-3 text-sm text-white/70">
-                  Estimated recipients:{" "}
-                  <span className="font-semibold text-gold">{previewCount}</span>
+              <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                  Send via
                 </p>
+                <div className="space-y-2">
+                  <label className="flex cursor-pointer items-center gap-3 text-sm text-white/80">
+                    <input
+                      type="checkbox"
+                      checked={enableWhatsAppShare}
+                      onChange={(e) => setEnableWhatsAppShare(e.target.checked)}
+                      className="rounded border-white/20 text-gold focus:ring-gold/30"
+                    />
+                    WhatsApp Share
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-3 text-sm text-white/80">
+                    <input
+                      type="checkbox"
+                      checked={enableCopy}
+                      onChange={(e) => setEnableCopy(e.target.checked)}
+                      className="rounded border-white/20 text-gold focus:ring-gold/30"
+                    />
+                    Copy Message
+                  </label>
+                  <p className="flex items-center gap-3 text-sm text-white/35">
+                    <input type="checkbox" disabled className="rounded opacity-40" />
+                    Email (coming soon)
+                  </p>
+                  <p className="flex items-center gap-3 text-sm text-white/35">
+                    <input type="checkbox" disabled className="rounded opacity-40" />
+                    SMS (coming soon)
+                  </p>
+                  <p className="flex items-center gap-3 text-sm text-white/35">
+                    <input type="checkbox" disabled className="rounded opacity-40" />
+                    Push Notifications (coming soon)
+                  </p>
+                </div>
               </div>
             </DashboardCard>
 
@@ -536,6 +596,13 @@ export function WhatsAppCampaignBuilder({
                     </button>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void handleCopyCampaign()}
+                  className="menu-btn-secondary w-full"
+                >
+                  Copy Campaign
+                </button>
               </DashboardCard>
 
               <DashboardCard className="p-4">
@@ -562,13 +629,13 @@ export function WhatsAppCampaignBuilder({
 
               <DashboardCard className="space-y-3 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
-                  Delivery
+                  When to share
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {(
                     [
                       ["draft", "Save draft"],
-                      ["now", "Send now"],
+                      ["now", "Share on WhatsApp"],
                       ["later", "Schedule later"],
                     ] as const
                   ).map(([mode, label]) => {
@@ -620,6 +687,10 @@ export function WhatsAppCampaignBuilder({
                     />
                   </div>
                 ) : null}
+                <p className="text-xs text-white/40">
+                  Sharing opens WhatsApp with your message pre-filled. Nothing is
+                  sent automatically.
+                </p>
               </DashboardCard>
             </div>
           </div>
@@ -636,14 +707,14 @@ export function WhatsAppCampaignBuilder({
           </button>
           <button
             type="button"
-            onClick={() => void handleSubmit()}
+            onClick={() => void handleSubmit(scheduleMode)}
             className="menu-btn-primary"
             disabled={busy}
           >
             {busy
-              ? "Saving…"
+              ? "Working…"
               : scheduleMode === "now"
-                ? "Create & Send"
+                ? "Share on WhatsApp"
                 : scheduleMode === "later"
                   ? "Schedule Campaign"
                   : "Save Draft"}

@@ -16,8 +16,8 @@ export function MarketingUpgradeCard() {
           Marketing Center
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-white/55">
-          Send WhatsApp campaigns to opted-in CRM customers — audience filters,
-          templates, and provider-ready delivery for Professional and Enterprise.
+          Send WhatsApp Share campaigns to opted-in CRM customers — free
+          WhatsApp Web / Business app workflow for Professional and Enterprise.
         </p>
 
         <div className="mx-auto mt-8 max-w-sm text-start">

@@ -2,6 +2,7 @@ import { logActivity } from "@/lib/admin/activity-log";
 import { fetchCustomers } from "@/lib/customers/queries";
 import type { Customer } from "@/lib/customers/sync-customer";
 import { resolveMarketingAccess } from "@/lib/marketing/access";
+import { prepareChannel } from "@/lib/marketing/channels";
 import {
   applyCampaignPlaceholders,
   DEFAULT_MARKETING_TEMPLATES,
@@ -11,6 +12,7 @@ import {
   describeAudienceFilters,
   estimateCampaignRevenue,
   filterAudience,
+  isCampaignSharedStatus,
   mapCampaign,
   type AudienceFilters,
   type CampaignStatus,
@@ -22,12 +24,12 @@ import {
   type MarketingTemplate,
   computeMarketingSummary,
 } from "@/lib/marketing/types";
-import { sendCampaign as sendWhatsAppCampaign } from "@/lib/marketing/whatsapp";
 import {
   planAllowsMarketingScheduling,
   planAllowsMarketingTemplates,
 } from "@/lib/subscriptions/plans";
 import { supabase } from "@/lib/supabase";
+import { buildWhatsAppShareUrl } from "@/lib/marketing/whatsapp/share";
 
 const ERROR = "Unable to manage marketing campaigns. Please try again.";
 
@@ -47,6 +49,18 @@ export type CampaignAnalytics = {
   skipped: number;
   read: number;
   clicks: number;
+  /** Status funnel for WhatsApp Share workflow */
+  created: number;
+  shared: number;
+  scheduled: number;
+  cancelled: number;
+};
+
+export type ShareCampaignResult = {
+  ok: true;
+  data: MarketingCampaign;
+  shareText: string;
+  shareUrl: string;
 };
 
 export type PaginatedCampaigns = {
@@ -62,6 +76,22 @@ function withConsentGate(filters: AudienceFilters): AudienceFilters {
     ...filters,
     requireMarketingOptIn: true,
   };
+}
+
+function renderShareMessage(
+  template: string,
+  restaurantName: string,
+  sample?: Customer | null,
+): string {
+  return applyCampaignPlaceholders(template, {
+    customerName: sample?.fullName?.trim() || "valued guest",
+    restaurantName: restaurantName || "our restaurant",
+    loyaltyPoints: sample?.loyaltyPoints ?? 0,
+    lastOrderDate: sample?.lastVisit
+      ? new Date(sample.lastVisit).toLocaleDateString()
+      : "recently",
+    totalOrders: sample?.totalOrders ?? 0,
+  });
 }
 
 async function requireMarketingAccess(restaurantId: string) {
@@ -121,6 +151,8 @@ export async function previewAudience(
       ok: true;
       count: number;
       optedInTotal: number;
+      excludedCount: number;
+      totalCustomers: number;
       estimatedRevenue: number;
       sample: Array<{ id: string; name: string | null }>;
       audienceLabel: string;
@@ -134,12 +166,18 @@ export async function previewAudience(
     const customersResult = await fetchCustomers(restaurantId);
     if (!customersResult.ok) return customersResult;
 
+    const all = customersResult.data;
+    const optedInTotal = countMarketingOptIns(all);
     const gated = withConsentGate(filters);
-    const matched = filterAudience(customersResult.data, gated);
+    const matched = filterAudience(all, gated);
+    const excludedCount = Math.max(0, all.length - optedInTotal);
+
     return {
       ok: true,
       count: matched.length,
-      optedInTotal: countMarketingOptIns(customersResult.data),
+      optedInTotal,
+      excludedCount,
+      totalCustomers: all.length,
       estimatedRevenue: estimateCampaignRevenue(matched),
       sample: matched.slice(0, 5).map((c) => ({
         id: c.id,
@@ -201,7 +239,12 @@ async function insertRecipientRows(
 export async function createMarketingCampaign(
   input: CreateCampaignInput,
 ): Promise<
-  | { ok: true; data: MarketingCampaign; deliveryWarning?: string }
+  | {
+      ok: true;
+      data: MarketingCampaign;
+      shareText?: string;
+      shareUrl?: string;
+    }
   | { ok: false; message: string }
 > {
   try {
@@ -209,13 +252,12 @@ export async function createMarketingCampaign(
     if (!access.ok) return { ok: false, message: access.message };
 
     const filters = withConsentGate(input.audienceFilters ?? {});
-    // WhatsApp Campaign Center v1 — WhatsApp-only (multi-channel is Enterprise future).
     const channels: MarketingChannel[] =
       input.channels && input.channels.length > 0
         ? input.channels.filter((c) => c === "whatsapp")
         : (["whatsapp"] as MarketingChannel[]);
     if (channels.length === 0) {
-      return { ok: false, message: "WhatsApp channel is required." };
+      return { ok: false, message: "WhatsApp Share channel is required." };
     }
 
     const recipients = await resolveRecipients(input.restaurantId, filters);
@@ -238,13 +280,19 @@ export async function createMarketingCampaign(
       }
       status = "scheduled";
       scheduledAt = input.scheduledAt;
-    } else if (input.scheduleMode === "now") {
-      // Do not fake delivery — create draft then attempt provider send below.
-      status = "draft";
     }
 
     const estimated =
       input.estimatedRevenue ?? estimateCampaignRevenue(recipients.customers);
+
+    const { data: restaurant } = await supabase
+      .from("restaurants")
+      .select("restaurant_name")
+      .eq("id", input.restaurantId)
+      .maybeSingle();
+    const restaurantName =
+      (restaurant as { restaurant_name?: string } | null)?.restaurant_name?.trim() ||
+      "Restaurant";
 
     const { data, error } = await supabase
       .from("marketing_campaigns")
@@ -271,11 +319,12 @@ export async function createMarketingCampaign(
         metadata: {
           templateSlug: input.templateSlug ?? null,
           audienceLabel: describeAudienceFilters(filters),
+          shareMode: "whatsapp_share",
           providers: {
-            whatsapp: { provider: "abstract", status: "ready" },
-            email: { provider: null, status: "reserved" },
-            sms: { provider: null, status: "reserved" },
-            push: { provider: null, status: "reserved" },
+            whatsapp: { provider: "whatsapp_share", status: "ready" },
+            email: { provider: null, status: "coming_soon" },
+            sms: { provider: null, status: "coming_soon" },
+            push: { provider: null, status: "coming_soon" },
           },
         },
       })
@@ -308,23 +357,27 @@ export async function createMarketingCampaign(
       },
     });
 
+    // "now" = Share on WhatsApp — mark Shared and return share payload (no API).
     if (input.scheduleMode === "now") {
-      const sendResult = await sendMarketingCampaign({
+      const shareResult = await shareMarketingCampaign({
         restaurantId: input.restaurantId,
         campaignId: campaign.id,
+        restaurantName,
       });
-      if (!sendResult.ok) {
+      if (!shareResult.ok) {
+        const shareText = renderShareMessage(
+          campaign.message,
+          restaurantName,
+          recipients.customers[0] ?? null,
+        );
         return {
           ok: true,
           data: campaign,
-          deliveryWarning: sendResult.message,
+          shareText,
+          shareUrl: buildWhatsAppShareUrl(shareText),
         };
       }
-      return {
-        ok: true,
-        data: sendResult.data,
-        deliveryWarning: sendResult.deliveryWarning,
-      };
+      return shareResult;
     }
 
     return { ok: true, data: campaign };
@@ -362,8 +415,8 @@ export async function updateMarketingCampaign(input: {
 
     if (!existing) return { ok: false, message: "Campaign not found." };
     const current = mapCampaign(existing as MarketingCampaignRecord);
-    if (current.status === "sent") {
-      return { ok: false, message: "Sent campaigns cannot be edited." };
+    if (isCampaignSharedStatus(current.status)) {
+      return { ok: false, message: "Shared campaigns cannot be edited." };
     }
 
     const filters = input.audienceFilters ?? current.audienceFilters;
@@ -483,6 +536,7 @@ export async function scheduleMarketingCampaign(input: {
       .eq("id", input.campaignId)
       .eq("restaurant_id", input.restaurantId)
       .neq("status", "sent")
+      .neq("status", "shared")
       .select("*")
       .maybeSingle();
 
@@ -504,13 +558,11 @@ export async function scheduleMarketingCampaign(input: {
   }
 }
 
-export async function sendMarketingCampaign(input: {
+export async function shareMarketingCampaign(input: {
   restaurantId: string;
   campaignId: string;
-}): Promise<
-  | { ok: true; data: MarketingCampaign; deliveryWarning?: string }
-  | { ok: false; message: string }
-> {
+  restaurantName?: string;
+}): Promise<ShareCampaignResult | { ok: false; message: string }> {
   try {
     const { access } = await requireMarketingAccess(input.restaurantId);
     if (!access.ok) return { ok: false, message: access.message };
@@ -528,152 +580,61 @@ export async function sendMarketingCampaign(input: {
 
     const campaign = mapCampaign(existing as MarketingCampaignRecord);
     if (campaign.status === "cancelled") {
-      return { ok: false, message: "Cancelled campaigns cannot be sent." };
-    }
-    if (campaign.status === "sent") {
-      return { ok: false, message: "Campaign was already sent." };
+      return { ok: false, message: "Cancelled campaigns cannot be shared." };
     }
 
-    const { data: restaurant } = await supabase
-      .from("restaurants")
-      .select("name")
-      .eq("id", input.restaurantId)
-      .maybeSingle();
-    const restaurantName =
-      (restaurant as { name?: string } | null)?.name?.trim() || "Restaurant";
-
-    const { data: recipientRows, error: recipientError } = await supabase
-      .from("marketing_campaign_recipients")
-      .select("id, customer_id, channel, status, metadata")
-      .eq("campaign_id", input.campaignId)
-      .eq("channel", "whatsapp");
-
-    if (recipientError) {
-      return { ok: false, message: recipientError.message };
+    let restaurantName = input.restaurantName?.trim() || "";
+    if (!restaurantName) {
+      const { data: restaurant } = await supabase
+        .from("restaurants")
+        .select("restaurant_name")
+        .eq("id", input.restaurantId)
+        .maybeSingle();
+      restaurantName =
+        (restaurant as { restaurant_name?: string } | null)?.restaurant_name?.trim() ||
+        "Restaurant";
     }
 
-    type RecipientRow = {
-      id: string;
-      customer_id: string;
-      channel: string;
-      status: string;
-      metadata: { phone?: string | null; customerName?: string | null } | null;
-    };
-
-    const rows = (recipientRows ?? []) as RecipientRow[];
-    const customerIds = [...new Set(rows.map((r) => r.customer_id))];
-    const customersById = new Map<string, Customer>();
-
-    if (customerIds.length > 0) {
-      const customersResult = await fetchCustomers(input.restaurantId);
-      if (customersResult.ok) {
-        for (const customer of customersResult.data) {
-          customersById.set(customer.id, customer);
-        }
-      }
-    }
-
-    const messages = rows
-      .map((row) => {
-        const customer = customersById.get(row.customer_id);
-        if (customer && customer.metadata?.marketing_opt_in !== true) {
-          return null;
-        }
-        const phone =
-          customer?.phone?.trim() ||
-          row.metadata?.phone?.trim() ||
-          "";
-        if (!phone) return null;
-        const body = applyCampaignPlaceholders(campaign.message, {
-          customerName: customer?.fullName ?? row.metadata?.customerName,
-          restaurantName,
-          loyaltyPoints: customer?.loyaltyPoints ?? 0,
-          lastOrderDate: customer?.lastVisit
-            ? new Date(customer.lastVisit).toLocaleDateString()
-            : null,
-          totalOrders: customer?.totalOrders ?? 0,
-        });
-        return {
-          recipientId: row.id,
-          customerId: row.customer_id,
-          to: phone,
-          body,
-          customerName: customer?.fullName ?? row.metadata?.customerName,
-        };
-      })
-      .filter((m): m is NonNullable<typeof m> => Boolean(m));
-
-    const delivery = await sendWhatsAppCampaign({
+    const recipients = await resolveRecipients(
+      input.restaurantId,
+      campaign.audienceFilters,
+    );
+    const sample = recipients.ok ? (recipients.customers[0] ?? null) : null;
+    const shareText = renderShareMessage(
+      campaign.message,
+      restaurantName,
+      sample,
+    );
+    const prepared = await prepareChannel("whatsapp_share", {
       restaurantId: input.restaurantId,
       campaignId: input.campaignId,
       restaurantName,
       campaignName: campaign.name,
-      messages,
-      metadata: { channels: campaign.channels },
+      message: shareText,
+      phone: sample?.phone,
     });
-
-    const sentAt = new Date().toISOString();
-
-    // Persist per-recipient outcomes in batches (no N+1 updates when possible).
-    const byStatus = {
-      sent: [] as string[],
-      failed: [] as string[],
-      skipped: [] as string[],
-    };
-    for (const result of delivery.results) {
-      byStatus[result.status].push(result.recipientId);
-    }
-
-    for (const [status, ids] of Object.entries(byStatus) as Array<
-      ["sent" | "failed" | "skipped", string[]]
-    >) {
-      if (ids.length === 0) continue;
-      await supabase
-        .from("marketing_campaign_recipients")
-        .update({
-          status,
-          sent_at: status === "sent" ? sentAt : null,
-        })
-        .in("id", ids);
-    }
-
-    // Mark remaining pending without phone / without opt-in as skipped.
-    await supabase
-      .from("marketing_campaign_recipients")
-      .update({ status: "skipped" })
-      .eq("campaign_id", input.campaignId)
-      .eq("status", "pending");
-
-    const campaignFullyDelivered =
-      delivery.configured && delivery.ok && delivery.delivered > 0;
-
-    const nextStatus: CampaignStatus = campaignFullyDelivered
-      ? "sent"
-      : campaign.status === "scheduled"
-        ? "scheduled"
-        : "draft";
+    const shareUrl = prepared.url ?? buildWhatsAppShareUrl(shareText);
+    const sharedAt = new Date().toISOString();
 
     const { data: updated, error: updateError } = await supabase
       .from("marketing_campaigns")
       .update({
-        status: nextStatus,
-        sent_at: campaignFullyDelivered ? sentAt : null,
+        status: "shared",
+        sent_at: sharedAt,
         metadata: {
           ...campaign.metadata,
-          lastDelivery: {
-            at: sentAt,
-            providerId: delivery.providerId,
-            configured: delivery.configured,
-            delivered: delivery.delivered,
-            failed: delivery.failed,
-            skipped: delivery.skipped,
-            error: delivery.error ?? null,
+          shareMode: "whatsapp_share",
+          lastShare: {
+            at: sharedAt,
+            providerId: "whatsapp_share",
+            url: shareUrl,
           },
           analytics: {
             recipients: campaign.recipientCount,
-            delivered: delivery.delivered,
-            failed: delivery.failed,
-            skipped: delivery.skipped,
+            shared: true,
+            delivered: 0,
+            failed: 0,
+            skipped: 0,
             read: 0,
             clicks: 0,
           },
@@ -687,40 +648,40 @@ export async function sendMarketingCampaign(input: {
     if (updateError || !updated) {
       return {
         ok: false,
-        message: updateError?.message ?? "Unable to update campaign after send.",
+        message: updateError?.message ?? "Unable to mark campaign as shared.",
       };
     }
 
+    // Recipients stay pending — owner shares via WhatsApp app (no API delivery).
     void logActivity({
-      action: campaignFullyDelivered ? "campaign_sent" : "campaign_edited",
+      action: "campaign_sent",
       restaurantId: input.restaurantId,
       entityType: "marketing_campaign",
       entityId: input.campaignId,
       newValues: {
-        status: nextStatus,
-        delivered: delivery.delivered,
-        failed: delivery.failed,
-        configured: delivery.configured,
+        status: "shared",
+        channel: "whatsapp_share",
+        recipients: campaign.recipientCount,
       },
     });
-
-    if (!delivery.configured || !campaignFullyDelivered) {
-      return {
-        ok: true,
-        data: mapCampaign(updated as MarketingCampaignRecord),
-        deliveryWarning:
-          delivery.error ||
-          "WhatsApp provider did not deliver messages. Campaign was saved without marking recipients as delivered.",
-      };
-    }
 
     return {
       ok: true,
       data: mapCampaign(updated as MarketingCampaignRecord),
+      shareText,
+      shareUrl,
     };
   } catch {
     return { ok: false, message: ERROR };
   }
+}
+
+/** Alias kept for older callers — routes to WhatsApp Share. */
+export async function sendMarketingCampaign(input: {
+  restaurantId: string;
+  campaignId: string;
+}): Promise<ShareCampaignResult | { ok: false; message: string }> {
+  return shareMarketingCampaign(input);
 }
 
 export async function cancelMarketingCampaign(
@@ -739,6 +700,7 @@ export async function cancelMarketingCampaign(
       .eq("id", campaignId)
       .eq("restaurant_id", restaurantId)
       .neq("status", "sent")
+      .neq("status", "shared")
       .select("*")
       .maybeSingle();
 
@@ -836,11 +798,19 @@ export async function fetchCampaignAnalytics(
     const { access } = await requireMarketingAccess(restaurantId);
     if (!access.ok) return { ok: false, message: access.message };
 
-    const { data, error } = await supabase
-      .from("marketing_campaign_recipients")
-      .select("status, metadata")
-      .eq("restaurant_id", restaurantId)
-      .eq("campaign_id", campaignId);
+    const [{ data: campaignRow }, { data, error }] = await Promise.all([
+      supabase
+        .from("marketing_campaigns")
+        .select("status, recipient_count")
+        .eq("id", campaignId)
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle(),
+      supabase
+        .from("marketing_campaign_recipients")
+        .select("status, metadata")
+        .eq("restaurant_id", restaurantId)
+        .eq("campaign_id", campaignId),
+    ]);
 
     if (error) return { ok: false, message: error.message || ERROR };
 
@@ -849,6 +819,7 @@ export async function fetchCampaignAnalytics(
       metadata: Record<string, unknown> | null;
     }>;
 
+    const status = (campaignRow as { status?: string } | null)?.status ?? "draft";
     const analytics: CampaignAnalytics = {
       recipients: rows.length,
       delivered: 0,
@@ -857,6 +828,10 @@ export async function fetchCampaignAnalytics(
       skipped: 0,
       read: 0,
       clicks: 0,
+      created: 1,
+      shared: isCampaignSharedStatus(status) ? 1 : 0,
+      scheduled: status === "scheduled" ? 1 : 0,
+      cancelled: status === "cancelled" ? 1 : 0,
     };
 
     for (const row of rows) {
