@@ -114,9 +114,13 @@ export type PlanFeatures = {
   giftCards: boolean;
   /** Future — coupon / promo codes. */
   coupons: boolean;
-  /** Future — AI assistant tooling. */
+  /** Restaurant Insights (rule-based AI insights) — Enterprise. */
   aiAssistant: boolean;
-  /** Future — advanced analytics beyond the base dashboard. */
+  /**
+   * Business Intelligence dashboard (KPIs, charts, performance).
+   * Professional + Enterprise. Enterprise also unlocks multi-restaurant
+   * analytics, advanced exports, and reward analytics via helpers.
+   */
   advancedAnalytics: boolean;
   /** Whether the plan may own more than one restaurant. */
   multiRestaurant: boolean;
@@ -155,7 +159,7 @@ export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
     giftCards: false,
     coupons: false,
     aiAssistant: false,
-    advancedAnalytics: false,
+    advancedAnalytics: true,
     multiRestaurant: true,
     maxRestaurants: Number.POSITIVE_INFINITY,
   },
@@ -279,18 +283,86 @@ export function planAllowsCoupons(
   return getPlanFeatures(plan).coupons;
 }
 
-/** Future — AI assistant. Driven by PLAN_FEATURES. */
+/** Restaurant Insights engine — Enterprise. */
 export function planAllowsAiAssistant(
   plan: string | null | undefined,
 ): boolean {
   return getPlanFeatures(plan).aiAssistant;
 }
 
-/** Future — advanced analytics. Driven by PLAN_FEATURES. */
+/** Alias — Restaurant Insights (same gate as aiAssistant). */
+export function planAllowsAiInsights(
+  plan: string | null | undefined,
+): boolean {
+  return planAllowsAiAssistant(plan);
+}
+
+/** Business Intelligence dashboard — Professional + Enterprise. */
 export function planAllowsAdvancedAnalytics(
   plan: string | null | undefined,
 ): boolean {
   return getPlanFeatures(plan).advancedAnalytics;
+}
+
+/** Alias — BI dashboard (same gate as advancedAnalytics). */
+export function planAllowsBusinessIntelligence(
+  plan: string | null | undefined,
+): boolean {
+  return planAllowsAdvancedAnalytics(plan);
+}
+
+/** Loyalty rewards catalog — Professional + Enterprise (via loyalty). */
+export function planAllowsLoyaltyRewards(
+  plan: string | null | undefined,
+): boolean {
+  return planAllowsLoyalty(plan);
+}
+
+/** Unlimited rewards + reward analytics — Enterprise. */
+export function planAllowsUnlimitedRewards(
+  plan: string | null | undefined,
+): boolean {
+  return normalizePlanId(plan) === "Enterprise";
+}
+
+/** Reward analytics charts — Enterprise. */
+export function planAllowsRewardAnalytics(
+  plan: string | null | undefined,
+): boolean {
+  return normalizePlanId(plan) === "Enterprise";
+}
+
+/** Max active rewards for the plan (Infinity = unlimited). */
+export function getMaxLoyaltyRewards(plan: string | null | undefined): number {
+  return planAllowsUnlimitedRewards(plan) ? Number.POSITIVE_INFINITY : 10;
+}
+
+/**
+ * Multi-restaurant intelligence aggregation — Enterprise only.
+ * Professional may own multiple restaurants but analytics stay per-restaurant.
+ */
+export function planAllowsMultiRestaurantAnalytics(
+  plan: string | null | undefined,
+): boolean {
+  return (
+    normalizePlanId(plan) === "Enterprise" &&
+    planAllowsMultiRestaurant(plan) &&
+    planAllowsAdvancedAnalytics(plan)
+  );
+}
+
+/** CSV for Professional; Excel/PDF extras for Enterprise. */
+export function planAllowsAdvancedExport(
+  plan: string | null | undefined,
+): boolean {
+  return normalizePlanId(plan) === "Enterprise";
+}
+
+/** Guest reviews & feedback — Professional + Enterprise (ordering plans). */
+export function planAllowsReviews(
+  plan: string | null | undefined,
+): boolean {
+  return planAllowsOnlineOrdering(plan) || planAllowsAdvancedAnalytics(plan);
 }
 
 /**

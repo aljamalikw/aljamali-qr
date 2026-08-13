@@ -17,6 +17,7 @@ interface OrderDetailsDrawerProps {
   onAdvanceStatus: (order: Order) => void;
   onCancel: (order: Order) => void;
   onPaymentStatusChange: (order: Order, status: PaymentStatus) => void;
+  onCopyFeedbackLink?: (order: Order) => void;
 }
 
 const labelClass = "block text-xs font-medium uppercase tracking-wider text-white/40";
@@ -39,6 +40,7 @@ export function OrderDetailsDrawer({
   onAdvanceStatus,
   onCancel,
   onPaymentStatusChange,
+  onCopyFeedbackLink,
 }: OrderDetailsDrawerProps) {
   const nextStatus = order ? getNextOrderStatus(order.status) : null;
   const nextLabel = order ? getNextOrderStatusActionLabel(order.status) : null;
@@ -275,6 +277,15 @@ export function OrderDetailsDrawer({
                   {nextLabel}
                 </button>
               )}
+              {order.status === "Completed" && onCopyFeedbackLink ? (
+                <button
+                  type="button"
+                  className="menu-btn-secondary flex-1"
+                  onClick={() => onCopyFeedbackLink(order)}
+                >
+                  Feedback link
+                </button>
+              ) : null}
               {canCancelOrder(order.status) && (
                 <button type="button" className="menu-btn-danger flex-1" onClick={() => onCancel(order)}>
                   Cancel Order

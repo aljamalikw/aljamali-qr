@@ -16,12 +16,13 @@ import type { Restaurant } from "@/lib/restaurants/types";
 import type { ActivityItem } from "@/lib/dashboard/types";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { isRestaurantSetupComplete } from "@/lib/restaurants/setup";
-import {
-  fetchRecentCustomerActivity,
-  type RecentCustomerActivityItem,
-} from "@/lib/customers/recent-activity";
 import { formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { supabase } from "@/lib/supabase";
+import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { isAdminRole } from "@/lib/auth/roles";
+import { planAllowsBusinessIntelligence } from "@/lib/subscriptions/plans";
+import { BusinessIntelligenceDashboard } from "@/components/dashboard/intelligence/BusinessIntelligenceDashboard";
 
 type Announcement = {
   id: string;
@@ -37,7 +38,6 @@ type DashboardData = {
   categoryCount: number;
   analytics: AnalyticsDashboardData | null;
   announcements: Announcement[];
-  customerActivity: Array<RecentCustomerActivityItem & { time: string }>;
 };
 
 const EMPTY_DATA: DashboardData = {
@@ -47,7 +47,6 @@ const EMPTY_DATA: DashboardData = {
   categoryCount: 0,
   analytics: null,
   announcements: [],
-  customerActivity: [],
 };
 
 const QUICK_ACTIONS = [
@@ -104,7 +103,9 @@ function buildRecentActivity(
   }
 
   if (analytics.mostScannedQr && analytics.mostScannedQr.scans > 0) {
-    const existing = activities.some((item) => item.id === `top-${analytics.mostScannedQr!.id}`);
+    const existing = activities.some(
+      (item) => item.id === `top-${analytics.mostScannedQr!.id}`,
+    );
     if (!existing) {
       activities.push({
         id: `top-${analytics.mostScannedQr.id}`,
@@ -120,8 +121,15 @@ function buildRecentActivity(
 }
 
 export function DashboardHome() {
+  const { access, loading: accessLoading } = useSubscriptionAccess();
+  const { role, loading: authLoading } = useAuthUser();
   const [data, setData] = useState<DashboardData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
+
+  const showBi =
+    !accessLoading &&
+    !authLoading &&
+    (isAdminRole(role) || planAllowsBusinessIntelligence(access.plan));
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -149,10 +157,6 @@ export function DashboardHome() {
       fetchPublishedAnnouncements(),
     ]);
 
-    const customerActivityResult = restaurant?.id
-      ? await fetchRecentCustomerActivity(restaurant.id)
-      : { ok: false as const, message: "" };
-
     setData({
       restaurant,
       qrCount: qrResult.ok ? qrResult.data.length : 0,
@@ -160,9 +164,6 @@ export function DashboardHome() {
       categoryCount: categoriesResult.ok ? categoriesResult.data.length : 0,
       analytics: analyticsResult.ok ? analyticsResult.data : null,
       announcements,
-      customerActivity: customerActivityResult.ok
-        ? customerActivityResult.data
-        : [],
     });
 
     setLoading(false);
@@ -221,6 +222,40 @@ export function DashboardHome() {
     [analytics],
   );
 
+  const announcementsBlock =
+    !loading && data.announcements.length > 0 ? (
+      <DashboardCard delay={0.2} className="p-5 sm:p-6">
+        <h2 className="font-serif text-xl font-bold text-white">
+          Announcements
+        </h2>
+        <p className="mt-1 text-sm text-white/45">
+          Updates from the Aljamali QR team
+        </p>
+        <div className="mt-5 space-y-3">
+          {data.announcements.map((announcement) => (
+            <div
+              key={announcement.id}
+              className="rounded-xl border border-white/5 bg-black/20 p-4"
+            >
+              <p className="font-medium text-white">
+                {announcement.title ?? "Announcement"}
+              </p>
+              {announcement.message ? (
+                <p className="mt-1 text-sm text-white/50">
+                  {announcement.message}
+                </p>
+              ) : null}
+              {announcement.created_at ? (
+                <p className="mt-2 text-xs text-white/35">
+                  {formatDemoDateTime(announcement.created_at)}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </DashboardCard>
+    ) : null;
+
   return (
     <div className="mx-auto max-w-7xl space-y-8">
       <motion.div
@@ -236,7 +271,7 @@ export function DashboardHome() {
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
           <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-gold">
-            Professional
+            {access.plan || "Starter"}
           </span>
           <span
             className={`rounded-full border px-3 py-1 ${
@@ -247,13 +282,11 @@ export function DashboardHome() {
           >
             {isActive ? "Active" : "Incomplete"}
           </span>
-          <span className="text-white/45">
-            Expiry: <span className="text-white/70">—</span>
-          </span>
         </div>
         <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">
-          Track scans, menu performance, and guest activity across your
-          restaurant in real time.
+          {showBi
+            ? "Business intelligence, guest trends, and restaurant performance in one place."
+            : "Track scans, menu performance, and guest activity across your restaurant."}
         </p>
       </motion.div>
 
@@ -267,128 +300,19 @@ export function DashboardHome() {
               Complete your restaurant setup ({onboardingPercent}%)
             </p>
           </div>
-          <Link href="/restaurant/setup" className="menu-btn-primary inline-flex shrink-0">
+          <Link
+            href="/restaurant/setup"
+            className="menu-btn-primary inline-flex shrink-0"
+          >
             Continue Setup
           </Link>
         </DashboardCard>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {loading
-          ? Array.from({ length: 7 }).map((_, i) => (
-              <StatCardSkeleton key={i} />
-            ))
-          : kpis.map((kpi, index) => (
-              <DashboardCard
-                key={kpi.label}
-                delay={index * 0.05}
-                className="p-5 sm:p-6"
-              >
-                <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/45 sm:text-[11px]">
-                  {kpi.label}
-                </p>
-                <p
-                  className={`mt-3 font-serif font-bold text-white ${
-                    kpi.label === "Top Scanned QR"
-                      ? "text-lg sm:text-xl"
-                      : "text-3xl sm:text-4xl"
-                  }`}
-                >
-                  {kpi.value}
-                </p>
-              </DashboardCard>
-            ))}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <div className="space-y-6 xl:col-span-2">
-          {!loading && recentActivity.length > 0 ? (
-            <ActivityFeed activities={recentActivity} />
-          ) : (
-            <DashboardCard delay={0.15} hover={false} className="p-5 sm:p-6">
-              <h2 className="font-serif text-xl font-bold text-white">
-                Recent Activity
-              </h2>
-              <p className="mt-1 text-sm text-white/45">
-                Scan activity will appear here once guests start using your QR
-                codes.
-              </p>
-            </DashboardCard>
-          )}
-
-          {!loading ? (
-            <DashboardCard delay={0.2} hover={false} className="p-5 sm:p-6">
-              <h2 className="font-serif text-xl font-bold text-white">
-                Recent Customer Activity
-              </h2>
-              <p className="mt-1 text-sm text-white/45">
-                WhatsApp chats and orders from your CRM
-              </p>
-              {data.customerActivity.length === 0 ? (
-                <p className="mt-5 text-sm text-white/45">
-                  Customer activity will appear here once guests place orders or
-                  you open WhatsApp chats.
-                </p>
-              ) : (
-                <div className="mt-5 space-y-3">
-                  {data.customerActivity.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-white/5 bg-black/20 px-4 py-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-white">
-                          {item.customerName}
-                        </p>
-                        <p className="mt-0.5 text-sm text-white/50">
-                          {item.label}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-xs text-white/35">
-                        {item.time}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </DashboardCard>
-          ) : null}
-
-          {!loading && data.announcements.length > 0 && (
-            <DashboardCard delay={0.2} className="p-5 sm:p-6">
-              <h2 className="font-serif text-xl font-bold text-white">
-                Announcements
-              </h2>
-              <p className="mt-1 text-sm text-white/45">
-                Updates from the Aljamali QR team
-              </p>
-              <div className="mt-5 space-y-3">
-                {data.announcements.map((announcement) => (
-                  <div
-                    key={announcement.id}
-                    className="rounded-xl border border-white/5 bg-black/20 p-4"
-                  >
-                    <p className="font-medium text-white">
-                      {announcement.title ?? "Announcement"}
-                    </p>
-                    {announcement.message ? (
-                      <p className="mt-1 text-sm text-white/50">
-                        {announcement.message}
-                      </p>
-                    ) : null}
-                    {announcement.created_at && (
-                      <p className="mt-2 text-xs text-white/35">
-                        {formatDemoDateTime(announcement.created_at)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </DashboardCard>
-          )}
-        </div>
-
-        <div className="space-y-6">
+      {showBi ? (
+        <>
+          <BusinessIntelligenceDashboard />
+          {announcementsBlock}
           <DashboardCard delay={0.3} className="p-5 sm:p-6">
             <h2 className="font-serif text-xl font-bold text-white">
               Quick Actions
@@ -396,8 +320,7 @@ export function DashboardHome() {
             <p className="mt-1 text-sm text-white/45">
               Manage your restaurant in one click
             </p>
-
-            <div className="mt-5 flex flex-col gap-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {QUICK_ACTIONS.map((action, index) => (
                 <Link
                   key={action.href}
@@ -413,8 +336,88 @@ export function DashboardHome() {
               ))}
             </div>
           </DashboardCard>
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {loading
+              ? Array.from({ length: 7 }).map((_, i) => (
+                  <StatCardSkeleton key={i} />
+                ))
+              : kpis.map((kpi, index) => (
+                  <DashboardCard
+                    key={kpi.label}
+                    delay={index * 0.05}
+                    className="p-5 sm:p-6"
+                  >
+                    <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/45 sm:text-[11px]">
+                      {kpi.label}
+                    </p>
+                    <p
+                      className={`mt-3 font-serif font-bold text-white ${
+                        kpi.label === "Top Scanned QR"
+                          ? "text-lg sm:text-xl"
+                          : "text-3xl sm:text-4xl"
+                      }`}
+                    >
+                      {kpi.value}
+                    </p>
+                  </DashboardCard>
+                ))}
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-3">
+            <div className="space-y-6 xl:col-span-2">
+              {!loading && recentActivity.length > 0 ? (
+                <ActivityFeed activities={recentActivity} />
+              ) : (
+                <DashboardCard
+                  delay={0.15}
+                  hover={false}
+                  className="p-5 sm:p-6"
+                >
+                  <h2 className="font-serif text-xl font-bold text-white">
+                    Recent Activity
+                  </h2>
+                  <p className="mt-1 text-sm text-white/45">
+                    Scan activity will appear here once guests start using your
+                    QR codes.
+                  </p>
+                </DashboardCard>
+              )}
+
+              {announcementsBlock}
+            </div>
+
+            <div className="space-y-6">
+              <DashboardCard delay={0.3} className="p-5 sm:p-6">
+                <h2 className="font-serif text-xl font-bold text-white">
+                  Quick Actions
+                </h2>
+                <p className="mt-1 text-sm text-white/45">
+                  Manage your restaurant in one click
+                </p>
+
+                <div className="mt-5 flex flex-col gap-3">
+                  {QUICK_ACTIONS.map((action, index) => (
+                    <Link
+                      key={action.href}
+                      href={action.href}
+                      className={`rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 ${
+                        index === 0
+                          ? "border-gold/15 bg-gold/5 text-gold hover:border-gold/30 hover:bg-gold/10"
+                          : "border-white/10 text-white/70 hover:border-gold/20 hover:text-gold"
+                      }`}
+                    >
+                      {action.label}
+                    </Link>
+                  ))}
+                </div>
+              </DashboardCard>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RestaurantSwitcher } from "./RestaurantSwitcher";
+import { GlobalSearch } from "./intelligence/GlobalSearch";
 import { DashboardIcon } from "./icons/DashboardIcons";
 
 interface TopBarProps {
@@ -65,6 +66,8 @@ export function TopBar({ onOpenMobileMenu }: TopBarProps) {
           )}
         </div>
       </div>
+
+      <GlobalSearch />
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <NotificationCenter />

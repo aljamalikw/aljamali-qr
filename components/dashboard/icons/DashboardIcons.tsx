@@ -218,6 +218,7 @@ export function getNavIcon(id: string): DashboardIconName {
     orders: "order",
     customers: "customers",
     loyalty: "loyalty",
+    reviews: "view",
     marketing: "marketing",
     kitchen: "kitchen",
     "qr-codes": "qr-codes",
