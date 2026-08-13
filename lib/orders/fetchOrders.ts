@@ -1,9 +1,41 @@
 import { supabase } from "@/lib/supabase";
-import { mapOrderRow } from "./mappers";
-import type { Order, OrderRecord } from "./types";
+import { mapOrderItemRow, mapOrderRow } from "./mappers";
+import type { Order, OrderItemRecord, OrderRecord } from "./types";
 import { filterOrders, isMissingTableError, type OrderFilters } from "./utils";
 
 const FETCH_ERROR = "Unable to load orders. Please try again.";
+
+/**
+ * If the orders embed returns no line items, load order_items directly and merge.
+ * Fixes cases where UPDATE/RETURNING or embed shape omits children while rows exist.
+ */
+async function attachMissingOrderItems(orders: Order[]): Promise<Order[]> {
+  const missingIds = orders
+    .filter((order) => order.items.length === 0)
+    .map((order) => order.id);
+  if (missingIds.length === 0) return orders;
+
+  const { data, error } = await supabase
+    .from("order_items")
+    .select("*")
+    .in("order_id", missingIds);
+
+  if (error || !data?.length) return orders;
+
+  const byOrderId = new Map<string, OrderItemRecord[]>();
+  for (const row of data as OrderItemRecord[]) {
+    const list = byOrderId.get(row.order_id) ?? [];
+    list.push(row);
+    byOrderId.set(row.order_id, list);
+  }
+
+  return orders.map((order) => {
+    if (order.items.length > 0) return order;
+    const rows = byOrderId.get(order.id);
+    if (!rows?.length) return order;
+    return { ...order, items: rows.map(mapOrderItemRow) };
+  });
+}
 
 export async function fetchOrders(
   restaurantId: string,
@@ -41,7 +73,9 @@ export async function fetchOrders(
       return { ok: false, message: error.message || FETCH_ERROR };
     }
 
-    let orders = ((data ?? []) as OrderRecord[]).map(mapOrderRow);
+    let orders = await attachMissingOrderItems(
+      ((data ?? []) as OrderRecord[]).map(mapOrderRow),
+    );
 
     if (filters.search?.trim()) {
       orders = filterOrders(orders, { search: filters.search });
@@ -68,7 +102,12 @@ export async function fetchOrderById(
       return { ok: false, message: error.message || FETCH_ERROR };
     }
 
-    return { ok: true, data: data ? mapOrderRow(data as OrderRecord) : null };
+    if (!data) return { ok: true, data: null };
+
+    const [order] = await attachMissingOrderItems([
+      mapOrderRow(data as OrderRecord),
+    ]);
+    return { ok: true, data: order ?? null };
   } catch {
     return { ok: false, message: FETCH_ERROR };
   }

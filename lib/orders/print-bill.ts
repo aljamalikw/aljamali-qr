@@ -76,6 +76,7 @@ export function printOrderBill(
           ${notes}
         </td>
         <td class="qty">${item.quantity}</td>
+        <td class="amt">${escapeHtml(money(item.unitPrice, order.currency))}</td>
         <td class="amt">${escapeHtml(money(item.lineTotal, order.currency))}</td>
       </tr>`;
     })
@@ -162,6 +163,7 @@ export function printOrderBill(
         <tr>
           <th>Item</th>
           <th class="qty">Qty</th>
+          <th class="amt">Unit</th>
           <th class="amt">Amount</th>
         </tr>
       </thead>
@@ -182,11 +184,16 @@ export function printOrderBill(
       window.focus();
       window.print();
     };
+    window.onafterprint = function () {
+      window.close();
+    };
   </script>
 </body>
 </html>`;
 
-  const printWindow = window.open("", "_blank", "noopener,noreferrer,width=480,height=720");
+  // Match QR print: do not pass noopener/noreferrer — those make window.open()
+  // return null while still opening about:blank, so document.write never runs.
+  const printWindow = window.open("", "_blank");
   if (!printWindow) return;
   printWindow.document.open();
   printWindow.document.write(html);

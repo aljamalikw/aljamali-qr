@@ -1,5 +1,6 @@
 import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
+import { fetchOrderById } from "./fetchOrders";
 import { mapOrderRow } from "./mappers";
 import type { Order, OrderRecord, OrderStatus, PaymentStatus } from "./types";
 
@@ -12,6 +13,15 @@ const STATUS_TIMESTAMP_FIELD: Partial<Record<OrderStatus, string>> = {
   Completed: "completed_at",
   Cancelled: "cancelled_at",
 };
+
+async function withLineItems(order: Order): Promise<Order> {
+  if (order.items.length > 0) return order;
+  const refreshed = await fetchOrderById(order.id);
+  if (refreshed.ok && refreshed.data && refreshed.data.items.length > 0) {
+    return refreshed.data;
+  }
+  return order;
+}
 
 export async function updateOrderStatus(
   orderId: string,
@@ -39,7 +49,7 @@ export async function updateOrderStatus(
       return { ok: false, message: error?.message || UPDATE_ERROR };
     }
 
-    const order = mapOrderRow(data as OrderRecord);
+    const order = await withLineItems(mapOrderRow(data as OrderRecord));
     void logActivity({
       action: "order_status_changed",
       restaurantId:
@@ -75,7 +85,10 @@ export async function updatePaymentStatus(
       return { ok: false, message: error?.message || UPDATE_ERROR };
     }
 
-    return { ok: true, data: mapOrderRow(data as OrderRecord) };
+    return {
+      ok: true,
+      data: await withLineItems(mapOrderRow(data as OrderRecord)),
+    };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
   }
@@ -97,7 +110,10 @@ export async function updateKitchenNotes(
       return { ok: false, message: error?.message || UPDATE_ERROR };
     }
 
-    return { ok: true, data: mapOrderRow(data as OrderRecord) };
+    return {
+      ok: true,
+      data: await withLineItems(mapOrderRow(data as OrderRecord)),
+    };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
   }

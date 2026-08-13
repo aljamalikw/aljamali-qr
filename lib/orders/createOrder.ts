@@ -226,7 +226,14 @@ export async function createOrderWithClient(
       .select("*");
 
     if (itemsError) {
+      // Roll back the parent order so we never leave totals without line items.
+      await client.from("orders").delete().eq("id", orderRow.id);
       return { ok: false, message: itemsError.message || CREATE_ERROR };
+    }
+
+    if (!insertedItems || insertedItems.length === 0) {
+      await client.from("orders").delete().eq("id", orderRow.id);
+      return { ok: false, message: CREATE_ERROR };
     }
 
     const finalItems = (insertedItems ?? itemRows) as OrderItemRecord[];
