@@ -27,32 +27,42 @@ export const REWARD_TEMPLATE_CATEGORY_LABELS: Record<
   custom: "Custom",
 };
 
+export const REWARD_TEMPLATE_CATEGORY_ICONS: Record<
+  Exclude<RewardTemplateCategory, "custom"> | "most_popular",
+  string
+> = {
+  most_popular: "⭐",
+  free_items: "🍔",
+  discounts: "🏷",
+  special_occasions: "🎉",
+};
+
 /** Predefined loyalty reward templates — owners can edit before saving. */
 export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "free-coffee",
     name: "Free Coffee",
-    description: "Redeem points for one free coffee.",
+    description: "Redeem for one free coffee",
     pointsRequired: 100,
     rewardType: "free_item",
-    icon: "🎁",
+    icon: "☕",
     status: "active",
     category: "free_items",
   },
   {
-    id: "free-dessert",
-    name: "Free Dessert",
-    description: "Redeem points for one complimentary dessert.",
-    pointsRequired: 200,
+    id: "free-tea",
+    name: "Free Tea",
+    description: "Redeem for one free tea",
+    pointsRequired: 80,
     rewardType: "free_item",
-    icon: "🍰",
+    icon: "🍵",
     status: "active",
     category: "free_items",
   },
   {
     id: "free-soft-drink",
     name: "Free Soft Drink",
-    description: "Redeem points for one free drink.",
+    description: "Redeem for one free drink",
     pointsRequired: 80,
     rewardType: "free_item",
     icon: "🥤",
@@ -60,9 +70,9 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
     category: "free_items",
   },
   {
-    id: "free-side-dish",
-    name: "Free Side Dish",
-    description: "Redeem points for one free side item.",
+    id: "free-fries",
+    name: "Free Fries",
+    description: "Redeem for one free fries",
     pointsRequired: 120,
     rewardType: "free_item",
     icon: "🍟",
@@ -70,19 +80,19 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
     category: "free_items",
   },
   {
-    id: "buy-5-coffee-get-1",
-    name: "Buy 5 Coffees, Get 1 Free",
-    description: "After five coffee purchases, redeem for one free coffee.",
-    pointsRequired: 250,
-    rewardType: "coupon",
-    icon: "☕",
+    id: "free-dessert",
+    name: "Free Dessert",
+    description: "Redeem for one free dessert",
+    pointsRequired: 200,
+    rewardType: "free_item",
+    icon: "🍰",
     status: "active",
     category: "free_items",
   },
   {
     id: "free-burger",
     name: "Free Burger",
-    description: "Redeem points for one free burger.",
+    description: "Redeem for one free burger",
     pointsRequired: 350,
     rewardType: "free_item",
     icon: "🍔",
@@ -90,19 +100,9 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
     category: "free_items",
   },
   {
-    id: "free-salad",
-    name: "Free Salad",
-    description: "Redeem points for one free salad.",
-    pointsRequired: 180,
-    rewardType: "free_item",
-    icon: "🥗",
-    status: "active",
-    category: "free_items",
-  },
-  {
     id: "free-pizza",
     name: "Free Pizza",
-    description: "Redeem points for one free pizza.",
+    description: "Redeem for one free pizza",
     pointsRequired: 400,
     rewardType: "free_item",
     icon: "🍕",
@@ -112,7 +112,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "free-main-course",
     name: "Free Main Course",
-    description: "Redeem points for one free main course.",
+    description: "Redeem for one free main course",
     pointsRequired: 500,
     rewardType: "free_item",
     icon: "🍝",
@@ -122,7 +122,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "discount-5",
     name: "5% Discount",
-    description: "Redeem points for a 5% discount on your order.",
+    description: "Get 5% off your order",
     pointsRequired: 150,
     rewardType: "discount",
     icon: "💰",
@@ -132,7 +132,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "discount-10",
     name: "10% Discount",
-    description: "Redeem points for a 10% discount on your order.",
+    description: "Get 10% off your order",
     pointsRequired: 300,
     rewardType: "discount",
     icon: "💰",
@@ -142,7 +142,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "discount-15",
     name: "15% Discount",
-    description: "Redeem points for a 15% discount on your order.",
+    description: "Get 15% off your order",
     pointsRequired: 450,
     rewardType: "discount",
     icon: "💰",
@@ -152,7 +152,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "discount-20",
     name: "20% Discount",
-    description: "Redeem points for a 20% discount on your order.",
+    description: "Get 20% off your order",
     pointsRequired: 600,
     rewardType: "discount",
     icon: "💰",
@@ -161,8 +161,8 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   },
   {
     id: "discount-kwd-1",
-    name: "KWD 1 Discount",
-    description: "Redeem points for KWD 1 off your order.",
+    name: "KWD 1 Off",
+    description: "Save KWD 1 on your order",
     pointsRequired: 100,
     rewardType: "discount",
     icon: "💳",
@@ -171,8 +171,8 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   },
   {
     id: "discount-kwd-2",
-    name: "KWD 2 Discount",
-    description: "Redeem points for KWD 2 off your order.",
+    name: "KWD 2 Off",
+    description: "Save KWD 2 on your order",
     pointsRequired: 200,
     rewardType: "discount",
     icon: "💳",
@@ -181,8 +181,8 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   },
   {
     id: "discount-kwd-5",
-    name: "KWD 5 Discount",
-    description: "Redeem points for KWD 5 off your order.",
+    name: "KWD 5 Off",
+    description: "Save KWD 5 on your order",
     pointsRequired: 450,
     rewardType: "discount",
     icon: "💳",
@@ -192,7 +192,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "birthday-reward",
     name: "Birthday Reward",
-    description: "A special birthday treat for valued loyalty members.",
+    description: "A special birthday treat for members",
     pointsRequired: 50,
     rewardType: "gift",
     icon: "🎂",
@@ -202,7 +202,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "anniversary-reward",
     name: "Anniversary Reward",
-    description: "Celebrate your anniversary with a complimentary reward.",
+    description: "Celebrate with a complimentary reward",
     pointsRequired: 100,
     rewardType: "gift",
     icon: "🎉",
@@ -212,18 +212,46 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   {
     id: "welcome-reward",
     name: "Welcome Reward",
-    description: "Welcome new loyalty members with a starter reward.",
+    description: "Welcome new loyalty members",
     pointsRequired: 50,
     rewardType: "gift",
     icon: "🎈",
     status: "active",
     category: "special_occasions",
   },
+  {
+    id: "first-visit-reward",
+    name: "First Visit Reward",
+    description: "A thank-you reward for first visits",
+    pointsRequired: 75,
+    rewardType: "gift",
+    icon: "✨",
+    status: "active",
+    category: "special_occasions",
+  },
 ];
+
+/** Featured templates shown in the Most Popular column (by id). */
+export const MOST_POPULAR_TEMPLATE_IDS = [
+  "free-burger",
+  "free-coffee",
+  "birthday-reward",
+  "discount-10",
+  "discount-kwd-2",
+] as const;
 
 export const REWARD_TEMPLATE_CATEGORY_ORDER: Array<
   Exclude<RewardTemplateCategory, "custom">
 > = ["free_items", "discounts", "special_occasions"];
+
+export function getMostPopularTemplates(
+  templates: RewardTemplate[] = REWARD_TEMPLATES,
+): RewardTemplate[] {
+  const byId = new Map(templates.map((t) => [t.id, t]));
+  return MOST_POPULAR_TEMPLATE_IDS.map((id) => byId.get(id)).filter(
+    (t): t is RewardTemplate => Boolean(t),
+  );
+}
 
 export function filterRewardTemplates(
   templates: RewardTemplate[],
@@ -232,7 +260,8 @@ export function filterRewardTemplates(
   const q = query.trim().toLowerCase();
   if (!q) return templates;
   return templates.filter((template) => {
-    const hay = `${template.name} ${template.description} ${template.rewardType} ${template.pointsRequired}`.toLowerCase();
+    const hay =
+      `${template.name} ${template.description} ${template.rewardType} ${template.pointsRequired}`.toLowerCase();
     return hay.includes(q);
   });
 }
