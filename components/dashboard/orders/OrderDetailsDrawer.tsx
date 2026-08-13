@@ -59,8 +59,17 @@ export function OrderDetailsDrawer({
   const showPrintBill = order ? canPrintBill(order.status) : false;
 
   const handlePrintBill = () => {
-    if (!order) return;
-    printOrderBill(order, restaurant);
+    console.log("[PrintBill] STEP 1 — Print button clicked");
+    console.log("[PrintBill] STEP 1b — invoking printOrderBill from lib/orders/print-bill.ts");
+    if (!order) {
+      console.log("[PrintBill] STEP 1 FAIL — order is null, aborting");
+      return;
+    }
+    try {
+      printOrderBill(order, restaurant);
+    } catch (error) {
+      console.error("[PrintBill] STEP 1 EXCEPTION in handlePrintBill", error);
+    }
   };
 
   return (
