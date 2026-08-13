@@ -5,6 +5,11 @@ import { DashboardIcon } from "@/components/dashboard/icons/DashboardIcons";
 import type { Order, PaymentStatus } from "@/lib/orders/types";
 import { PAYMENT_STATUSES } from "@/lib/orders/types";
 import {
+  getOrderServiceCharge,
+  printOrderBill,
+  type PrintBillRestaurant,
+} from "@/lib/orders/print-bill";
+import {
   canCancelOrder,
   getNextOrderStatus,
   getNextOrderStatusActionLabel,
@@ -13,6 +18,7 @@ import { OrderStatusBadge, PaymentStatusBadge } from "./OrderStatusBadge";
 
 interface OrderDetailsDrawerProps {
   order: Order | null;
+  restaurant?: PrintBillRestaurant | null;
   onClose: () => void;
   onAdvanceStatus: (order: Order) => void;
   onCancel: (order: Order) => void;
@@ -34,8 +40,13 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
+function canPrintBill(status: Order["status"]): boolean {
+  return status === "Ready" || status === "Completed";
+}
+
 export function OrderDetailsDrawer({
   order,
+  restaurant,
   onClose,
   onAdvanceStatus,
   onCancel,
@@ -44,6 +55,13 @@ export function OrderDetailsDrawer({
 }: OrderDetailsDrawerProps) {
   const nextStatus = order ? getNextOrderStatus(order.status) : null;
   const nextLabel = order ? getNextOrderStatusActionLabel(order.status) : null;
+  const serviceCharge = order ? getOrderServiceCharge(order) : 0;
+  const showPrintBill = order ? canPrintBill(order.status) : false;
+
+  const handlePrintBill = () => {
+    if (!order) return;
+    printOrderBill(order, restaurant);
+  };
 
   return (
     <AnimatePresence>
@@ -194,7 +212,9 @@ export function OrderDetailsDrawer({
                         <p className="text-sm text-white">
                           {item.quantity}× {item.itemName}
                         </p>
-                        {item.notes && <p className="mt-0.5 text-xs text-white/40">{item.notes}</p>}
+                        {item.notes && (
+                          <p className="mt-0.5 text-xs text-white/40">{item.notes}</p>
+                        )}
                       </div>
                       <span className="shrink-0 text-sm text-white/70">
                         {item.lineTotal.toFixed(3)} {order.currency}
@@ -202,21 +222,17 @@ export function OrderDetailsDrawer({
                     </div>
                   ))}
                 </div>
-                <div className="space-y-1.5 border-t border-white/10 pt-3 text-sm">
+              </section>
+
+              <section className="space-y-3 rounded-2xl border border-gold/20 bg-gold/[0.04] p-4">
+                <h3 className="font-serif text-lg text-white">Billing</h3>
+                <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between text-white/60">
                     <span>Subtotal</span>
                     <span>
                       {order.subtotal.toFixed(3)} {order.currency}
                     </span>
                   </div>
-                  {order.taxAmount > 0 && (
-                    <div className="flex justify-between text-white/60">
-                      <span>Tax</span>
-                      <span>
-                        {order.taxAmount.toFixed(3)} {order.currency}
-                      </span>
-                    </div>
-                  )}
                   {order.discountAmount > 0 && (
                     <div className="flex justify-between text-white/60">
                       <span>Discount</span>
@@ -225,24 +241,66 @@ export function OrderDetailsDrawer({
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between font-serif text-base font-bold text-white">
-                    <span>Total</span>
+                  {order.taxAmount > 0 && (
+                    <div className="flex justify-between text-white/60">
+                      <span>Tax</span>
+                      <span>
+                        {order.taxAmount.toFixed(3)} {order.currency}
+                      </span>
+                    </div>
+                  )}
+                  {serviceCharge > 0 && (
+                    <div className="flex justify-between text-white/60">
+                      <span>Service Charge</span>
+                      <span>
+                        {serviceCharge.toFixed(3)} {order.currency}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-white/10 pt-2 font-serif text-base font-bold text-white">
+                    <span>Grand Total</span>
                     <span className="text-gold">
                       {order.grandTotal.toFixed(3)} {order.currency}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-white/60">Payment Status</span>
+                    <PaymentStatusBadge status={order.paymentStatus} />
+                  </div>
                 </div>
+                {showPrintBill ? (
+                  <button
+                    type="button"
+                    onClick={handlePrintBill}
+                    className="menu-btn-primary mt-2 flex w-full items-center justify-center gap-2"
+                  >
+                    <span aria-hidden="true">🖨</span>
+                    Print Bill
+                  </button>
+                ) : (
+                  <p className="mt-2 text-xs text-white/40">
+                    Print Bill becomes available when the order is Ready.
+                  </p>
+                )}
               </section>
 
               <section className="space-y-4 rounded-2xl border border-gold/10 bg-black/20 p-4">
                 <h3 className="font-serif text-lg text-white">Timeline</h3>
                 <div className="space-y-1.5 text-sm text-white/60">
                   <p>Placed: {formatDateTime(order.createdAt)}</p>
-                  {order.acceptedAt && <p>Accepted: {formatDateTime(order.acceptedAt)}</p>}
-                  {order.preparingAt && <p>Preparing: {formatDateTime(order.preparingAt)}</p>}
+                  {order.acceptedAt && (
+                    <p>Accepted: {formatDateTime(order.acceptedAt)}</p>
+                  )}
+                  {order.preparingAt && (
+                    <p>Preparing: {formatDateTime(order.preparingAt)}</p>
+                  )}
                   {order.readyAt && <p>Ready: {formatDateTime(order.readyAt)}</p>}
-                  {order.completedAt && <p>Completed: {formatDateTime(order.completedAt)}</p>}
-                  {order.cancelledAt && <p>Cancelled: {formatDateTime(order.cancelledAt)}</p>}
+                  {order.completedAt && (
+                    <p>Completed: {formatDateTime(order.completedAt)}</p>
+                  )}
+                  {order.cancelledAt && (
+                    <p>Cancelled: {formatDateTime(order.cancelledAt)}</p>
+                  )}
                 </div>
               </section>
 
@@ -268,10 +326,23 @@ export function OrderDetailsDrawer({
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-gold/10 px-5 py-4">
+              {order.status === "Ready" ? (
+                <button
+                  type="button"
+                  className="menu-btn-primary flex-[1.2]"
+                  onClick={handlePrintBill}
+                >
+                  🖨 Print Bill
+                </button>
+              ) : null}
               {nextStatus && nextLabel && (
                 <button
                   type="button"
-                  className="menu-btn-primary flex-1"
+                  className={`flex-1 ${
+                    order.status === "Ready"
+                      ? "menu-btn-secondary"
+                      : "menu-btn-primary"
+                  }`}
                   onClick={() => onAdvanceStatus(order)}
                 >
                   {nextLabel}
@@ -287,7 +358,11 @@ export function OrderDetailsDrawer({
                 </button>
               ) : null}
               {canCancelOrder(order.status) && (
-                <button type="button" className="menu-btn-danger flex-1" onClick={() => onCancel(order)}>
+                <button
+                  type="button"
+                  className="menu-btn-danger flex-1"
+                  onClick={() => onCancel(order)}
+                >
                   Cancel Order
                 </button>
               )}

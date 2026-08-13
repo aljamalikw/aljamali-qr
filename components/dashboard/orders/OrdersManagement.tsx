@@ -421,6 +421,7 @@ function OrdersManagementContent() {
 
       <OrderDetailsDrawer
         order={selected}
+        restaurant={restaurant}
         onClose={() => setSelected(null)}
         onAdvanceStatus={(order) => void handleAdvanceStatus(order)}
         onCancel={(order) => setConfirmCancel(order)}
