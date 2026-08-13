@@ -8,6 +8,7 @@ import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccess
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { isAdminRole } from "@/lib/auth/roles";
 import { fetchCustomers, type Customer } from "@/lib/customers/queries";
+import { RewardTemplatePicker } from "@/components/dashboard/loyalty/RewardTemplatePicker";
 import {
   createLoyaltyReward,
   fetchLoyaltyRedemptions,
@@ -19,6 +20,7 @@ import {
   type RewardStatus,
   type RewardType,
 } from "@/lib/loyalty/rewards";
+import type { RewardTemplate } from "@/lib/loyalty/reward-templates";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsRewardAnalytics } from "@/lib/subscriptions/plans";
 
@@ -29,6 +31,18 @@ const REWARD_TYPES: Array<{ id: RewardType; label: string }> = [
   { id: "gift", label: "Gift" },
   { id: "manual", label: "Manual" },
 ];
+
+function blankFormState() {
+  return {
+    title: "",
+    description: "",
+    points: "100",
+    rewardType: "free_item" as RewardType,
+    status: "active" as RewardStatus,
+    selectedIcon: "➕",
+    formSource: "custom" as "custom" | "template",
+  };
+}
 
 export function RewardsCatalog() {
   const { showToast } = useToast();
@@ -41,12 +55,15 @@ export function RewardsCatalog() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [points, setPoints] = useState("100");
   const [rewardType, setRewardType] = useState<RewardType>("free_item");
   const [status, setStatus] = useState<RewardStatus>("active");
+  const [selectedIcon, setSelectedIcon] = useState("➕");
+  const [formSource, setFormSource] = useState<"custom" | "template">("custom");
 
   const [redeemRewardId, setRedeemRewardId] = useState("");
   const [redeemCustomerId, setRedeemCustomerId] = useState("");
@@ -98,6 +115,41 @@ export function RewardsCatalog() {
     [redemptions],
   );
 
+  const resetForm = () => {
+    const blank = blankFormState();
+    setTitle(blank.title);
+    setDescription(blank.description);
+    setPoints(blank.points);
+    setRewardType(blank.rewardType);
+    setStatus(blank.status);
+    setSelectedIcon(blank.selectedIcon);
+    setFormSource(blank.formSource);
+    setFormOpen(false);
+  };
+
+  const applyTemplate = (template: RewardTemplate) => {
+    setTitle(template.name);
+    setDescription(template.description);
+    setPoints(String(template.pointsRequired));
+    setRewardType(template.rewardType);
+    setStatus(template.status);
+    setSelectedIcon(template.icon);
+    setFormSource("template");
+    setFormOpen(true);
+  };
+
+  const openCustomForm = () => {
+    const blank = blankFormState();
+    setTitle(blank.title);
+    setDescription(blank.description);
+    setPoints(blank.points);
+    setRewardType(blank.rewardType);
+    setStatus(blank.status);
+    setSelectedIcon(blank.selectedIcon);
+    setFormSource(blank.formSource);
+    setFormOpen(true);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurant?.id) return;
@@ -117,11 +169,7 @@ export function RewardsCatalog() {
       return;
     }
     showToast("Reward created");
-    setTitle("");
-    setDescription("");
-    setPoints("100");
-    setRewardType("free_item");
-    setStatus("active");
+    resetForm();
     void load();
   };
 
@@ -192,61 +240,107 @@ export function RewardsCatalog() {
             Create reward
           </h2>
           <p className="mt-1 text-sm text-white/45">
-            Add catalog rewards customers can redeem with points.
+            Pick a template or create a custom reward. Nothing is saved until
+            you confirm.
           </p>
-          <form onSubmit={(e) => void handleCreate(e)} className="mt-5 space-y-3">
-            <input
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Reward title"
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/30 focus:outline-none"
+
+          <div className="mt-5">
+            <RewardTemplatePicker
+              onSelectTemplate={applyTemplate}
+              onSelectCustom={openCustomForm}
             />
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Description"
-              rows={3}
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/30 focus:outline-none"
-            />
-            <div className="grid gap-3 sm:grid-cols-3">
+          </div>
+
+          {formOpen ? (
+            <form
+              onSubmit={(e) => void handleCreate(e)}
+              className="mt-5 space-y-3 rounded-2xl border border-gold/15 bg-black/20 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold/80">
+                    {formSource === "template"
+                      ? "Template reward"
+                      : "Custom reward"}
+                  </p>
+                  <p className="mt-1 text-xs text-white/45">
+                    Edit any field before saving. Nothing is saved automatically.
+                  </p>
+                </div>
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/30 text-xl"
+                  aria-hidden="true"
+                >
+                  {selectedIcon}
+                </span>
+              </div>
               <input
                 required
-                type="number"
-                min={1}
-                value={points}
-                onChange={(e) => setPoints(e.target.value)}
-                placeholder="Points"
-                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-gold/30 focus:outline-none"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Reward title"
+                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/30 focus:outline-none"
               />
-              <select
-                value={rewardType}
-                onChange={(e) => setRewardType(e.target.value as RewardType)}
-                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-gold/30 focus:outline-none"
-              >
-                {REWARD_TYPES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as RewardStatus)}
-                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-gold/30 focus:outline-none"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={saving}
-              className="menu-btn-primary disabled:opacity-50"
-            >
-              {saving ? "Saving…" : "Create reward"}
-            </button>
-          </form>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description"
+                rows={3}
+                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/30 focus:outline-none"
+              />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <input
+                  required
+                  type="number"
+                  min={1}
+                  value={points}
+                  onChange={(e) => setPoints(e.target.value)}
+                  placeholder="Points"
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-gold/30 focus:outline-none"
+                />
+                <select
+                  value={rewardType}
+                  onChange={(e) => setRewardType(e.target.value as RewardType)}
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-gold/30 focus:outline-none"
+                >
+                  {REWARD_TYPES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as RewardStatus)}
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white focus:border-gold/30 focus:outline-none"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="menu-btn-primary disabled:opacity-50"
+                >
+                  {saving ? "Saving…" : "Create reward"}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="menu-btn-secondary"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p className="mt-4 text-sm text-white/40">
+              Choose a template above, or create a custom reward from scratch.
+            </p>
+          )}
         </DashboardCard>
 
         <DashboardCard className="p-5 sm:p-6" hover={false}>
