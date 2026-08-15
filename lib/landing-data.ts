@@ -1,11 +1,19 @@
+import {
+  DEFAULT_PLATFORM_WHATSAPP_MESSAGE,
+  getConfiguredWhatsAppNumber,
+  OFFICIAL_ALJAMALI_WHATSAPP_DISPLAY,
+  OFFICIAL_ALJAMALI_WHATSAPP_NUMBER,
+} from "@/lib/company/whatsapp";
 import { SUBSCRIPTION_PLANS } from "@/lib/subscriptions/plans";
 
-export const PLATFORM_WHATSAPP = "96550000000";
-export const PLATFORM_EMAIL = "hello@aljamaliqr.com";
-export const PLATFORM_PHONE = "+965 5000 0000";
+/** Digits-only official platform WhatsApp (wa.me). Prefer env when set. */
+export const PLATFORM_WHATSAPP =
+  getConfiguredWhatsAppNumber() ?? OFFICIAL_ALJAMALI_WHATSAPP_NUMBER;
 
-export const whatsappPrefillMessage =
-  "Hello, I would like to know more about Aljamali QR.";
+export const PLATFORM_EMAIL = "hello@aljamaliqr.com";
+export const PLATFORM_PHONE = OFFICIAL_ALJAMALI_WHATSAPP_DISPLAY;
+
+export const whatsappPrefillMessage = DEFAULT_PLATFORM_WHATSAPP_MESSAGE;
 
 export const navLinks = [
   { label: "Home", href: "#hero" },

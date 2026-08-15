@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { getWhatsAppUrl } from "@/lib/company/whatsapp";
 import {
   PLATFORM_EMAIL,
   PLATFORM_PHONE,
-  PLATFORM_WHATSAPP,
   navLinks,
   socialLinks,
   whatsappPrefillMessage,
@@ -19,9 +19,7 @@ const companyLinks = [
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-  const whatsappHref = `https://wa.me/${PLATFORM_WHATSAPP}?text=${encodeURIComponent(
-    whatsappPrefillMessage,
-  )}`;
+  const whatsappHref = getWhatsAppUrl(whatsappPrefillMessage);
 
   return (
     <footer className="border-t border-gold/10 bg-black py-16" aria-label="Site footer">
@@ -124,14 +122,20 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a
-                  href={whatsappHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-gold"
-                >
-                  WhatsApp · {PLATFORM_PHONE}
-                </a>
+                {whatsappHref ? (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-gold"
+                  >
+                    WhatsApp · {PLATFORM_PHONE}
+                  </a>
+                ) : (
+                  <span title="WhatsApp contact not configured">
+                    WhatsApp contact not configured
+                  </span>
+                )}
               </li>
             </ul>
           </div>

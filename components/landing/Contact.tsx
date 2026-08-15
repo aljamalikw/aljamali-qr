@@ -1,17 +1,15 @@
 import Link from "next/link";
+import { getWhatsAppUrl } from "@/lib/company/whatsapp";
 import {
   PLATFORM_EMAIL,
   PLATFORM_PHONE,
-  PLATFORM_WHATSAPP,
   whatsappPrefillMessage,
 } from "@/lib/landing-data";
 import { Button } from "./Button";
 import { SectionHeader } from "./SectionHeader";
 
 export function Contact() {
-  const whatsappHref = `https://wa.me/${PLATFORM_WHATSAPP}?text=${encodeURIComponent(
-    whatsappPrefillMessage,
-  )}`;
+  const whatsappHref = getWhatsAppUrl(whatsappPrefillMessage);
 
   return (
     <section
@@ -28,15 +26,30 @@ export function Contact() {
         />
 
         <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-3">
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card-premium group rounded-2xl p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:border-gold/30"
-          >
-            <p className="text-xs uppercase tracking-[0.2em] text-gold">WhatsApp</p>
-            <p className="mt-3 font-serif text-xl text-white">{PLATFORM_PHONE}</p>
-          </a>
+          {whatsappHref ? (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="card-premium group rounded-2xl p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:border-gold/30"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-gold">
+                WhatsApp
+              </p>
+              <p className="mt-3 font-serif text-xl text-white">
+                {PLATFORM_PHONE}
+              </p>
+            </a>
+          ) : (
+            <div className="card-premium rounded-2xl p-6 text-center opacity-60">
+              <p className="text-xs uppercase tracking-[0.2em] text-gold">
+                WhatsApp
+              </p>
+              <p className="mt-3 font-serif text-xl text-white">
+                WhatsApp contact not configured
+              </p>
+            </div>
+          )}
           <a
             href={`mailto:${PLATFORM_EMAIL}`}
             className="card-premium group rounded-2xl p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:border-gold/30"

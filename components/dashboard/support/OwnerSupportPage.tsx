@@ -26,11 +26,19 @@ import {
   formatDemoDateTime,
   getPriorityBadgeClass,
 } from "@/lib/demo-requests/utils";
+import {
+  getWhatsAppTelHref,
+  getWhatsAppUrl,
+  OFFICIAL_ALJAMALI_WHATSAPP_DISPLAY,
+} from "@/lib/company/whatsapp";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 
-const SUPPORT_PHONE_DISPLAY = "+965 6559 2134";
-const SUPPORT_TEL = "tel:+96565592134";
-const SUPPORT_WHATSAPP = "https://wa.me/96565592134";
+const SUPPORT_PHONE_DISPLAY = OFFICIAL_ALJAMALI_WHATSAPP_DISPLAY;
+const SUPPORT_TEL = getWhatsAppTelHref() ?? "tel:+96565592134";
+const SUPPORT_WHATSAPP =
+  getWhatsAppUrl(
+    "Hello Aljamali QR, I need help with my restaurant account.",
+  ) ?? "https://wa.me/96565592134";
 
 export function OwnerSupportPage() {
   const { showToast } = useToast();
