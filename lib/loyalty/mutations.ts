@@ -48,7 +48,15 @@ export async function adjustLoyaltyPoints(input: {
     const previous = Number(
       (existing as { loyalty_points?: number }).loyalty_points ?? 0,
     );
-    const next = Math.max(0, previous + Math.trunc(input.delta));
+    const delta = Math.trunc(input.delta);
+    const next = Math.max(0, previous + delta);
+    if (delta < 0 && previous + delta < 0) {
+      return {
+        ok: false,
+        message: "Insufficient loyalty points.",
+        status: 400,
+      };
+    }
     const metadata =
       existing.metadata &&
       typeof existing.metadata === "object" &&
@@ -62,11 +70,11 @@ export async function adjustLoyaltyPoints(input: {
         ? { ...(metadata.loyalty as Record<string, unknown>) }
         : {};
     const lifetime = Number(loyaltyMeta.lifetimePoints ?? previous);
-    loyaltyMeta.lifetimePoints =
-      input.delta > 0 ? lifetime + input.delta : lifetime;
+    loyaltyMeta.lifetimePoints = delta > 0 ? lifetime + delta : lifetime;
     metadata.loyalty = loyaltyMeta;
 
-    const { data, error } = await client
+    // Optimistic lock on current balance to reduce double-spend races.
+    let query = client
       .from("customers")
       .update({
         loyalty_points: next,
@@ -74,13 +82,16 @@ export async function adjustLoyaltyPoints(input: {
       })
       .eq("id", input.customerId)
       .eq("restaurant_id", input.restaurantId)
-      .select("loyalty_points")
-      .maybeSingle();
+      .eq("loyalty_points", previous);
+
+    const { data, error } = await query.select("loyalty_points").maybeSingle();
 
     if (error || !data) {
       return {
         ok: false,
-        message: error?.message || "Unable to update loyalty points.",
+        message:
+          error?.message ||
+          "Unable to update loyalty points. Please try again.",
         status: 400,
       };
     }

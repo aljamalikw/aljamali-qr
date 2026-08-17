@@ -88,6 +88,14 @@ export async function openCustomerWhatsAppChat(input: {
     return { ok: false, message: "Message cannot be empty." };
   }
 
+  // Campaign / promo sends must respect marketing consent server-side.
+  if (input.campaignId && !customerHasMarketingOptIn(input.customer)) {
+    return {
+      ok: false,
+      message: "This customer has not opted in to marketing messages.",
+    };
+  }
+
   const url = openWhatsAppShare(body, { phone });
 
   void logWhatsAppOpened({

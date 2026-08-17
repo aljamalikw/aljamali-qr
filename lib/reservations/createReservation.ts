@@ -11,6 +11,7 @@ function syncReservationCustomer(reservation: ReservationItem): void {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       restaurantId: reservation.restaurantId,
+      reservationId: reservation.id,
       fullName: reservation.customerName,
       phone: reservation.mobileNumber,
       email: reservation.email,

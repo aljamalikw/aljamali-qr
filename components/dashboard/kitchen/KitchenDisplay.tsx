@@ -99,6 +99,20 @@ function KitchenDisplayContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurant?.id]);
 
+  // Soft poll fallback when realtime is delayed or disconnected.
+  useEffect(() => {
+    if (!restaurant?.id) return;
+    const interval = setInterval(() => {
+      void loadOrders();
+    }, 25000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant?.id]);
+
+  useEffect(() => {
+    knownPendingIds.current = null;
+  }, [restaurant?.id]);
+
   useEffect(() => {
     if (!restaurant?.id) return;
 

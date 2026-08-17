@@ -86,6 +86,10 @@ export function ReservationsManagement() {
   }, [loadReservations]);
 
   useEffect(() => {
+    setSelected(null);
+  }, [restaurant?.id]);
+
+  useEffect(() => {
     setPage(1);
   }, [search, status, type, selectedDate]);
 

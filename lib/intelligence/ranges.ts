@@ -47,12 +47,30 @@ export function resolveIntelligenceRange(
 ): DateRange {
   const now = new Date();
 
-  if (id === "custom" && customStart && customEnd) {
+  if (id === "custom") {
+    const startParsed = parseLocalDateInput(customStart);
+    const endParsed = parseLocalDateInput(customEnd);
+    if (startParsed && endParsed) {
+      const start = startOfDay(startParsed);
+      const end = endOfDay(endParsed);
+      if (start.getTime() > end.getTime()) {
+        return {
+          id: "custom",
+          start: startOfDay(endParsed),
+          end: endOfDay(startParsed),
+          label: "Custom",
+        };
+      }
+      return { id: "custom", start, end, label: "Custom" };
+    }
+    // Incomplete custom range → fall back to last 30 days (not a silent year).
+    const start = startOfDay(now);
+    start.setDate(start.getDate() - 29);
     return {
-      id: "custom",
-      start: startOfDay(new Date(customStart)),
-      end: endOfDay(new Date(customEnd)),
-      label: "Custom",
+      id: "30d",
+      start,
+      end: endOfDay(now),
+      label: "30 Days",
     };
   }
 
@@ -89,8 +107,30 @@ export function resolveIntelligenceRange(
   };
 }
 
+/** Local calendar YYYY-MM-DD (avoids UTC day skew from toISOString). */
 export function toIsoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Parse YYYY-MM-DD as a local calendar date (not UTC midnight). */
+export function parseLocalDateInput(
+  value: string | null | undefined,
+): Date | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return null;
+  const [y, m, d] = value.trim().split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const date = new Date(y, m - 1, d);
+  if (
+    date.getFullYear() !== y ||
+    date.getMonth() !== m - 1 ||
+    date.getDate() !== d
+  ) {
+    return null;
+  }
+  return date;
 }
 
 export function formatMoney(amount: number, currency = "KWD"): string {

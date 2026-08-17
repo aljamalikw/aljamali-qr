@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { fetchOrderById } from "./fetchOrders";
 import { mapOrderRow } from "./mappers";
 import type { Order, OrderRecord, OrderStatus, PaymentStatus } from "./types";
+import { canCancelOrder, getNextOrderStatus } from "./utils";
 
 const UPDATE_ERROR = "Unable to update the order. Please try again.";
 
@@ -13,6 +14,14 @@ const STATUS_TIMESTAMP_FIELD: Partial<Record<OrderStatus, string>> = {
   Completed: "completed_at",
   Cancelled: "cancelled_at",
 };
+
+function isAllowedStatusTransition(
+  from: OrderStatus,
+  to: OrderStatus,
+): boolean {
+  if (to === "Cancelled") return canCancelOrder(from);
+  return getNextOrderStatus(from) === to;
+}
 
 async function withLineItems(order: Order): Promise<Order> {
   if (order.items.length > 0) return order;
@@ -33,6 +42,21 @@ export async function updateOrderStatus(
       .select("status, restaurant_id")
       .eq("id", orderId)
       .maybeSingle();
+
+    if (!previous) {
+      return { ok: false, message: "Order not found." };
+    }
+
+    const fromStatus = (previous as { status?: OrderStatus }).status;
+    if (
+      fromStatus &&
+      !isAllowedStatusTransition(fromStatus, status)
+    ) {
+      return {
+        ok: false,
+        message: `Cannot change order from ${fromStatus} to ${status}.`,
+      };
+    }
 
     const payload: Record<string, unknown> = { status };
     const timestampField = STATUS_TIMESTAMP_FIELD[status];

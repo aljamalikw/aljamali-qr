@@ -90,8 +90,18 @@ export function RewardsCatalog() {
     setRedemptions(redemptionsResult.ok ? redemptionsResult.data : []);
     setCustomers(customersResult.ok ? customersResult.data : []);
 
-    if (rewardsResult.ok && rewardsResult.data[0]) {
-      setRedeemRewardId((current) => current || rewardsResult.data[0].id);
+    if (rewardsResult.ok) {
+      const firstActive = rewardsResult.data.find((r) => r.status === "active");
+      if (firstActive) {
+        setRedeemRewardId((current) => {
+          const stillValid = rewardsResult.data.some(
+            (r) => r.id === current && r.status === "active",
+          );
+          return stillValid ? current : firstActive.id;
+        });
+      } else {
+        setRedeemRewardId("");
+      }
     }
   }, [restaurant?.id]);
 

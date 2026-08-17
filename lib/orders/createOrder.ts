@@ -71,6 +71,29 @@ function loyaltyPointsForSpend(grandTotal: number): number {
   return Math.max(0, Math.floor(grandTotal));
 }
 
+async function isCustomerLoyaltyEnrolled(
+  client: SupabaseClient,
+  restaurantId: string,
+  customerId: string,
+): Promise<boolean> {
+  const { data } = await client
+    .from("customers")
+    .select("loyalty_points, metadata")
+    .eq("id", customerId)
+    .eq("restaurant_id", restaurantId)
+    .maybeSingle();
+  if (!data) return false;
+  if (Number((data as { loyalty_points?: number }).loyalty_points ?? 0) > 0) {
+    return true;
+  }
+  const meta = (data as { metadata?: Record<string, unknown> | null }).metadata;
+  const loyalty =
+    meta && typeof meta === "object" && meta.loyalty && typeof meta.loyalty === "object"
+      ? (meta.loyalty as Record<string, unknown>)
+      : null;
+  return loyalty?.enrolled === true;
+}
+
 /**
  * Core order write path. Browser calls must use createOrder() → API route;
  * the route passes the server service-role client here.
@@ -150,7 +173,8 @@ export async function createOrderWithClient(
     const trimmedSpecialInstructions =
       input.specialInstructions?.trim() || null;
     const joinLoyalty = Boolean(input.joinLoyalty) && planAllowsLoyalty(plan);
-    const marketingOptIn = Boolean(input.marketingOptIn);
+    // Only persist an explicit opt-in. Unchecked checkout must not revoke prior consent.
+    const marketingOptIn = input.marketingOptIn === true ? true : undefined;
 
     let orderRow: OrderRecord | null = null;
     let lastError: { code?: string; message?: string } | null = null;
@@ -280,17 +304,27 @@ export async function createOrderWithClient(
     if (
       syncResult.ok &&
       syncResult.customerId &&
-      joinLoyalty
+      planAllowsLoyalty(plan)
     ) {
-      const points = loyaltyPointsForSpend(grandTotal);
-      if (points > 0) {
-        await adjustLoyaltyPoints({
-          restaurantId: input.restaurantId,
-          customerId: syncResult.customerId,
-          delta: points,
-          reason: `Order ${orderRow.order_number}`,
+      // Award when joining on this order OR already enrolled (returning members).
+      const shouldEarn =
+        joinLoyalty ||
+        (await isCustomerLoyaltyEnrolled(
           client,
-        });
+          input.restaurantId,
+          syncResult.customerId,
+        ));
+      if (shouldEarn) {
+        const points = loyaltyPointsForSpend(grandTotal);
+        if (points > 0) {
+          await adjustLoyaltyPoints({
+            restaurantId: input.restaurantId,
+            customerId: syncResult.customerId,
+            delta: points,
+            reason: `Order ${orderRow.order_number}`,
+            client,
+          });
+        }
       }
     }
 

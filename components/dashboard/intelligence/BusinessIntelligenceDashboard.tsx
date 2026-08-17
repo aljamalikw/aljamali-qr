@@ -152,7 +152,9 @@ export function BusinessIntelligenceDashboard() {
     setMultiLoading(true);
     const result = await fetchMultiRestaurantAnalytics({
       restaurantIds: restaurants.map((r) => r.id),
-      rangeId: rangeId === "custom" ? "30d" : rangeId,
+      rangeId,
+      customStart: rangeId === "custom" ? customStart : null,
+      customEnd: rangeId === "custom" ? customEnd : null,
     });
     setMultiLoading(false);
     if (!result.ok) {
@@ -162,7 +164,7 @@ export function BusinessIntelligenceDashboard() {
     }
     setMultiRows(result.data.rows);
     setRanking(result.data.ranking);
-  }, [allowsMulti, restaurants, rangeId]);
+  }, [allowsMulti, restaurants, rangeId, customStart, customEnd]);
 
   useEffect(() => {
     void loadBi();

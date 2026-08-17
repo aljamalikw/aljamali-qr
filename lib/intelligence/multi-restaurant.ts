@@ -8,6 +8,8 @@ import { supabase } from "@/lib/supabase";
 export async function fetchMultiRestaurantAnalytics(input: {
   restaurantIds: string[];
   rangeId?: IntelligenceRangeId;
+  customStart?: string | null;
+  customEnd?: string | null;
 }): Promise<
   | {
       ok: true;
@@ -42,7 +44,11 @@ export async function fetchMultiRestaurantAnalytics(input: {
       };
     }
 
-    const range = resolveIntelligenceRange(input.rangeId ?? "30d");
+    const range = resolveIntelligenceRange(
+      input.rangeId ?? "30d",
+      input.customStart,
+      input.customEnd,
+    );
 
     const [
       restaurantsResult,

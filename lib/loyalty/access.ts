@@ -34,6 +34,28 @@ export async function resolveLoyaltyAccess(
     }
   }
 
+  const { data: restaurant } = await client
+    .from("restaurants")
+    .select("owner_id, subscription_plan")
+    .eq("id", restaurantId)
+    .maybeSingle();
+
+  // Authenticated loyalty mutations must belong to the restaurant owner
+  // (or a platform admin). Service paths may omit actorUserId.
+  if (actorUserId && !bypassAdmin) {
+    const ownerId =
+      typeof (restaurant as { owner_id?: string } | null)?.owner_id === "string"
+        ? (restaurant as { owner_id: string }).owner_id
+        : null;
+    if (!ownerId || ownerId !== actorUserId) {
+      return {
+        ok: false,
+        message: "You do not have access to this restaurant.",
+        plan: "Starter",
+      };
+    }
+  }
+
   const { data: subscription } = await client
     .from("restaurant_subscriptions")
     .select("plan")
@@ -46,11 +68,6 @@ export async function resolveLoyaltyAccess(
       : "";
 
   if (!plan) {
-    const { data: restaurant } = await client
-      .from("restaurants")
-      .select("subscription_plan")
-      .eq("id", restaurantId)
-      .maybeSingle();
     plan =
       typeof restaurant?.subscription_plan === "string" &&
       restaurant.subscription_plan.trim()

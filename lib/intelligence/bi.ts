@@ -64,7 +64,9 @@ function inRange(iso: string, range: DateRange): boolean {
 }
 
 function dayKey(iso: string): string {
-  return iso.slice(0, 10);
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  return toIsoDate(d);
 }
 
 function buildDaySeries(
@@ -202,10 +204,14 @@ export async function fetchBusinessIntelligence(input: {
       orders.filter((o) => o.status !== "Cancelled" && inRange(o.created_at, r))
         .length;
 
+    // Revenue KPIs exclude Pending + Cancelled; order counts exclude Cancelled only.
+    const rangeRevenueOrders = orders.filter(
+      (o) => completedLike(o) && inRange(o.created_at, range),
+    );
     const rangeOrders = orders.filter(
       (o) => o.status !== "Cancelled" && inRange(o.created_at, range),
     );
-    const rangeRevenue = rangeOrders.reduce(
+    const rangeRevenue = rangeRevenueOrders.reduce(
       (sum, o) => sum + num(o.grand_total),
       0,
     );
@@ -248,7 +254,9 @@ export async function fetchBusinessIntelligence(input: {
       ordersToday: ordersIn(today),
       reservationsToday,
       averageOrderValue:
-        rangeOrders.length > 0 ? rangeRevenue / rangeOrders.length : 0,
+        rangeRevenueOrders.length > 0
+          ? rangeRevenue / rangeRevenueOrders.length
+          : 0,
       returningCustomers,
       newCustomers,
       loyaltyMembers,
@@ -263,9 +271,12 @@ export async function fetchBusinessIntelligence(input: {
 
     const revenueByDay = new Map<string, number>();
     const ordersByDay = new Map<string, number>();
-    for (const o of rangeOrders) {
+    for (const o of rangeRevenueOrders) {
       const key = dayKey(o.created_at);
       revenueByDay.set(key, (revenueByDay.get(key) ?? 0) + num(o.grand_total));
+    }
+    for (const o of rangeOrders) {
+      const key = dayKey(o.created_at);
       ordersByDay.set(key, (ordersByDay.get(key) ?? 0) + 1);
     }
 

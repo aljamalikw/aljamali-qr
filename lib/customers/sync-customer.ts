@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizeWhatsAppPhone } from "@/lib/marketing/whatsapp/phone";
 import { supabase } from "@/lib/supabase";
 
 export const CUSTOMER_TAG_PRESETS = [
@@ -131,11 +132,8 @@ function asObject(value: unknown): CustomerMetadata {
 }
 
 export function normalizePhone(phone: string | null | undefined): string | null {
-  if (!phone) return null;
-  const trimmed = phone.trim();
-  if (!trimmed) return null;
-  const digits = trimmed.replace(/[^\d+]/g, "");
-  return digits || null;
+  // Same rules as WhatsApp so CRM lookup / chat / checkout stay aligned.
+  return normalizeWhatsAppPhone(phone);
 }
 
 export function normalizeEmail(email: string | null | undefined): string | null {

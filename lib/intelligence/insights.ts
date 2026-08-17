@@ -71,6 +71,8 @@ const revenueTrend: InsightGenerator = ({ orders }) => {
       .reduce((s, o) => s + n(o.grand_total), 0);
   const current = sum(thisWeek.start, thisWeek.end);
   const previous = sum(lastWeek.start, lastWeek.end);
+  // No orders either week → do not claim "steady" revenue.
+  if (current === 0 && previous === 0) return [];
   const change = pctChange(current, previous);
   if (change == null) return [];
   if (change > 0) {
@@ -444,6 +446,25 @@ export async function generateRestaurantInsights(
         return [];
       }
     });
+
+    if (
+      insights.length === 0 &&
+      ctx.orders.length === 0 &&
+      ctx.customers.length === 0
+    ) {
+      return {
+        ok: true,
+        data: [
+          {
+            id: "insufficient-data",
+            severity: "info",
+            icon: "info",
+            title: "Not enough data yet",
+            body: "Insights will appear once this restaurant has orders or customers.",
+          },
+        ],
+      };
+    }
 
     return { ok: true, data: insights.slice(0, 12) };
   } catch {

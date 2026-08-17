@@ -104,6 +104,11 @@ function OrdersManagementContent() {
   }, [loadOrders]);
 
   useEffect(() => {
+    setSelected(null);
+    setConfirmCancel(null);
+  }, [restaurant?.id]);
+
+  useEffect(() => {
     void loadAnalytics();
   }, [loadAnalytics]);
 

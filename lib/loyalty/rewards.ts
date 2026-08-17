@@ -304,6 +304,13 @@ export async function redeemLoyaltyReward(input: {
       .single();
 
     if (error || !redemption) {
+      // Refund points if redemption row failed after deduct.
+      await adjustLoyaltyPoints({
+        restaurantId: input.restaurantId,
+        customerId: input.customerId,
+        delta: mapped.pointsRequired,
+        reason: `Refund failed redemption: ${mapped.title}`,
+      });
       return { ok: false, message: error?.message || "Unable to redeem." };
     }
 
