@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { getCategoryLabel } from "@/lib/categories/menu-options";
 import type { DashboardMenuItem, MenuFormData, MenuSortOption, MenuStatusFilter } from "@/lib/dashboard/menu/types";
@@ -30,6 +31,9 @@ const PAGE_SIZE = 10;
 
 export function MenuManagement() {
   const { showToast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { categories: menuCategories } = useMenuCategoryOptions();
   const [items, setItems] = useState<DashboardMenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +54,7 @@ export function MenuManagement() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const handledEditParamRef = useRef<string | null>(null);
 
   const loadMenuItems = useCallback(async () => {
     setLoading(true);
@@ -109,6 +114,25 @@ export function MenuManagement() {
     setFormError(null);
     setDrawerOpen(true);
   }, []);
+
+  // Global search deep-link: /dashboard/menu-items?edit=<id>
+  useEffect(() => {
+    const editId = searchParams.get("edit")?.trim() || "";
+    if (!editId || loading || items.length === 0) return;
+    if (handledEditParamRef.current === editId) return;
+
+    const target = items.find((item) => item.id === editId);
+    handledEditParamRef.current = editId;
+
+    if (target) {
+      openEdit(target);
+    }
+
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("edit");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [searchParams, loading, items, openEdit, router, pathname]);
 
   const handleSave = async () => {
     const err = validateMenuForm(form);

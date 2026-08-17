@@ -12,6 +12,7 @@ export function GlobalSearch() {
   const [results, setResults] = useState<GlobalSearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -30,12 +31,14 @@ export function GlobalSearch() {
     const q = query.trim();
     if (q.length < 2) {
       setResults([]);
+      setError(null);
       setLoading(false);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
+    setError(null);
     const timer = window.setTimeout(() => {
       void globalIntelligenceSearch({
         restaurantId: restaurant.id,
@@ -44,7 +47,14 @@ export function GlobalSearch() {
       }).then((result) => {
         if (cancelled) return;
         setLoading(false);
-        setResults(result.ok ? result.data : []);
+        if (!result.ok) {
+          setResults([]);
+          setError(result.message);
+          setOpen(true);
+          return;
+        }
+        setError(null);
+        setResults(result.data);
         setOpen(true);
       });
     }, 220);
@@ -58,7 +68,7 @@ export function GlobalSearch() {
   if (!restaurant?.id) return null;
 
   return (
-    <div ref={wrapRef} className="relative hidden min-w-0 max-w-xs flex-1 md:block lg:max-w-sm">
+    <div className="relative hidden min-w-0 max-w-xs flex-1 md:block lg:max-w-sm" ref={wrapRef}>
       <label className="sr-only" htmlFor="global-intelligence-search">
         Search
       </label>
@@ -68,7 +78,7 @@ export function GlobalSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => {
-          if (results.length > 0) setOpen(true);
+          if (results.length > 0 || error) setOpen(true);
         }}
         placeholder="Search…"
         autoComplete="off"
@@ -76,7 +86,7 @@ export function GlobalSearch() {
         aria-expanded={open}
         className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-gold/30 focus:outline-none"
       />
-      {open && (loading || results.length > 0 || query.trim().length >= 2) ? (
+      {open && (loading || results.length > 0 || error || query.trim().length >= 2) ? (
         <div
           id={listId}
           role="listbox"
@@ -84,6 +94,8 @@ export function GlobalSearch() {
         >
           {loading ? (
             <p className="px-3 py-3 text-sm text-white/45">Searching…</p>
+          ) : error ? (
+            <p className="px-3 py-3 text-sm text-red-300/90">{error}</p>
           ) : results.length === 0 ? (
             <p className="px-3 py-3 text-sm text-white/45">No matches</p>
           ) : (
@@ -95,6 +107,7 @@ export function GlobalSearch() {
                     onClick={() => {
                       setOpen(false);
                       setQuery("");
+                      setError(null);
                     }}
                     className="block px-3 py-2.5 transition hover:bg-gold/10"
                   >
@@ -102,7 +115,7 @@ export function GlobalSearch() {
                       {item.title}
                     </p>
                     <p className="truncate text-xs text-white/45">
-                      {item.type} · {item.subtitle}
+                      {item.type.replaceAll("_", " ")} · {item.subtitle}
                     </p>
                   </Link>
                 </li>

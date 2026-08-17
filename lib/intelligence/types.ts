@@ -69,7 +69,15 @@ export type MultiRestaurantRow = {
 
 export type GlobalSearchResult = {
   id: string;
-  type: "customer" | "restaurant" | "order" | "reservation" | "campaign" | "reward";
+  type:
+    | "customer"
+    | "restaurant"
+    | "order"
+    | "reservation"
+    | "campaign"
+    | "reward"
+    | "menu_item"
+    | "category";
   title: string;
   subtitle: string;
   href: string;
