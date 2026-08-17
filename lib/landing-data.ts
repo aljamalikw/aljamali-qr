@@ -39,6 +39,20 @@ export const heroValueProps = [
   { title: "Built-in Analytics Dashboard", icon: "analytics" as const },
 ] as const;
 
+/** Compact checklist shown in the split hero (reference layout). */
+export const heroChecklist = [
+  "Bilingual English & Arabic",
+  "Instant Menu Updates",
+] as const;
+
+/** Neutral trust strip — no invented ratings or restaurant counts. */
+export const trustStripItems = [
+  "Built for modern restaurants",
+  "Secure & Reliable",
+  "Fast & Easy Setup",
+  "MyFatoorah Billing",
+] as const;
+
 export const whyUsReasons = [
   {
     title: "Bilingual Menus",
@@ -98,13 +112,13 @@ export const whyUsReasons = [
 
 export const features = [
   {
-    title: "Digital Menu",
+    title: "Digital QR Menu",
     description:
       "Beautiful bilingual menus that open instantly — no app download required.",
     icon: "dish",
   },
   {
-    title: "QR Ordering",
+    title: "Online Ordering",
     description:
       "Let guests scan, browse, and order from the table with a premium flow.",
     icon: "order",
@@ -128,16 +142,22 @@ export const features = [
     icon: "crm",
   },
   {
-    title: "Loyalty & Rewards",
+    title: "Loyalty Rewards",
     description:
       "Reward regulars with points and offers that drive repeat visits.",
     icon: "loyalty",
   },
   {
-    title: "WhatsApp Marketing",
+    title: "WhatsApp CRM",
     description:
-      "Message opted-in guests with campaigns that feel personal and timely.",
+      "Chat with opted-in guests through a consent-gated WhatsApp workflow.",
     icon: "whatsapp",
+  },
+  {
+    title: "Marketing",
+    description:
+      "Share campaigns with opted-in customers — personal, not spammy.",
+    icon: "marketing",
   },
   {
     title: "Business Analytics",
@@ -175,6 +195,7 @@ export const steps = [
 ] as const;
 
 export const growthWorkflow = [
+  { label: "Digital Menu", icon: "dish" as const },
   { label: "Orders", icon: "order" as const },
   { label: "Customer CRM", icon: "crm" as const },
   { label: "Loyalty", icon: "loyalty" as const },
@@ -186,8 +207,12 @@ export const growthWorkflow = [
 export const analyticsDemoMetrics = [
   { label: "Revenue", value: "2,480 KWD", hint: "Demo" },
   { label: "Orders", value: "186", hint: "Demo" },
-  { label: "Customers", value: "142", hint: "Demo" },
   { label: "Returning Customers", value: "38%", hint: "Demo" },
+  { label: "Average Order Value", value: "13.3 KWD", hint: "Demo" },
+] as const;
+
+export const analyticsDemoExtra = [
+  { label: "Customer Growth", value: "+12%", hint: "Demo month" },
 ] as const;
 
 export const analyticsDemoItems = [
@@ -210,19 +235,19 @@ export const loyaltyMarketingItems = [
     icon: "loyalty" as const,
   },
   {
+    title: "Customer Segments",
+    description: "Group guests by visits, spend, and engagement for smarter outreach.",
+    icon: "crm" as const,
+  },
+  {
     title: "WhatsApp Customer Chat",
     description: "One-click conversations with guests who already know your brand.",
     icon: "whatsapp" as const,
   },
   {
-    title: "Marketing Campaigns",
+    title: "Campaigns",
     description: "Share offers through a free WhatsApp workflow — no spam blasts.",
     icon: "marketing" as const,
-  },
-  {
-    title: "Customer Segments",
-    description: "Group guests by visits, spend, and engagement for smarter outreach.",
-    icon: "crm" as const,
   },
   {
     title: "Birthday Offers",

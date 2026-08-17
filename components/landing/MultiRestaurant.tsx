@@ -3,8 +3,9 @@ import { SectionHeader } from "./SectionHeader";
 
 const demoSwitcher = [
   { name: "Main Location", active: true },
-  { name: "Second Branch", active: false },
-  { name: "Third Branch", active: false },
+  { name: "Bakery", active: false },
+  { name: "Cafe", active: false },
+  { name: "Restaurant", active: false },
 ] as const;
 
 export function MultiRestaurant() {
@@ -46,7 +47,10 @@ export function MultiRestaurant() {
             className="rounded-3xl border border-gold/20 bg-[#0c0b09] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.4)] sm:p-8"
             aria-labelledby="multi-heading"
           >
-            <p id="multi-heading" className="text-xs uppercase tracking-[0.16em] text-gold/80">
+            <p
+              id="multi-heading"
+              className="text-xs uppercase tracking-[0.16em] text-gold/80"
+            >
               Restaurant switcher
             </p>
             <p className="mt-2 font-serif text-2xl font-semibold text-white">

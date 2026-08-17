@@ -117,7 +117,7 @@ export default function Home() {
                 href="/register"
                 className="min-w-[180px] px-8 py-3.5 text-base"
               >
-                Get Started
+                Start Free Trial →
               </Button>
               <Button
                 href="#pricing"

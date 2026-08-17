@@ -1,4 +1,5 @@
 import {
+  analyticsDemoExtra,
   analyticsDemoHours,
   analyticsDemoItems,
   analyticsDemoMetrics,
@@ -9,14 +10,16 @@ export function AnalyticsPreview() {
   return (
     <section
       id="analytics"
-      className="relative bg-surface py-24 lg:py-32"
+      className="relative bg-background py-24 lg:py-32"
       aria-labelledby="analytics-heading"
     >
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <SectionHeader
           label="Analytics"
           title="Know Your Restaurant. Grow Your Business."
-          description="A clear view of performance — illustrated below with demo content, not live production data."
+          description="Premium performance views — shown with DEMO DATA only, not live production figures."
         />
 
         <div className="overflow-hidden rounded-3xl border border-gold/20 bg-[#0c0b09] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
@@ -31,7 +34,7 @@ export function AnalyticsPreview() {
               <p className="text-xs text-white/40">Illustrative demo dashboard</p>
             </div>
             <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold">
-              Demo
+              Demo Data
             </span>
           </div>
 
@@ -47,14 +50,14 @@ export function AnalyticsPreview() {
                 <p className="mt-2 font-serif text-2xl font-bold text-white">
                   {metric.value}
                 </p>
-                <p className="mt-1 text-[11px] text-gold/70">{metric.hint} data</p>
+                <p className="mt-1 text-[11px] text-gold/70">{metric.hint}</p>
               </div>
             ))}
           </div>
 
-          <div className="grid gap-4 border-t border-white/8 p-5 sm:p-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
-              <p className="text-sm font-semibold text-white">Top Selling Items</p>
+          <div className="grid gap-4 border-t border-white/8 p-5 sm:p-6 lg:grid-cols-3">
+            <div className="rounded-2xl border border-white/8 bg-black/30 p-5 lg:col-span-1">
+              <p className="text-sm font-semibold text-white">Best Selling Items</p>
               <p className="mt-1 text-xs text-white/40">Demo sample</p>
               <ul className="mt-4 space-y-3">
                 {analyticsDemoItems.map((item) => (
@@ -88,6 +91,17 @@ export function AnalyticsPreview() {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
+              <p className="text-sm font-semibold text-white">Customer Growth</p>
+              <p className="mt-1 text-xs text-white/40">Demo sample</p>
+              {analyticsDemoExtra.map((item) => (
+                <div key={item.label} className="mt-6">
+                  <p className="font-serif text-4xl font-bold text-gold">{item.value}</p>
+                  <p className="mt-2 text-sm text-white/55">{item.hint}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
