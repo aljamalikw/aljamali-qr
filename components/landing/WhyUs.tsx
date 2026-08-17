@@ -15,17 +15,16 @@ export function WhyUs() {
         <SectionHeader
           label="Why Us"
           title="Why Restaurants Choose Aljamali QR"
-          description="Built for premium hospitality — elegant presentation, operational speed, and guest-ready digital menus."
+          description="Built for premium hospitality — fast to run, elegant for guests, and ready for growth."
         />
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {whyUsReasons.map((reason, index) => (
             <article
               key={reason.title}
-              className="card-premium group rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1.5 hover:border-gold/35 hover:shadow-2xl hover:shadow-gold/10"
-              style={{ animationDelay: `${index * 60}ms` }}
+              className="group rounded-2xl border border-white/8 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-gold/35"
             >
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-gold/15 bg-gold/10 text-gold transition-all duration-300 group-hover:scale-105 group-hover:border-gold/30 group-hover:bg-gold/20">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-gold/20 bg-gold/10 text-gold">
                 <Icon
                   name={reason.icon as Parameters<typeof Icon>[0]["name"]}
                   className="h-5 w-5"
@@ -33,11 +32,11 @@ export function WhyUs() {
               </div>
               <h3
                 id={index === 0 ? "why-us-heading" : undefined}
-                className="mb-2 font-serif text-lg font-semibold text-white transition-colors group-hover:text-gold"
+                className="mb-2 font-serif text-lg font-semibold text-white group-hover:text-gold"
               >
                 {reason.title}
               </h3>
-              <p className="text-sm leading-relaxed text-white/60">
+              <p className="text-sm leading-relaxed text-white/55">
                 {reason.description}
               </p>
             </article>

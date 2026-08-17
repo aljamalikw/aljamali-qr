@@ -32,92 +32,123 @@ export const mobileNavLinks = [
   { label: "Login", href: "/login" },
 ] as const;
 
+export const heroValueProps = [
+  { title: "Bilingual English & Arabic", icon: "language" as const },
+  { title: "Instant Menu Updates", icon: "update" as const },
+  { title: "QR Ordering & Reservations", icon: "order" as const },
+  { title: "Built-in Analytics Dashboard", icon: "analytics" as const },
+] as const;
+
 export const whyUsReasons = [
   {
-    title: "Premium QR Experience",
+    title: "Bilingual Menus",
     description:
-      "A polished black-and-gold digital menu that matches the standard of fine dining and modern hospitality brands.",
-    icon: "qr",
-  },
-  {
-    title: "Instant Menu Updates",
-    description:
-      "Change prices, specials, or availability in seconds — every table sees the latest menu immediately.",
-    icon: "update",
-  },
-  {
-    title: "Unlimited Menu Changes",
-    description:
-      "Edit as often as you need with no printing costs, no delays, and no limits on everyday updates.",
-    icon: "unlimited",
-  },
-  {
-    title: "Multi-Language Menus",
-    description:
-      "Serve guests in English and Arabic with elegant bilingual layouts and proper RTL support.",
+      "Serve guests in English and Arabic with elegant layouts and proper RTL support.",
     icon: "language",
   },
   {
-    title: "QR Analytics",
+    title: "Fast Daily Operations",
     description:
-      "Understand scans, peak hours, and menu engagement so you can make sharper operational decisions.",
+      "Update prices, specials, and availability in seconds — every table stays current.",
+    icon: "update",
+  },
+  {
+    title: "Easy to Manage",
+    description:
+      "One clear dashboard for menus, QR codes, orders, and guest relationships.",
+    icon: "rocket",
+  },
+  {
+    title: "Customer CRM",
+    description:
+      "Know who visits, orders, and returns — built around restaurant guest journeys.",
+    icon: "crm",
+  },
+  {
+    title: "Loyalty & Rewards",
+    description:
+      "Turn visits into points and rewards that bring guests back to your tables.",
+    icon: "loyalty",
+  },
+  {
+    title: "WhatsApp Marketing",
+    description:
+      "Reach opted-in customers with campaigns that feel personal, not spammy.",
+    icon: "whatsapp",
+  },
+  {
+    title: "Business Analytics",
+    description:
+      "Understand revenue, peak hours, and top dishes so you can grow with clarity.",
     icon: "analytics",
   },
   {
-    title: "No App Required",
+    title: "Multi-Restaurant Ready",
     description:
-      "Guests open your menu instantly in the browser — no downloads, no accounts, no friction.",
-    icon: "phone",
+      "Manage multiple locations from one account with separate menus and insights.",
+    icon: "branches",
   },
   {
-    title: "Secure Cloud Platform",
+    title: "Restaurant-Focused",
     description:
-      "Your menus and data stay protected on a secure cloud foundation built for restaurant operations.",
-    icon: "shield",
-  },
-  {
-    title: "Fast Onboarding",
-    description:
-      "Go live quickly with guided setup, clear workflows, and a free trial that gets you operational fast.",
-    icon: "rocket",
+      "Designed for hospitality teams — not generic SaaS workflows.",
+    icon: "dish",
   },
 ] as const;
 
 export const features = [
   {
-    title: "QR Menus",
+    title: "Digital Menu",
     description:
-      "Beautiful, scannable menus that open instantly on any smartphone — no app download required.",
-    icon: "qr",
+      "Beautiful bilingual menus that open instantly — no app download required.",
+    icon: "dish",
   },
   {
-    title: "English & Arabic",
+    title: "QR Ordering",
     description:
-      "Full bilingual support with elegant RTL layout, so every guest feels at home.",
-    icon: "language",
+      "Let guests scan, browse, and order from the table with a premium flow.",
+    icon: "order",
   },
   {
-    title: "Instant Updates",
+    title: "Reservations",
     description:
-      "Change prices, add specials, or mark items sold out in seconds — live for every table.",
-    icon: "update",
+      "Capture bookings cleanly and keep your floor plan running smoothly.",
+    icon: "reservation",
   },
   {
-    title: "Analytics",
+    title: "Kitchen Display",
     description:
-      "Track menu views, popular dishes, and peak hours to make smarter business decisions.",
+      "Route orders to the kitchen with clarity so tickets move faster.",
+    icon: "kitchen",
+  },
+  {
+    title: "Customer CRM",
+    description:
+      "Build a living guest profile from orders, visits, and preferences.",
+    icon: "crm",
+  },
+  {
+    title: "Loyalty & Rewards",
+    description:
+      "Reward regulars with points and offers that drive repeat visits.",
+    icon: "loyalty",
+  },
+  {
+    title: "WhatsApp Marketing",
+    description:
+      "Message opted-in guests with campaigns that feel personal and timely.",
+    icon: "whatsapp",
+  },
+  {
+    title: "Business Analytics",
+    description:
+      "See revenue, orders, and peak hours in one restaurant-ready view.",
     icon: "analytics",
   },
   {
-    title: "Unlimited Menu Items",
+    title: "Multi-Restaurant Management",
     description:
-      "No caps on categories or dishes. Build menus as rich and detailed as your cuisine.",
-    icon: "unlimited",
-  },
-  {
-    title: "Multi-Branch Support",
-    description:
-      "Manage every location from one dashboard with branch-specific menus and branding.",
+      "Operate every location from one account with clear separation.",
     icon: "branches",
   },
 ] as const;
@@ -125,23 +156,115 @@ export const features = [
 export const steps = [
   {
     step: "01",
-    title: "Create Your Menu",
+    title: "Create Your Restaurant",
     description:
-      "Upload your dishes, photos, and prices through our intuitive dashboard. Set up English and Arabic in minutes.",
+      "Set up your brand, location, and essentials in a guided flow built for busy owners.",
   },
   {
     step: "02",
-    title: "Generate QR Codes",
+    title: "Build Your Digital Menu",
     description:
-      "We create unique, branded QR codes for each table or branch. Print them on elegant table tents or stickers.",
+      "Add dishes, photos, and prices in English and Arabic — ready for guests instantly.",
   },
   {
     step: "03",
-    title: "Go Live & Grow",
+    title: "Share Your QR Code",
     description:
-      "Guests scan and browse instantly. Update anytime, track analytics, and delight customers with a premium experience.",
+      "Print elegant QR codes for tables and let guests open your menu in one scan.",
   },
 ] as const;
+
+export const growthWorkflow = [
+  { label: "Orders", icon: "order" as const },
+  { label: "Customer CRM", icon: "crm" as const },
+  { label: "Loyalty", icon: "loyalty" as const },
+  { label: "WhatsApp", icon: "whatsapp" as const },
+  { label: "Marketing", icon: "marketing" as const },
+  { label: "Analytics", icon: "analytics" as const },
+] as const;
+
+export const analyticsDemoMetrics = [
+  { label: "Revenue", value: "2,480 KWD", hint: "Demo" },
+  { label: "Orders", value: "186", hint: "Demo" },
+  { label: "Customers", value: "142", hint: "Demo" },
+  { label: "Returning Customers", value: "38%", hint: "Demo" },
+] as const;
+
+export const analyticsDemoItems = [
+  { name: "Grilled Sea Bass", value: "42 orders" },
+  { name: "Truffle Pasta", value: "37 orders" },
+  { name: "Signature Latte", value: "29 orders" },
+] as const;
+
+export const analyticsDemoHours = [
+  { label: "12–2 PM", level: 70 },
+  { label: "2–5 PM", level: 35 },
+  { label: "5–8 PM", level: 92 },
+  { label: "8–11 PM", level: 80 },
+] as const;
+
+export const loyaltyMarketingItems = [
+  {
+    title: "Loyalty Rewards",
+    description: "Points and redeemable treats that make regulars feel valued.",
+    icon: "loyalty" as const,
+  },
+  {
+    title: "WhatsApp Customer Chat",
+    description: "One-click conversations with guests who already know your brand.",
+    icon: "whatsapp" as const,
+  },
+  {
+    title: "Marketing Campaigns",
+    description: "Share offers through a free WhatsApp workflow — no spam blasts.",
+    icon: "marketing" as const,
+  },
+  {
+    title: "Customer Segments",
+    description: "Group guests by visits, spend, and engagement for smarter outreach.",
+    icon: "crm" as const,
+  },
+  {
+    title: "Birthday Offers",
+    description: "Celebrate special days with rewards that feel personal.",
+    icon: "gift" as const,
+  },
+  {
+    title: "Win-Back Offers",
+    description: "Re-engage quiet guests with timely, permission-based messages.",
+    icon: "rocket" as const,
+  },
+] as const;
+
+export const multiRestaurantPoints = [
+  "Centralized management from one owner account",
+  "Separate menus for every location",
+  "Separate customer lists per restaurant",
+  "Separate analytics for each branch",
+  "Enterprise-level multi-location reporting",
+] as const;
+
+/** Neutral trust statements — no invented restaurant testimonials. */
+export const trustStatements = [
+  {
+    title: "Built for modern restaurants",
+    description:
+      "A premium digital experience designed around real hospitality workflows.",
+  },
+  {
+    title: "Designed for restaurant teams",
+    description:
+      "Clear tools for owners, managers, and front-of-house without clutter.",
+  },
+  {
+    title: "Made for fast daily operations",
+    description:
+      "Update menus, serve guests, and review performance without slowing service.",
+  },
+] as const;
+
+/** @deprecated Prefer trustStatements — kept for compatibility. */
+export const testimonials = trustStatements;
 
 export type PricingFeature = {
   label: string;
@@ -381,30 +504,6 @@ export const pricingComparisonRows: ReadonlyArray<{
     enterprise: true,
   },
 ];
-
-export const testimonials = [
-  {
-    quote:
-      "Aljamali QR transformed how we serve guests. Updates go live instantly, and our bilingual menu has been a hit with tourists and locals alike.",
-    author: "Chef Omar Al-Rashid",
-    role: "Owner, Maison Levant",
-    rating: 5,
-  },
-  {
-    quote:
-      "We replaced printed menus across four branches in one afternoon. The gold-themed digital experience matches our brand perfectly.",
-    author: "Sarah Mitchell",
-    role: "Operations Director, Ember & Oak",
-    rating: 5,
-  },
-  {
-    quote:
-      "The analytics alone paid for the subscription. We discovered which dishes drive repeat visits and optimized our menu accordingly.",
-    author: "Khalid Al-Farsi",
-    role: "General Manager, Noor Bistro",
-    rating: 5,
-  },
-] as const;
 
 export const faqs = [
   {

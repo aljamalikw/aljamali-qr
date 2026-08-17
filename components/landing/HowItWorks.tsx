@@ -11,22 +11,19 @@ export function HowItWorks() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <SectionHeader
           label="How It Works"
-          title="Go Digital in Three Simple Steps"
-          description="From setup to your first scan — we make the transition effortless."
+          title="Start in Minutes"
+          description="Go from signup to your first guest scan without slowing service."
         />
 
-        <div className="relative grid gap-8 lg:grid-cols-3 lg:gap-12">
+        <div className="relative grid gap-10 lg:grid-cols-3 lg:gap-8">
           <div
-            className="absolute left-0 right-0 top-16 hidden h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent lg:block"
+            className="absolute left-[8%] right-[8%] top-10 hidden h-px bg-gradient-to-r from-transparent via-gold/35 to-transparent lg:block"
             aria-hidden="true"
           />
 
           {steps.map((item, index) => (
-            <article
-              key={item.step}
-              className="relative text-center lg:text-left"
-            >
-              <div className="relative z-10 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-gold/30 bg-background font-serif text-2xl font-bold text-gold lg:mx-0">
+            <article key={item.step} className="relative text-center lg:px-4">
+              <div className="relative z-10 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-gold/35 bg-background font-serif text-2xl font-bold text-gold shadow-[0_0_30px_rgba(212,175,55,0.12)]">
                 {item.step}
               </div>
               <h3
@@ -35,7 +32,9 @@ export function HowItWorks() {
               >
                 {item.title}
               </h3>
-              <p className="text-white/60 leading-relaxed">{item.description}</p>
+              <p className="mx-auto max-w-sm text-white/55 leading-relaxed">
+                {item.description}
+              </p>
             </article>
           ))}
         </div>

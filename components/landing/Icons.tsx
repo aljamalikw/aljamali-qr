@@ -14,7 +14,16 @@ type IconName =
   | "facebook"
   | "menu"
   | "star"
-  | "chevron";
+  | "chevron"
+  | "order"
+  | "reservation"
+  | "kitchen"
+  | "crm"
+  | "loyalty"
+  | "whatsapp"
+  | "marketing"
+  | "gift"
+  | "dish";
 
 interface IconProps {
   name: IconName;
@@ -116,6 +125,63 @@ export function Icon({ name, className = "h-6 w-6" }: IconProps) {
     chevron: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
         <path d="M6 9l6 6 6-6" />
+      </svg>
+    ),
+    order: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M6 2h12l1 7H5L6 2z" />
+        <path d="M5 9v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" />
+        <path d="M9 13h6M9 17h4" />
+      </svg>
+    ),
+    reservation: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4M8 14h3M13 14h3M8 18h8" />
+      </svg>
+    ),
+    kitchen: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M4 20h16M6 20V10l6-6 6 6v10" />
+        <path d="M10 20v-5h4v5" />
+      </svg>
+    ),
+    crm: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+        <circle cx="17" cy="9" r="2.5" />
+        <path d="M21 20c0-2.5-1.8-4.5-4-5" />
+      </svg>
+    ),
+    loyalty: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z" />
+      </svg>
+    ),
+    whatsapp: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.21 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z" />
+        <path d="M12.05 2C6.5 2 2 6.5 2 12.05c0 1.78.47 3.52 1.36 5.05L2 22l5.05-1.32A10.02 10.02 0 0 0 12.05 22C17.6 22 22.1 17.5 22.1 11.95 22.1 6.4 17.6 2 12.05 2zm0 18.3h-.01a8.3 8.3 0 0 1-4.22-1.16l-.3-.18-3.15.83.84-3.07-.2-.32a8.28 8.28 0 0 1-1.27-4.42c0-4.58 3.73-8.3 8.32-8.3a8.27 8.27 0 0 1 5.87 2.43 8.26 8.26 0 0 1 2.43 5.87c0 4.58-3.73 8.3-8.3 8.3z" />
+      </svg>
+    ),
+    marketing: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z" />
+        <path d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" />
+      </svg>
+    ),
+    gift: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <rect x="3" y="8" width="18" height="13" rx="2" />
+        <path d="M12 8v13M3 12h18M12 8c-2-3-5-3-5-1.5S9.5 9 12 8c2.5-1 5-.5 5 1.5S14 11 12 8z" />
+      </svg>
+    ),
+    dish: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+        <path d="M4 12h16a8 8 0 0 1-16 0z" />
+        <path d="M4 12V9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3" />
+        <path d="M8 7V5M12 7V4M16 7V5" />
       </svg>
     ),
   };

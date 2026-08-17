@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
-import { FreeTrial } from "@/components/landing/FreeTrial";
+import { ValueStrip } from "@/components/landing/ValueStrip";
 import { Features } from "@/components/landing/Features";
-import { WhyUs } from "@/components/landing/WhyUs";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { Demo } from "@/components/landing/Demo";
+import { GrowthWorkflow } from "@/components/landing/GrowthWorkflow";
+import { AnalyticsPreview } from "@/components/landing/AnalyticsPreview";
+import { LoyaltyMarketing } from "@/components/landing/LoyaltyMarketing";
+import { MultiRestaurant } from "@/components/landing/MultiRestaurant";
 import { Pricing } from "@/components/landing/Pricing";
+import { WhyUs } from "@/components/landing/WhyUs";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { FAQ } from "@/components/landing/FAQ";
 import { Contact } from "@/components/landing/Contact";
@@ -23,9 +25,32 @@ import {
 export const metadata: Metadata = {
   title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
   description:
-    `Replace printed menus with beautiful bilingual QR menus. Plans from ${PRICING_LOW_PRICE} to ${PRICING_HIGH_PRICE} KWD/month, plus Enterprise. English & Arabic, instant updates, and analytics.`,
+    `Replace printed menus with beautiful bilingual QR menus. Plans from ${PRICING_LOW_PRICE} to ${PRICING_HIGH_PRICE} KWD/month, plus Enterprise. English & Arabic, ordering, loyalty, WhatsApp marketing, and analytics.`,
+  keywords: [
+    "QR menu",
+    "digital menu Kuwait",
+    "restaurant QR ordering",
+    "bilingual restaurant menu",
+    "restaurant loyalty software",
+    "WhatsApp restaurant marketing",
+    "Aljamali QR",
+  ],
   alternates: {
     canonical: "/",
+  },
+  openGraph: {
+    title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
+    description:
+      "Elevate your restaurant with bilingual QR menus, loyalty, CRM, and analytics in one platform.",
+    url: "/",
+    siteName: "Aljamali QR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Aljamali QR — Premium Digital QR Menus for Restaurants",
+    description:
+      "Elevate your restaurant with bilingual QR menus, loyalty, CRM, and analytics in one platform.",
   },
 };
 
@@ -35,7 +60,7 @@ const jsonLd = {
   name: "Aljamali QR",
   applicationCategory: "BusinessApplication",
   description:
-    "Digital QR menu platform for restaurants with English and Arabic support.",
+    "Digital QR menu platform for restaurants with English and Arabic support, loyalty, CRM, and analytics.",
   offers: {
     "@type": "AggregateOffer",
     lowPrice: PRICING_LOW_PRICE,
@@ -56,12 +81,15 @@ export default function Home() {
 
       <main id="main-content" className="overflow-x-hidden bg-background">
         <Hero />
-        <FreeTrial />
+        <ValueStrip />
         <Features />
-        <WhyUs />
         <HowItWorks />
-        <Demo />
+        <GrowthWorkflow />
+        <AnalyticsPreview />
+        <LoyaltyMarketing />
+        <MultiRestaurant />
         <Pricing />
+        <WhyUs />
         <Testimonials />
         <FAQ />
         <Contact />
@@ -76,34 +104,29 @@ export default function Home() {
               id="cta-heading"
               className="font-serif text-3xl font-bold text-white sm:text-4xl lg:text-5xl"
             >
-              Ready to Elevate Your{" "}
-              <span className="gold-gradient-text">Restaurant Experience</span>?
+              Ready to{" "}
+              <span className="gold-gradient-text">Transform Your Restaurant</span>
+              ?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-white/60">
-              Join restaurants modernizing service with Aljamali QR. Schedule a
-              free demo or explore the live menu experience.
+              Launch bilingual QR menus, grow returning guests, and manage
+              operations from one premium platform.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
-                href="/schedule-demo"
+                href="/register"
                 className="min-w-[180px] px-8 py-3.5 text-base"
               >
-                Schedule Free Demo
+                Get Started
               </Button>
               <Button
-                href="/demo"
+                href="#pricing"
                 variant="secondary"
                 className="min-w-[160px] px-8 py-3.5 text-base"
               >
-                View Demo Menu
+                View Pricing
               </Button>
             </div>
-            <p className="mt-6 text-sm text-white/40">
-              Questions?{" "}
-              <Link href="#contact" className="text-gold hover:underline">
-                Contact our team
-              </Link>
-            </p>
           </div>
         </section>
       </main>
