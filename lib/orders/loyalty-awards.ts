@@ -81,6 +81,13 @@ function logLoyaltyAwardCheck(input: {
   console.info("[LOYALTY AWARD CHECK]", input);
 }
 
+function isMissingAwardMarkerColumnError(
+  error: { message?: string } | null | undefined,
+): boolean {
+  const message = error?.message ?? "";
+  return /loyalty_points_awarded_at/i.test(message) && /column|schema cache/i.test(message);
+}
+
 function isCustomerEnrolled(metadata: Record<string, unknown> | null): boolean {
   const loyalty =
     metadata &&
@@ -141,6 +148,11 @@ export async function maybeAwardLoyaltyPointsForOrder(
   | { ok: false; message: string }
 > {
   try {
+    console.info("[LOYALTY AWARD TRIGGER]", {
+      orderId,
+      stage: "entered",
+    });
+
     const { data, error } = await client
       .from("orders")
       .select(
@@ -150,6 +162,18 @@ export async function maybeAwardLoyaltyPointsForOrder(
       .maybeSingle();
 
     if (error || !data) {
+      if (isMissingAwardMarkerColumnError(error)) {
+        console.warn("[LOYALTY AWARD CHECK]", {
+          reason: "missing_award_marker_column",
+          orderId,
+          message: error?.message ?? "Missing loyalty award marker column.",
+        });
+        return {
+          ok: false,
+          message:
+            "orders.loyalty_points_awarded_at is missing in the database. Apply supabase/production/order_loyalty_award_marker_missing.sql before loyalty points can be awarded.",
+        };
+      }
       console.warn("[LOYALTY AWARD CHECK]", {
         reason: "order_not_found",
         orderId,

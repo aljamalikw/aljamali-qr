@@ -33,6 +33,10 @@ async function withLineItems(order: Order): Promise<Order> {
 }
 
 async function triggerServerLoyaltyAwardCheck(orderId: string): Promise<void> {
+  console.info("[LOYALTY AWARD TRIGGER]", {
+    orderId,
+    stage: "client_trigger_requested",
+  });
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -65,7 +69,19 @@ async function triggerServerLoyaltyAwardCheck(orderId: string): Promise<void> {
       status: response.status,
       message: payload.error ?? "Award check request failed.",
     });
+    return;
   }
+
+  let payload: { awarded?: boolean; points?: number } = {};
+  try {
+    payload = (await response.json()) as typeof payload;
+  } catch {}
+  console.info("[LOYALTY AWARD TRIGGER]", {
+    orderId,
+    stage: "client_trigger_completed",
+    awarded: payload.awarded ?? false,
+    points: payload.points ?? 0,
+  });
 }
 
 export async function updateOrderStatus(

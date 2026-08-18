@@ -107,6 +107,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  console.info("[LOYALTY AWARD TRIGGER]", {
+    orderId,
+    stage: "route_called",
+    actorUserId: auth.userId,
+  });
+
   let admin;
   try {
     admin = createServiceSupabaseClient();
@@ -133,6 +139,12 @@ export async function POST(request: NextRequest) {
     (order as { restaurant_id?: string } | null)?.restaurant_id ?? "";
   const allowed = await canManageOrder(admin, auth.userId, restaurantId);
   if (!allowed) {
+    console.warn("[LOYALTY AWARD TRIGGER]", {
+      orderId,
+      restaurantId,
+      stage: "route_forbidden",
+      actorUserId: auth.userId,
+    });
     return NextResponse.json(
       { ok: false, error: "Forbidden" },
       { status: 403 },
@@ -141,11 +153,27 @@ export async function POST(request: NextRequest) {
 
   const result = await maybeAwardLoyaltyPointsForOrder(orderId, admin);
   if (!result.ok) {
+    console.warn("[LOYALTY AWARD TRIGGER]", {
+      orderId,
+      restaurantId,
+      stage: "route_failed",
+      actorUserId: auth.userId,
+      message: result.message,
+    });
     return NextResponse.json(
       { ok: false, error: result.message },
       { status: 500 },
     );
   }
+
+  console.info("[LOYALTY AWARD TRIGGER]", {
+    orderId,
+    restaurantId,
+    stage: "route_completed",
+    actorUserId: auth.userId,
+    awarded: result.awarded,
+    points: result.points,
+  });
 
   return NextResponse.json(result);
 }
