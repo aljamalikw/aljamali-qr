@@ -86,6 +86,38 @@ export function canCancelOrder(status: OrderStatus): boolean {
   return status === "Pending" || status === "Accepted" || status === "Preparing";
 }
 
+/** Bulk Accept maps to Pending → Accepted only. */
+export function canBulkAcceptOrder(status: OrderStatus): boolean {
+  return getNextOrderStatus(status) === "Accepted";
+}
+
+/** Bulk Cancel reuses the same rules as individual cancellation. */
+export function canBulkCancelOrder(status: OrderStatus): boolean {
+  return canCancelOrder(status);
+}
+
+export function partitionSelectedForBulkAccept(
+  orders: Order[],
+  selectedIds: ReadonlySet<string>,
+): { eligible: Order[]; ineligible: Order[] } {
+  const selected = orders.filter((order) => selectedIds.has(order.id));
+  return {
+    eligible: selected.filter((order) => canBulkAcceptOrder(order.status)),
+    ineligible: selected.filter((order) => !canBulkAcceptOrder(order.status)),
+  };
+}
+
+export function partitionSelectedForBulkCancel(
+  orders: Order[],
+  selectedIds: ReadonlySet<string>,
+): { eligible: Order[]; ineligible: Order[] } {
+  const selected = orders.filter((order) => selectedIds.has(order.id));
+  return {
+    eligible: selected.filter((order) => canBulkCancelOrder(order.status)),
+    ineligible: selected.filter((order) => !canBulkCancelOrder(order.status)),
+  };
+}
+
 function matchesSearch(order: Order, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;

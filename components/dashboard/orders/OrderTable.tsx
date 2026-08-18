@@ -1,11 +1,21 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Order } from "@/lib/orders/types";
-import { formatTimeAgo, getNextOrderStatus, getNextOrderStatusActionLabel } from "@/lib/orders/utils";
+import {
+  formatTimeAgo,
+  getNextOrderStatus,
+  getNextOrderStatusActionLabel,
+} from "@/lib/orders/utils";
 import { OrderStatusBadge, PaymentStatusBadge } from "./OrderStatusBadge";
 
 interface OrderTableProps {
   items: Order[];
+  selectedIds: ReadonlySet<string>;
+  onToggleSelect: (orderId: string, selected: boolean) => void;
+  onToggleSelectAllVisible: (selected: boolean) => void;
+  allVisibleSelected: boolean;
+  someVisibleSelected: boolean;
   onRowClick: (order: Order) => void;
   onAdvanceStatus: (order: Order) => void;
 }
@@ -33,12 +43,40 @@ function getCustomerSummary(order: Order): { primary: string; secondary?: string
   };
 }
 
-export function OrderTable({ items, onRowClick, onAdvanceStatus }: OrderTableProps) {
+export function OrderTable({
+  items,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAllVisible,
+  allVisibleSelected,
+  someVisibleSelected,
+  onRowClick,
+  onAdvanceStatus,
+}: OrderTableProps) {
+  const masterCheckboxRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (masterCheckboxRef.current) {
+      masterCheckboxRef.current.indeterminate =
+        someVisibleSelected && !allVisibleSelected;
+    }
+  }, [allVisibleSelected, someVisibleSelected]);
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[960px] text-left">
         <thead>
           <tr className="border-b border-gold/10">
+            <th className="w-10 px-3 py-3">
+              <input
+                ref={masterCheckboxRef}
+                type="checkbox"
+                checked={allVisibleSelected && items.length > 0}
+                onChange={(e) => onToggleSelectAllVisible(e.target.checked)}
+                aria-label="Select all orders on this page"
+                className="h-4 w-4 rounded border-white/20 bg-black/40 text-gold focus:ring-gold/30"
+              />
+            </th>
             {[
               "Order #",
               "Type",
@@ -65,13 +103,26 @@ export function OrderTable({ items, onRowClick, onAdvanceStatus }: OrderTablePro
             const nextLabel = getNextOrderStatusActionLabel(order.status);
             const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
             const customer = getCustomerSummary(order);
+            const isSelected = selectedIds.has(order.id);
 
             return (
               <tr
                 key={order.id}
-                className="table-row-hover cursor-pointer border-b border-white/5"
+                className={`table-row-hover cursor-pointer border-b border-white/5 ${
+                  isSelected ? "bg-gold/5" : ""
+                }`}
                 onClick={() => onRowClick(order)}
+                aria-selected={isSelected}
               >
+                <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => onToggleSelect(order.id, e.target.checked)}
+                    aria-label={`Select order ${order.orderNumber}`}
+                    className="h-4 w-4 rounded border-white/20 bg-black/40 text-gold focus:ring-gold/30"
+                  />
+                </td>
                 <td className="px-3 py-3 text-sm font-medium text-white">
                   {order.orderNumber}
                   {Object.keys(order.printerPayload ?? {}).length > 0 && (
@@ -100,7 +151,9 @@ export function OrderTable({ items, onRowClick, onAdvanceStatus }: OrderTablePro
                 <td className="px-3 py-3">
                   <PaymentStatusBadge status={order.paymentStatus} />
                 </td>
-                <td className="px-3 py-3 text-sm text-white/50">{formatTimeAgo(order.createdAt)}</td>
+                <td className="px-3 py-3 text-sm text-white/50">
+                  {formatTimeAgo(order.createdAt)}
+                </td>
                 <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                   {nextStatus && nextLabel && (
                     <button
