@@ -1,5 +1,4 @@
 import { logActivity } from "@/lib/admin/activity-log";
-import { maybeAwardLoyaltyPointsForOrder } from "@/lib/orders/loyalty-awards";
 import { supabase } from "@/lib/supabase";
 import { fetchOrderById } from "./fetchOrders";
 import { mapOrderRow } from "./mappers";
@@ -31,6 +30,42 @@ async function withLineItems(order: Order): Promise<Order> {
     return refreshed.data;
   }
   return order;
+}
+
+async function triggerServerLoyaltyAwardCheck(orderId: string): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken) {
+    console.warn("[LOYALTY AWARD CHECK]", {
+      reason: "missing_session_for_server_check",
+      orderId,
+    });
+    return;
+  }
+
+  const response = await fetch("/api/orders/loyalty-award", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ orderId }),
+  });
+
+  if (!response.ok) {
+    let payload: { error?: string } = {};
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {}
+    console.warn("[LOYALTY AWARD CHECK]", {
+      reason: "server_check_failed",
+      orderId,
+      status: response.status,
+      message: payload.error ?? "Award check request failed.",
+    });
+  }
 }
 
 export async function updateOrderStatus(
@@ -88,7 +123,7 @@ export async function updateOrderStatus(
       newValues: { status },
     });
 
-    await maybeAwardLoyaltyPointsForOrder(orderId, supabase);
+    await triggerServerLoyaltyAwardCheck(orderId);
 
     return { ok: true, data: order };
   } catch {
@@ -113,7 +148,7 @@ export async function updatePaymentStatus(
     }
 
     const order = await withLineItems(mapOrderRow(data as OrderRecord));
-    await maybeAwardLoyaltyPointsForOrder(orderId, supabase);
+    await triggerServerLoyaltyAwardCheck(orderId);
     return {
       ok: true,
       data: order,
