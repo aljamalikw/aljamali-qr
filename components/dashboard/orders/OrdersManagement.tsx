@@ -230,7 +230,11 @@ function OrdersManagementContent() {
   );
 
   const executeBulkStatusUpdate = useCallback(
-    async (targetStatus: OrderStatus, eligible: Order[]) => {
+    async (
+      targetStatus: OrderStatus,
+      eligible: Order[],
+      ineligibleCount: number,
+    ) => {
       setBulkLoading(true);
       const successes: Order[] = [];
       const failures: Array<{ orderNumber: string; message: string }> = [];
@@ -254,16 +258,20 @@ function OrdersManagementContent() {
       void loadOrders();
 
       const actionLabel = targetStatus === "Accepted" ? "accepted" : "cancelled";
+      const skippedMessage =
+        ineligibleCount > 0
+          ? ` ${ineligibleCount} ${ineligibleCount === 1 ? "order was" : "orders were"} skipped because ${ineligibleCount === 1 ? "it is" : "they are"} not eligible for ${targetStatus === "Accepted" ? "acceptance" : "cancellation"}.`
+          : "";
       if (successes.length > 0 && failures.length === 0) {
         showToast(
-          `${successes.length} ${successes.length === 1 ? "order" : "orders"} ${actionLabel} successfully.`,
+          `${successes.length} ${successes.length === 1 ? "order" : "orders"} ${actionLabel} successfully.${skippedMessage}`,
         );
         return;
       }
       if (successes.length > 0 && failures.length > 0) {
         const failedNumbers = failures.map((f) => f.orderNumber).join(", ");
         showToast(
-          `${successes.length} ${successes.length === 1 ? "order" : "orders"} ${actionLabel} successfully. ${failures.length} could not be updated (${failedNumbers}).`,
+          `${successes.length} ${successes.length === 1 ? "order" : "orders"} ${actionLabel} successfully.${skippedMessage} ${failures.length} ${failures.length === 1 ? "order could" : "orders could"} not be ${targetStatus === "Accepted" ? "accepted" : "cancelled"} (${failedNumbers}).`,
           "error",
         );
         return;
@@ -271,8 +279,8 @@ function OrdersManagementContent() {
       const failedNumbers = failures.map((f) => f.orderNumber).join(", ");
       showToast(
         failures.length === 1
-          ? `Order ${failedNumbers} could not be updated.`
-          : `No orders were updated. Failed: ${failedNumbers}.`,
+          ? `Order ${failedNumbers} could not be ${targetStatus === "Accepted" ? "accepted" : "cancelled"}.${skippedMessage}`
+          : `No eligible orders were updated. Failed: ${failedNumbers}.${skippedMessage}`,
         "error",
       );
     },
@@ -309,15 +317,25 @@ function OrdersManagementContent() {
 
   const handleConfirmBulkAction = useCallback(async () => {
     if (bulkConfirm === "accept") {
-      await executeBulkStatusUpdate("Accepted", bulkAcceptPartition.eligible);
+      await executeBulkStatusUpdate(
+        "Accepted",
+        bulkAcceptPartition.eligible,
+        bulkAcceptPartition.ineligible.length,
+      );
       return;
     }
     if (bulkConfirm === "cancel") {
-      await executeBulkStatusUpdate("Cancelled", bulkCancelPartition.eligible);
+      await executeBulkStatusUpdate(
+        "Cancelled",
+        bulkCancelPartition.eligible,
+        bulkCancelPartition.ineligible.length,
+      );
     }
   }, [
     bulkAcceptPartition.eligible,
+    bulkAcceptPartition.ineligible.length,
     bulkCancelPartition.eligible,
+    bulkCancelPartition.ineligible.length,
     bulkConfirm,
     executeBulkStatusUpdate,
   ]);
@@ -326,15 +344,15 @@ function OrdersManagementContent() {
     if (bulkConfirm === "accept") {
       const { eligible, ineligible } = bulkAcceptPartition;
       const main =
-        eligible.length === 1
-          ? "Accept 1 eligible order?"
-          : `Accept ${eligible.length} selected orders?`;
+        ineligible.length > 0
+          ? `${eligible.length} of ${selectedCount} selected ${selectedCount === 1 ? "order can" : "orders can"} be accepted.`
+          : `Accept ${eligible.length} selected ${eligible.length === 1 ? "order" : "orders"}?`;
       const note =
         ineligible.length > 0
-          ? `${ineligible.length} selected ${ineligible.length === 1 ? "order" : "orders"} cannot be accepted.`
+          ? `${ineligible.length} selected ${ineligible.length === 1 ? "order cannot" : "orders cannot"} be accepted because of ${ineligible.length === 1 ? "its" : "their"} current status.`
           : null;
       return {
-        title: "Accept orders",
+        title: "Accept Orders",
         description: note ? (
           <>
             {main}
@@ -344,7 +362,8 @@ function OrdersManagementContent() {
         ) : (
           main
         ),
-        confirmLabel: "Accept Orders",
+        confirmLabel: `Accept ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}`,
+        loadingConfirmLabel: `Accepting ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}...`,
         cancelLabel: "Cancel",
         variant: "default" as const,
       };
@@ -352,15 +371,15 @@ function OrdersManagementContent() {
     if (bulkConfirm === "cancel") {
       const { eligible, ineligible } = bulkCancelPartition;
       const main =
-        eligible.length === 1
-          ? "Cancel 1 eligible selected order?"
-          : `Cancel ${eligible.length} eligible selected orders?`;
+        ineligible.length > 0
+          ? `${eligible.length} of ${selectedCount} selected ${selectedCount === 1 ? "order can" : "orders can"} be cancelled.`
+          : `Cancel ${eligible.length} selected ${eligible.length === 1 ? "order" : "orders"}?`;
       const note =
         ineligible.length > 0
-          ? `${ineligible.length} selected ${ineligible.length === 1 ? "order" : "orders"} cannot be cancelled.`
+          ? `${ineligible.length} selected ${ineligible.length === 1 ? "order cannot" : "orders cannot"} be cancelled because of ${ineligible.length === 1 ? "its" : "their"} current status.`
           : null;
       return {
-        title: "Cancel orders",
+        title: "Cancel Orders",
         description: note ? (
           <>
             {main}
@@ -370,13 +389,14 @@ function OrdersManagementContent() {
         ) : (
           main
         ),
-        confirmLabel: "Cancel Orders",
+        confirmLabel: `Cancel ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}`,
+        loadingConfirmLabel: `Cancelling ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}...`,
         cancelLabel: "Keep Orders",
         variant: "danger" as const,
       };
     }
     return null;
-  }, [bulkAcceptPartition, bulkCancelPartition, bulkConfirm]);
+  }, [bulkAcceptPartition, bulkCancelPartition, bulkConfirm, selectedCount]);
 
   const handleAdvanceStatus = useCallback(
     async (order: Order) => {
@@ -690,6 +710,7 @@ function OrdersManagementContent() {
         title={bulkConfirmCopy?.title ?? "Confirm bulk action"}
         description={bulkConfirmCopy?.description ?? ""}
         confirmLabel={bulkConfirmCopy?.confirmLabel ?? "Confirm"}
+        loadingConfirmLabel={bulkConfirmCopy?.loadingConfirmLabel}
         cancelLabel={bulkConfirmCopy?.cancelLabel ?? "Cancel"}
         variant={bulkConfirmCopy?.variant ?? "default"}
         loading={bulkLoading}

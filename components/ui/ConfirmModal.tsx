@@ -16,6 +16,7 @@ interface ConfirmModalProps {
   title: string;
   description: ReactNode;
   confirmLabel?: string;
+  loadingConfirmLabel?: string;
   cancelLabel?: string;
   variant?: "danger" | "default";
   loading?: boolean;
@@ -34,6 +35,7 @@ export function ConfirmModal({
   title,
   description,
   confirmLabel = "Confirm",
+  loadingConfirmLabel,
   cancelLabel = "Cancel",
   variant = "default",
   loading = false,
@@ -147,7 +149,7 @@ export function ConfirmModal({
                   variant === "danger" ? "menu-btn-danger" : "menu-btn-primary"
                 }`}
               >
-                {loading ? "Processing..." : confirmLabel}
+                {loading ? loadingConfirmLabel ?? "Processing..." : confirmLabel}
               </button>
             </div>
           </motion.div>
