@@ -79,6 +79,7 @@ export type OrderRecord = {
   order_type: string;
   status: string;
   payment_status: string;
+  loyalty_points_awarded_at?: string | null;
   customer_name: string | null;
   customer_phone: string | null;
   customer_email: string | null;
@@ -110,6 +111,7 @@ export type Order = {
   orderType: OrderType;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  loyaltyPointsAwardedAt?: string | null;
   customerName: string | null;
   customerPhone: string | null;
   customerEmail: string | null;

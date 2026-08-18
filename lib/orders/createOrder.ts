@@ -3,11 +3,6 @@ import {
   normalizePhone,
   syncCustomerEvent,
 } from "@/lib/customers/sync-customer";
-import { adjustLoyaltyPoints } from "@/lib/loyalty/mutations";
-import {
-  calculateLoyaltyPoints,
-} from "@/lib/loyalty/earning-rules";
-import { resolveLoyaltyEarningRulesFromRestaurant } from "@/lib/loyalty/earning-settings";
 import { notifyRestaurantOwner } from "@/lib/notifications/createNotification";
 import {
   planAllowsLoyalty,
@@ -70,29 +65,6 @@ function buildNotificationBody(params: {
   return `${who} placed a Delivery order — ${total}`;
 }
 
-async function isCustomerLoyaltyEnrolled(
-  client: SupabaseClient,
-  restaurantId: string,
-  customerId: string,
-): Promise<boolean> {
-  const { data } = await client
-    .from("customers")
-    .select("loyalty_points, metadata")
-    .eq("id", customerId)
-    .eq("restaurant_id", restaurantId)
-    .maybeSingle();
-  if (!data) return false;
-  if (Number((data as { loyalty_points?: number }).loyalty_points ?? 0) > 0) {
-    return true;
-  }
-  const meta = (data as { metadata?: Record<string, unknown> | null }).metadata;
-  const loyalty =
-    meta && typeof meta === "object" && meta.loyalty && typeof meta.loyalty === "object"
-      ? (meta.loyalty as Record<string, unknown>)
-      : null;
-  return loyalty?.enrolled === true;
-}
-
 /**
  * Core order write path. Browser calls must use createOrder() → API route;
  * the route passes the server service-role client here.
@@ -109,9 +81,7 @@ export async function createOrderWithClient(
 
     const { data: restaurant, error: restaurantError } = await client
       .from("restaurants")
-      .select(
-        "id, is_active, online_ordering_enabled, slug, subscription_plan, loyalty_earning_settings",
-      )
+      .select("id, is_active, online_ordering_enabled, slug, subscription_plan")
       .eq("id", input.restaurantId)
       .maybeSingle();
 
@@ -282,7 +252,7 @@ export async function createOrderWithClient(
     );
 
     // CRM: create/update customer before returning so Admin CRM sees fresh stats.
-    const syncResult = await syncCustomerEvent(
+    await syncCustomerEvent(
       {
         restaurantId: input.restaurantId,
         fullName: orderRow.customer_name,
@@ -301,44 +271,6 @@ export async function createOrderWithClient(
       },
       client,
     );
-
-    if (
-      syncResult.ok &&
-      syncResult.customerId &&
-      planAllowsLoyalty(plan)
-    ) {
-      // Award when joining on this order OR already enrolled (returning members).
-      const shouldEarn =
-        joinLoyalty ||
-        (await isCustomerLoyaltyEnrolled(
-          client,
-          input.restaurantId,
-          syncResult.customerId,
-        ));
-      if (shouldEarn) {
-        const earningRules = resolveLoyaltyEarningRulesFromRestaurant(
-          (restaurant as { loyalty_earning_settings?: unknown } | null)
-            ?.loyalty_earning_settings,
-        );
-        const points = calculateLoyaltyPoints({
-          amounts: {
-            subtotal,
-            discountAmount,
-            grandTotal,
-          },
-          rules: earningRules,
-        });
-        if (points > 0) {
-          await adjustLoyaltyPoints({
-            restaurantId: input.restaurantId,
-            customerId: syncResult.customerId,
-            delta: points,
-            reason: `Order ${orderRow.order_number}`,
-            client,
-          });
-        }
-      }
-    }
 
     const fullOrder: OrderRecord = {
       ...orderRow,

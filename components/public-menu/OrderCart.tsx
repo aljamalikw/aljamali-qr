@@ -686,9 +686,12 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
                               <span>{t("joinLoyaltyRewards", lang)}</span>
                             </label>
                             {restaurant.loyaltyEarningMessage ? (
-                              <p className="ps-7 text-xs text-white/45">
-                                {restaurant.loyaltyEarningMessage}
-                              </p>
+                              <div className="ps-7 text-xs text-white/45">
+                                <p>{restaurant.loyaltyEarningMessage}</p>
+                                <p className="mt-1">
+                                  Points are added after your order is accepted and paid.
+                                </p>
+                              </div>
                             ) : null}
                           </div>
                         ) : null}

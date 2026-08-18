@@ -57,6 +57,7 @@ export function mapOrderRow(row: OrderRecord): Order {
     orderType: asOrderType(row.order_type),
     status: asOrderStatus(row.status),
     paymentStatus: asPaymentStatus(row.payment_status),
+    loyaltyPointsAwardedAt: row.loyalty_points_awarded_at ?? null,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerEmail: row.customer_email,

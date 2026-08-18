@@ -1,4 +1,5 @@
 import { logActivity } from "@/lib/admin/activity-log";
+import { maybeAwardLoyaltyPointsForOrder } from "@/lib/orders/loyalty-awards";
 import { supabase } from "@/lib/supabase";
 import { fetchOrderById } from "./fetchOrders";
 import { mapOrderRow } from "./mappers";
@@ -87,6 +88,8 @@ export async function updateOrderStatus(
       newValues: { status },
     });
 
+    await maybeAwardLoyaltyPointsForOrder(orderId, supabase);
+
     return { ok: true, data: order };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
@@ -109,9 +112,11 @@ export async function updatePaymentStatus(
       return { ok: false, message: error?.message || UPDATE_ERROR };
     }
 
+    const order = await withLineItems(mapOrderRow(data as OrderRecord));
+    await maybeAwardLoyaltyPointsForOrder(orderId, supabase);
     return {
       ok: true,
-      data: await withLineItems(mapOrderRow(data as OrderRecord)),
+      data: order,
     };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
