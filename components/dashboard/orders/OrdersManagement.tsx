@@ -76,6 +76,12 @@ function OrdersManagementContent() {
     null,
   );
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkSnapshot, setBulkSnapshot] = useState<{
+    action: BulkConfirmAction;
+    eligible: Order[];
+    ineligibleCount: number;
+    selectedCount: number;
+  } | null>(null);
 
   const [analytics, setAnalytics] = useState<OrderAnalyticsData | null>(null);
   const [analyticsRange, setAnalyticsRange] = useState<OrderAnalyticsRange>("month");
@@ -254,6 +260,7 @@ function OrdersManagementContent() {
 
       setBulkLoading(false);
       setBulkConfirm(null);
+      setBulkSnapshot(null);
       clearSelection();
       void loadOrders();
 
@@ -298,8 +305,14 @@ function OrdersManagementContent() {
       );
       return;
     }
+    setBulkSnapshot({
+      action: "accept",
+      eligible: [...eligible],
+      ineligibleCount: ineligible.length,
+      selectedCount,
+    });
     setBulkConfirm("accept");
-  }, [bulkAcceptPartition, showToast]);
+  }, [bulkAcceptPartition, selectedCount, showToast]);
 
   const openBulkCancelConfirm = useCallback(() => {
     const { eligible, ineligible } = bulkCancelPartition;
@@ -312,44 +325,35 @@ function OrdersManagementContent() {
       );
       return;
     }
+    setBulkSnapshot({
+      action: "cancel",
+      eligible: [...eligible],
+      ineligibleCount: ineligible.length,
+      selectedCount,
+    });
     setBulkConfirm("cancel");
-  }, [bulkCancelPartition, showToast]);
+  }, [bulkCancelPartition, selectedCount, showToast]);
 
   const handleConfirmBulkAction = useCallback(async () => {
-    if (bulkConfirm === "accept") {
-      await executeBulkStatusUpdate(
-        "Accepted",
-        bulkAcceptPartition.eligible,
-        bulkAcceptPartition.ineligible.length,
-      );
-      return;
-    }
-    if (bulkConfirm === "cancel") {
-      await executeBulkStatusUpdate(
-        "Cancelled",
-        bulkCancelPartition.eligible,
-        bulkCancelPartition.ineligible.length,
-      );
-    }
-  }, [
-    bulkAcceptPartition.eligible,
-    bulkAcceptPartition.ineligible.length,
-    bulkCancelPartition.eligible,
-    bulkCancelPartition.ineligible.length,
-    bulkConfirm,
-    executeBulkStatusUpdate,
-  ]);
+    if (!bulkSnapshot) return;
+    const { action, eligible, ineligibleCount } = bulkSnapshot;
+    const targetStatus: OrderStatus = action === "accept" ? "Accepted" : "Cancelled";
+    await executeBulkStatusUpdate(targetStatus, eligible, ineligibleCount);
+  }, [bulkSnapshot, executeBulkStatusUpdate]);
 
   const bulkConfirmCopy = useMemo(() => {
-    if (bulkConfirm === "accept") {
-      const { eligible, ineligible } = bulkAcceptPartition;
+    if (!bulkSnapshot || bulkConfirm === null) return null;
+    const { action, eligible, ineligibleCount, selectedCount: snapTotal } = bulkSnapshot;
+    const eligibleCount = eligible.length;
+
+    if (action === "accept") {
       const main =
-        ineligible.length > 0
-          ? `${eligible.length} of ${selectedCount} selected ${selectedCount === 1 ? "order can" : "orders can"} be accepted.`
-          : `Accept ${eligible.length} selected ${eligible.length === 1 ? "order" : "orders"}?`;
+        ineligibleCount > 0
+          ? `${eligibleCount} of ${snapTotal} selected ${snapTotal === 1 ? "order can" : "orders can"} be accepted.`
+          : `Accept ${eligibleCount} selected ${eligibleCount === 1 ? "order" : "orders"}?`;
       const note =
-        ineligible.length > 0
-          ? `${ineligible.length} selected ${ineligible.length === 1 ? "order cannot" : "orders cannot"} be accepted because of ${ineligible.length === 1 ? "its" : "their"} current status.`
+        ineligibleCount > 0
+          ? `${ineligibleCount} selected ${ineligibleCount === 1 ? "order cannot" : "orders cannot"} be accepted because of ${ineligibleCount === 1 ? "its" : "their"} current status.`
           : null;
       return {
         title: "Accept Orders",
@@ -362,41 +366,38 @@ function OrdersManagementContent() {
         ) : (
           main
         ),
-        confirmLabel: `Accept ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}`,
-        loadingConfirmLabel: `Accepting ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}...`,
+        confirmLabel: `Accept ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}`,
+        loadingConfirmLabel: `Accepting ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}...`,
         cancelLabel: "Cancel",
         variant: "default" as const,
       };
     }
-    if (bulkConfirm === "cancel") {
-      const { eligible, ineligible } = bulkCancelPartition;
-      const main =
-        ineligible.length > 0
-          ? `${eligible.length} of ${selectedCount} selected ${selectedCount === 1 ? "order can" : "orders can"} be cancelled.`
-          : `Cancel ${eligible.length} selected ${eligible.length === 1 ? "order" : "orders"}?`;
-      const note =
-        ineligible.length > 0
-          ? `${ineligible.length} selected ${ineligible.length === 1 ? "order cannot" : "orders cannot"} be cancelled because of ${ineligible.length === 1 ? "its" : "their"} current status.`
-          : null;
-      return {
-        title: "Cancel Orders",
-        description: note ? (
-          <>
-            {main}
-            <br />
-            <span className="mt-2 block text-white/65">{note}</span>
-          </>
-        ) : (
-          main
-        ),
-        confirmLabel: `Cancel ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}`,
-        loadingConfirmLabel: `Cancelling ${eligible.length} ${eligible.length === 1 ? "Order" : "Orders"}...`,
-        cancelLabel: "Keep Orders",
-        variant: "danger" as const,
-      };
-    }
-    return null;
-  }, [bulkAcceptPartition, bulkCancelPartition, bulkConfirm, selectedCount]);
+
+    const main =
+      ineligibleCount > 0
+        ? `${eligibleCount} of ${snapTotal} selected ${snapTotal === 1 ? "order can" : "orders can"} be cancelled.`
+        : `Cancel ${eligibleCount} selected ${eligibleCount === 1 ? "order" : "orders"}?`;
+    const note =
+      ineligibleCount > 0
+        ? `${ineligibleCount} selected ${ineligibleCount === 1 ? "order cannot" : "orders cannot"} be cancelled because of ${ineligibleCount === 1 ? "its" : "their"} current status.`
+        : null;
+    return {
+      title: "Cancel Orders",
+      description: note ? (
+        <>
+          {main}
+          <br />
+          <span className="mt-2 block text-white/65">{note}</span>
+        </>
+      ) : (
+        main
+      ),
+      confirmLabel: `Cancel ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}`,
+      loadingConfirmLabel: `Cancelling ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}...`,
+      cancelLabel: "Keep Orders",
+      variant: "danger" as const,
+    };
+  }, [bulkConfirm, bulkSnapshot]);
 
   const handleAdvanceStatus = useCallback(
     async (order: Order) => {
@@ -715,7 +716,10 @@ function OrdersManagementContent() {
         variant={bulkConfirmCopy?.variant ?? "default"}
         loading={bulkLoading}
         onConfirm={() => void handleConfirmBulkAction()}
-        onCancel={() => setBulkConfirm(null)}
+        onCancel={() => {
+          setBulkConfirm(null);
+          setBulkSnapshot(null);
+        }}
       />
     </div>
   );
