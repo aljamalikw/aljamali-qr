@@ -22,6 +22,7 @@ export type PublicRestaurant = {
   onlineOrderingEnabled: boolean;
   subscriptionPlan: string;
   taxRate: number;
+  loyaltyEarningMessage: string | null;
 };
 
 export type PublicCategory = {

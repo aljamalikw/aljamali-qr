@@ -66,6 +66,7 @@ export type Restaurant = {
   kitchen_display_enabled?: boolean;
   tax_rate?: number;
   service_charge_rate?: number;
+  loyalty_earning_settings?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { LoyaltyFeatureGate } from "@/components/dashboard/LoyaltyFeatureGate";
+import { LoyaltyEarningSettings } from "@/components/dashboard/loyalty/LoyaltyEarningSettings";
 import { RewardsCatalog } from "@/components/dashboard/loyalty/RewardsCatalog";
 
 /** Public entry — Starter sees upgrade card; Pro/Enterprise/Admin see loyalty UI. */
@@ -62,6 +63,8 @@ function LoyaltyManagementContent() {
           Open Customers
         </Link>
       </DashboardCard>
+
+      <LoyaltyEarningSettings />
 
       <RewardsCatalog />
     </div>

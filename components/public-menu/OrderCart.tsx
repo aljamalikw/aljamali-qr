@@ -675,15 +675,22 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
 
                       <div className="space-y-2.5 pt-1">
                         {loyaltyAvailable ? (
-                          <label className="flex cursor-pointer items-start gap-3 text-sm text-white/80">
-                            <input
-                              type="checkbox"
-                              checked={joinLoyalty}
-                              onChange={(e) => setJoinLoyalty(e.target.checked)}
-                              className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/40 text-gold focus:ring-gold/30"
-                            />
-                            <span>{t("joinLoyaltyRewards", lang)}</span>
-                          </label>
+                          <div className="space-y-1.5">
+                            <label className="flex cursor-pointer items-start gap-3 text-sm text-white/80">
+                              <input
+                                type="checkbox"
+                                checked={joinLoyalty}
+                                onChange={(e) => setJoinLoyalty(e.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/40 text-gold focus:ring-gold/30"
+                              />
+                              <span>{t("joinLoyaltyRewards", lang)}</span>
+                            </label>
+                            {restaurant.loyaltyEarningMessage ? (
+                              <p className="ps-7 text-xs text-white/45">
+                                {restaurant.loyaltyEarningMessage}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : null}
                         <label className="flex cursor-pointer items-start gap-3 text-sm text-white/80">
                           <input

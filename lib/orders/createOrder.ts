@@ -4,6 +4,10 @@ import {
   syncCustomerEvent,
 } from "@/lib/customers/sync-customer";
 import { adjustLoyaltyPoints } from "@/lib/loyalty/mutations";
+import {
+  calculateLoyaltyPoints,
+} from "@/lib/loyalty/earning-rules";
+import { resolveLoyaltyEarningRulesFromRestaurant } from "@/lib/loyalty/earning-settings";
 import { notifyRestaurantOwner } from "@/lib/notifications/createNotification";
 import {
   planAllowsLoyalty,
@@ -66,11 +70,6 @@ function buildNotificationBody(params: {
   return `${who} placed a Delivery order — ${total}`;
 }
 
-/** Simple earn rate: 1 loyalty point per whole currency unit spent. */
-function loyaltyPointsForSpend(grandTotal: number): number {
-  return Math.max(0, Math.floor(grandTotal));
-}
-
 async function isCustomerLoyaltyEnrolled(
   client: SupabaseClient,
   restaurantId: string,
@@ -110,7 +109,9 @@ export async function createOrderWithClient(
 
     const { data: restaurant, error: restaurantError } = await client
       .from("restaurants")
-      .select("id, is_active, online_ordering_enabled, slug, subscription_plan")
+      .select(
+        "id, is_active, online_ordering_enabled, slug, subscription_plan, loyalty_earning_settings",
+      )
       .eq("id", input.restaurantId)
       .maybeSingle();
 
@@ -315,7 +316,18 @@ export async function createOrderWithClient(
           syncResult.customerId,
         ));
       if (shouldEarn) {
-        const points = loyaltyPointsForSpend(grandTotal);
+        const earningRules = resolveLoyaltyEarningRulesFromRestaurant(
+          (restaurant as { loyalty_earning_settings?: unknown } | null)
+            ?.loyalty_earning_settings,
+        );
+        const points = calculateLoyaltyPoints({
+          amounts: {
+            subtotal,
+            discountAmount,
+            grandTotal,
+          },
+          rules: earningRules,
+        });
         if (points > 0) {
           await adjustLoyaltyPoints({
             restaurantId: input.restaurantId,

@@ -18,6 +18,7 @@ export const ACTIVITY_ACTIONS = [
   "loyalty_enabled",
   "loyalty_disabled",
   "loyalty_points_adjusted",
+  "loyalty_earning_rule_updated",
   "campaign_created",
   "campaign_edited",
   "campaign_deleted",

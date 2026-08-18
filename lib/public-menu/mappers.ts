@@ -3,6 +3,11 @@ import type { CategoryRow } from "@/lib/categories/types";
 import { mapMenuItemRowToDashboard } from "@/lib/menu-items/mappers";
 import type { MenuItemRow } from "@/lib/menu-items/types";
 import type { Restaurant } from "@/lib/restaurants/types";
+import {
+  formatCustomerEarningMessage,
+  parseLoyaltyEarningSettings,
+} from "@/lib/loyalty/earning-rules";
+import { planAllowsLoyalty } from "@/lib/subscriptions/plans";
 import type {
   PublicCategory,
   PublicCategoryGroup,
@@ -16,6 +21,12 @@ function toStringArray(value: unknown): string[] {
 }
 
 export function mapRestaurantToPublic(row: Restaurant): PublicRestaurant {
+  const subscriptionPlan = row.subscription_plan ?? "Starter";
+  const loyaltyRules = parseLoyaltyEarningSettings(row.loyalty_earning_settings);
+  const loyaltyEarningMessage = planAllowsLoyalty(subscriptionPlan)
+    ? formatCustomerEarningMessage(loyaltyRules, row.currency || "KWD")
+    : null;
+
   return {
     id: row.id,
     slug: row.slug ?? "",
@@ -36,8 +47,9 @@ export function mapRestaurantToPublic(row: Restaurant): PublicRestaurant {
     googleMapsUrl: row.google_maps_url?.trim() ?? "",
     reservationsEnabled: row.reservations_enabled ?? true,
     onlineOrderingEnabled: row.online_ordering_enabled ?? true,
-    subscriptionPlan: row.subscription_plan ?? "Starter",
+    subscriptionPlan,
     taxRate: Number(row.tax_rate ?? 0) || 0,
+    loyaltyEarningMessage,
   };
 }
 
