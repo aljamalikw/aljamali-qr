@@ -20,6 +20,7 @@ interface ConfirmModalProps {
   cancelLabel?: string;
   variant?: "danger" | "default";
   loading?: boolean;
+  hideConfirmButton?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -39,6 +40,7 @@ export function ConfirmModal({
   cancelLabel = "Cancel",
   variant = "default",
   loading = false,
+  hideConfirmButton = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -137,20 +139,24 @@ export function ConfirmModal({
                 type="button"
                 onClick={onCancel}
                 disabled={loading}
-                className="menu-btn-secondary flex-1 disabled:opacity-50"
+                className={`menu-btn-secondary disabled:opacity-50 ${
+                  hideConfirmButton ? "w-full" : "flex-1"
+                }`}
               >
                 {cancelLabel}
               </button>
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={loading}
-                className={`flex-1 disabled:opacity-50 ${
-                  variant === "danger" ? "menu-btn-danger" : "menu-btn-primary"
-                }`}
-              >
-                {loading ? loadingConfirmLabel ?? "Processing..." : confirmLabel}
-              </button>
+              {!hideConfirmButton ? (
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  disabled={loading}
+                  className={`flex-1 disabled:opacity-50 ${
+                    variant === "danger" ? "menu-btn-danger" : "menu-btn-primary"
+                  }`}
+                >
+                  {loading ? loadingConfirmLabel ?? "Processing..." : confirmLabel}
+                </button>
+              ) : null}
             </div>
           </motion.div>
         </>

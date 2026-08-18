@@ -96,6 +96,42 @@ export function canBulkCancelOrder(status: OrderStatus): boolean {
   return canCancelOrder(status);
 }
 
+export type BulkOrderAction = "accept" | "cancel";
+
+export type BulkOrderActionPlan = {
+  action: BulkOrderAction;
+  selectedOrders: Order[];
+  eligibleOrders: Order[];
+  ineligibleOrders: Order[];
+  selectedCount: number;
+  eligibleCount: number;
+  ineligibleCount: number;
+};
+
+export function buildBulkOrderActionPlan(
+  orders: Order[],
+  selectedIds: ReadonlySet<string>,
+  action: BulkOrderAction,
+): BulkOrderActionPlan {
+  const selectedOrders = orders.filter((order) => selectedIds.has(order.id));
+  const isEligible =
+    action === "accept"
+      ? (order: Order) => canBulkAcceptOrder(order.status)
+      : (order: Order) => canBulkCancelOrder(order.status);
+  const eligibleOrders = selectedOrders.filter(isEligible);
+  const ineligibleOrders = selectedOrders.filter((order) => !isEligible(order));
+
+  return {
+    action,
+    selectedOrders,
+    eligibleOrders,
+    ineligibleOrders,
+    selectedCount: selectedOrders.length,
+    eligibleCount: eligibleOrders.length,
+    ineligibleCount: ineligibleOrders.length,
+  };
+}
+
 export function partitionSelectedForBulkAccept(
   orders: Order[],
   selectedIds: ReadonlySet<string>,

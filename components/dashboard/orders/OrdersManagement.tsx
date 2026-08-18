@@ -11,6 +11,8 @@ import type { Order, OrderStatus, PaymentStatus } from "@/lib/orders/types";
 import { ORDER_STATUSES, ORDER_TYPES } from "@/lib/orders/types";
 import { updateOrderStatus, updatePaymentStatus } from "@/lib/orders/updateOrderStatus";
 import {
+  buildBulkOrderActionPlan,
+  type BulkOrderActionPlan,
   DEFAULT_ORDERS_PAGE_SIZE,
   type OrderStatusFilter,
   type OrderTypeFilter,
@@ -21,8 +23,6 @@ import {
   getNextOrderStatus,
   getTodayOrders,
   paginate,
-  partitionSelectedForBulkAccept,
-  partitionSelectedForBulkCancel,
 } from "@/lib/orders/utils";
 import { OnlineOrderingFeatureGate } from "@/components/dashboard/OnlineOrderingFeatureGate";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
@@ -35,7 +35,6 @@ import { OrderKpiCards } from "./OrderKpiCards";
 import { OrderTable } from "./OrderTable";
 
 type OrdersTab = "today" | "live" | "history";
-type BulkConfirmAction = "accept" | "cancel";
 
 const TABS: { id: OrdersTab; label: string }[] = [
   { id: "today", label: "Today's Orders" },
@@ -72,16 +71,8 @@ function OrdersManagementContent() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [bulkConfirm, setBulkConfirm] = useState<BulkConfirmAction | null>(
-    null,
-  );
+  const [bulkPlan, setBulkPlan] = useState<BulkOrderActionPlan | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkSnapshot, setBulkSnapshot] = useState<{
-    action: BulkConfirmAction;
-    eligible: Order[];
-    ineligibleCount: number;
-    selectedCount: number;
-  } | null>(null);
 
   const [analytics, setAnalytics] = useState<OrderAnalyticsData | null>(null);
   const [analyticsRange, setAnalyticsRange] = useState<OrderAnalyticsRange>("month");
@@ -124,12 +115,12 @@ function OrdersManagementContent() {
     setSelected(null);
     setConfirmCancel(null);
     setSelectedOrderIds(new Set());
-    setBulkConfirm(null);
+    setBulkPlan(null);
   }, [restaurant?.id]);
 
   useEffect(() => {
     setSelectedOrderIds(new Set());
-    setBulkConfirm(null);
+    setBulkPlan(null);
   }, [tab]);
 
   useEffect(() => {
@@ -188,6 +179,22 @@ function OrdersManagementContent() {
 
   const hasFilters = search.trim().length > 0 || status !== "all" || orderType !== "all";
 
+  useEffect(() => {
+    const allowedIds = new Set(filtered.map((order) => order.id));
+    setSelectedOrderIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (allowedIds.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [filtered]);
+
   const selectedCount = selectedOrderIds.size;
 
   const allVisibleSelected =
@@ -222,30 +229,41 @@ function OrdersManagementContent() {
 
   const clearSelection = useCallback(() => {
     setSelectedOrderIds(new Set());
-    setBulkConfirm(null);
+    setBulkPlan(null);
   }, []);
 
-  const bulkAcceptPartition = useMemo(
-    () => partitionSelectedForBulkAccept(orders, selectedOrderIds),
-    [orders, selectedOrderIds],
-  );
-
-  const bulkCancelPartition = useMemo(
-    () => partitionSelectedForBulkCancel(orders, selectedOrderIds),
-    [orders, selectedOrderIds],
+  const buildActionPlan = useCallback(
+    (action: BulkOrderActionPlan["action"]) =>
+      buildBulkOrderActionPlan(filtered, selectedOrderIds, action),
+    [filtered, selectedOrderIds],
   );
 
   const executeBulkStatusUpdate = useCallback(
-    async (
-      targetStatus: OrderStatus,
-      eligible: Order[],
-      ineligibleCount: number,
-    ) => {
+    async (plan: BulkOrderActionPlan) => {
+      const targetStatus: OrderStatus =
+        plan.action === "accept" ? "Accepted" : "Cancelled";
       setBulkLoading(true);
       const successes: Order[] = [];
       const failures: Array<{ orderNumber: string; message: string }> = [];
 
-      for (const order of eligible) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[BULK ORDER PLAN]", {
+          action: plan.action,
+          selectedCount: plan.selectedCount,
+          eligibleCount: plan.eligibleCount,
+          ineligibleCount: plan.ineligibleCount,
+          eligibleIds: plan.eligibleOrders.map((order) => order.id),
+          ineligibleIds: plan.ineligibleOrders.map((order) => order.id),
+        });
+      }
+
+      for (const order of plan.eligibleOrders) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[BULK ORDER MUTATION]", {
+            action: plan.action,
+            orderId: order.id,
+          });
+        }
         const result = await updateOrderStatus(order.id, targetStatus);
         if (result.ok) {
           successes.push(result.data);
@@ -258,16 +276,25 @@ function OrdersManagementContent() {
         }
       }
 
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[BULK ORDER RESULT]", {
+          action: plan.action,
+          attempted: plan.eligibleCount,
+          succeeded: successes.length,
+          failed: failures.length,
+          skipped: plan.ineligibleCount,
+        });
+      }
+
       setBulkLoading(false);
-      setBulkConfirm(null);
-      setBulkSnapshot(null);
+      setBulkPlan(null);
       clearSelection();
       void loadOrders();
 
       const actionLabel = targetStatus === "Accepted" ? "accepted" : "cancelled";
       const skippedMessage =
-        ineligibleCount > 0
-          ? ` ${ineligibleCount} ${ineligibleCount === 1 ? "order was" : "orders were"} skipped because ${ineligibleCount === 1 ? "it is" : "they are"} not eligible for ${targetStatus === "Accepted" ? "acceptance" : "cancellation"}.`
+        plan.ineligibleCount > 0
+          ? ` ${plan.ineligibleCount} ${plan.ineligibleCount === 1 ? "order was" : "orders were"} skipped because ${plan.ineligibleCount === 1 ? "it is" : "they are"} not eligible for ${targetStatus === "Accepted" ? "acceptance" : "cancellation"}.`
           : "";
       if (successes.length > 0 && failures.length === 0) {
         showToast(
@@ -295,94 +322,49 @@ function OrdersManagementContent() {
   );
 
   const openBulkAcceptConfirm = useCallback(() => {
-    const { eligible, ineligible } = bulkAcceptPartition;
-    if (eligible.length === 0) {
-      showToast(
-        ineligible.length === 1
-          ? "The selected order cannot be accepted."
-          : "None of the selected orders can be accepted.",
-        "error",
-      );
-      return;
-    }
-    setBulkSnapshot({
-      action: "accept",
-      eligible: [...eligible],
-      ineligibleCount: ineligible.length,
-      selectedCount,
-    });
-    setBulkConfirm("accept");
-  }, [bulkAcceptPartition, selectedCount, showToast]);
+    setBulkPlan(buildActionPlan("accept"));
+  }, [buildActionPlan]);
 
   const openBulkCancelConfirm = useCallback(() => {
-    const { eligible, ineligible } = bulkCancelPartition;
-    if (eligible.length === 0) {
-      showToast(
-        ineligible.length === 1
-          ? "The selected order cannot be cancelled."
-          : "None of the selected orders can be cancelled.",
-        "error",
-      );
-      return;
-    }
-    setBulkSnapshot({
-      action: "cancel",
-      eligible: [...eligible],
-      ineligibleCount: ineligible.length,
-      selectedCount,
-    });
-    setBulkConfirm("cancel");
-  }, [bulkCancelPartition, selectedCount, showToast]);
+    setBulkPlan(buildActionPlan("cancel"));
+  }, [buildActionPlan]);
 
   const handleConfirmBulkAction = useCallback(async () => {
-    if (!bulkSnapshot) return;
-    const { action, eligible, ineligibleCount } = bulkSnapshot;
-    const targetStatus: OrderStatus = action === "accept" ? "Accepted" : "Cancelled";
-    await executeBulkStatusUpdate(targetStatus, eligible, ineligibleCount);
-  }, [bulkSnapshot, executeBulkStatusUpdate]);
+    if (!bulkPlan || bulkLoading || bulkPlan.eligibleCount === 0) return;
+    await executeBulkStatusUpdate(bulkPlan);
+  }, [bulkLoading, bulkPlan, executeBulkStatusUpdate]);
 
   const bulkConfirmCopy = useMemo(() => {
-    if (!bulkSnapshot || bulkConfirm === null) return null;
-    const { action, eligible, ineligibleCount, selectedCount: snapTotal } = bulkSnapshot;
-    const eligibleCount = eligible.length;
+    if (!bulkPlan) return null;
+    const { action, eligibleCount, ineligibleCount, selectedCount: totalSelected } = bulkPlan;
+    const verb = action === "accept" ? "accepted" : "cancelled";
+    const verbTitle = action === "accept" ? "Accept Orders" : "Cancel Orders";
+    const confirmVerb = action === "accept" ? "Accept" : "Cancel";
+    const loadingVerb = action === "accept" ? "Accepting" : "Cancelling";
+    const cancelLabel = action === "accept" ? "Cancel" : "Keep Orders";
+    const variant = action === "accept" ? ("default" as const) : ("danger" as const);
 
-    if (action === "accept") {
-      const main =
-        ineligibleCount > 0
-          ? `${eligibleCount} of ${snapTotal} selected ${snapTotal === 1 ? "order can" : "orders can"} be accepted.`
-          : `Accept ${eligibleCount} selected ${eligibleCount === 1 ? "order" : "orders"}?`;
-      const note =
-        ineligibleCount > 0
-          ? `${ineligibleCount} selected ${ineligibleCount === 1 ? "order cannot" : "orders cannot"} be accepted because of ${ineligibleCount === 1 ? "its" : "their"} current status.`
-          : null;
+    if (eligibleCount === 0) {
       return {
-        title: "Accept Orders",
-        description: note ? (
-          <>
-            {main}
-            <br />
-            <span className="mt-2 block text-white/65">{note}</span>
-          </>
-        ) : (
-          main
-        ),
-        confirmLabel: `Accept ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}`,
-        loadingConfirmLabel: `Accepting ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}...`,
-        cancelLabel: "Cancel",
-        variant: "default" as const,
+        title: verbTitle,
+        description: `None of the ${totalSelected} selected ${totalSelected === 1 ? "order can" : "orders can"} be ${verb} because of their current status.`,
+        cancelLabel: "Keep Orders",
+        hideConfirmButton: true,
+        variant,
       };
     }
 
     const main =
-      ineligibleCount > 0
-        ? `${eligibleCount} of ${snapTotal} selected ${snapTotal === 1 ? "order can" : "orders can"} be cancelled.`
-        : `Cancel ${eligibleCount} selected ${eligibleCount === 1 ? "order" : "orders"}?`;
+      eligibleCount === totalSelected
+        ? `${eligibleCount} selected ${eligibleCount === 1 ? "order can" : "orders can"} be ${verb}.`
+        : `${eligibleCount} of ${totalSelected} selected ${totalSelected === 1 ? "order can" : "orders can"} be ${verb}.`;
     const note =
       ineligibleCount > 0
-        ? `${ineligibleCount} selected ${ineligibleCount === 1 ? "order cannot" : "orders cannot"} be cancelled because of ${ineligibleCount === 1 ? "its" : "their"} current status.`
+        ? `${ineligibleCount} selected ${ineligibleCount === 1 ? "order cannot" : "orders cannot"} be ${verb} because of ${ineligibleCount === 1 ? "its" : "their"} current status.`
         : null;
+
     return {
-      title: "Cancel Orders",
+      title: verbTitle,
       description: note ? (
         <>
           {main}
@@ -392,12 +374,13 @@ function OrdersManagementContent() {
       ) : (
         main
       ),
-      confirmLabel: `Cancel ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}`,
-      loadingConfirmLabel: `Cancelling ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}...`,
-      cancelLabel: "Keep Orders",
-      variant: "danger" as const,
+      confirmLabel: `${confirmVerb} ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}`,
+      loadingConfirmLabel: `${loadingVerb} ${eligibleCount} ${eligibleCount === 1 ? "Order" : "Orders"}...`,
+      cancelLabel,
+      hideConfirmButton: false,
+      variant,
     };
-  }, [bulkConfirm, bulkSnapshot]);
+  }, [bulkPlan]);
 
   const handleAdvanceStatus = useCallback(
     async (order: Order) => {
@@ -707,19 +690,17 @@ function OrdersManagementContent() {
       />
 
       <ConfirmModal
-        open={bulkConfirm !== null}
+        open={bulkPlan !== null}
         title={bulkConfirmCopy?.title ?? "Confirm bulk action"}
         description={bulkConfirmCopy?.description ?? ""}
         confirmLabel={bulkConfirmCopy?.confirmLabel ?? "Confirm"}
         loadingConfirmLabel={bulkConfirmCopy?.loadingConfirmLabel}
         cancelLabel={bulkConfirmCopy?.cancelLabel ?? "Cancel"}
         variant={bulkConfirmCopy?.variant ?? "default"}
+        hideConfirmButton={bulkConfirmCopy?.hideConfirmButton}
         loading={bulkLoading}
         onConfirm={() => void handleConfirmBulkAction()}
-        onCancel={() => {
-          setBulkConfirm(null);
-          setBulkSnapshot(null);
-        }}
+        onCancel={() => setBulkPlan(null)}
       />
     </div>
   );
