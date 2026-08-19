@@ -30,7 +30,7 @@ export function OnlineOrderingFeatureGate({
   }
 
   // Deny until we know the plan is Professional or Enterprise.
-  if (!planAllowsOnlineOrdering(access.plan)) {
+  if (!planAllowsOnlineOrdering(access.locationPlan)) {
     return <OnlineOrderingUpgradeCard />;
   }
 

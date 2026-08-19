@@ -161,7 +161,7 @@ export const PLAN_FEATURES: Record<SubscriptionPlanId, PlanFeatures> = {
     aiAssistant: false,
     advancedAnalytics: true,
     multiRestaurant: true,
-    maxRestaurants: Number.POSITIVE_INFINITY,
+    maxRestaurants: 2,
   },
   Enterprise: {
     onlineOrdering: true,
@@ -412,6 +412,35 @@ export function formatRestaurantUsage(
 
 export const STARTER_RESTAURANT_LIMIT_MESSAGE =
   "Your current plan allows only one restaurant. Upgrade to Professional to create additional restaurants.";
+
+export const PROFESSIONAL_RESTAURANT_LIMIT_MESSAGE =
+  "Your Professional plan includes 2 restaurants. Upgrade to Enterprise to cover additional restaurants.";
+
+export function restaurantLimitMessage(
+  plan: string | null | undefined,
+): string {
+  return normalizePlanId(plan) === "Professional"
+    ? PROFESSIONAL_RESTAURANT_LIMIT_MESSAGE
+    : STARTER_RESTAURANT_LIMIT_MESSAGE;
+}
+
+export function formatCoveredRestaurantUsage(
+  plan: string | null | undefined,
+  coveredCount: number,
+  restaurantCount: number,
+): string {
+  const covered = Number.isFinite(coveredCount)
+    ? Math.max(0, Math.floor(coveredCount))
+    : 0;
+  const total = Number.isFinite(restaurantCount)
+    ? Math.max(0, Math.floor(restaurantCount))
+    : 0;
+  const max = getMaxRestaurants(plan);
+  if (!Number.isFinite(max)) {
+    return `${total} restaurant${total === 1 ? "" : "s"} covered`;
+  }
+  return `${Math.min(covered, max)} of ${max} restaurants covered`;
+}
 
 export function getPlanMonthlyAmount(
   plan: SubscriptionPlanId,

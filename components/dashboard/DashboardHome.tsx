@@ -129,7 +129,7 @@ export function DashboardHome() {
   const showBi =
     !accessLoading &&
     !authLoading &&
-    (isAdminRole(role) || planAllowsBusinessIntelligence(access.plan));
+    (isAdminRole(role) || planAllowsBusinessIntelligence(access.locationPlan));
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);

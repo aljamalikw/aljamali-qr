@@ -203,8 +203,9 @@ export function RestaurantSwitcher() {
                   Need another restaurant?
                 </p>
                 <p className="mt-1.5 text-xs leading-relaxed text-white/55">
-                  Upgrade your subscription to manage additional restaurant
-                  locations.
+                  {access.plan === "Professional"
+                    ? "Your Professional plan includes 2 restaurants. Upgrade to Enterprise to cover additional restaurants."
+                    : "Upgrade your subscription to manage additional restaurant locations."}
                 </p>
                 <Link
                   href="/dashboard/subscription"

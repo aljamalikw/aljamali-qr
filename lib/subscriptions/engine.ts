@@ -14,7 +14,14 @@ export const DEFAULT_GRACE_PERIOD_DAYS = 3;
 
 export type SubscriptionAccess = {
   effectiveStatus: SubscriptionStatus;
+  /** Owner subscription plan (billing, restaurant limits). */
   plan: SubscriptionPlan;
+  /**
+   * Plan used for this restaurant's features and public menu.
+   * Uncovered restaurants resolve to Starter while the owner plan stays paid.
+   */
+  locationPlan: SubscriptionPlan;
+  locationCovered: boolean;
   publicMenuOnline: boolean;
   dashboardLocked: boolean;
   allowedNavIds: DashboardNavId[];
@@ -211,6 +218,8 @@ export function getSubscriptionAccess(
   return {
     effectiveStatus,
     plan,
+    locationPlan: plan,
+    locationCovered: true,
     publicMenuOnline,
     dashboardLocked,
     allowedNavIds: dashboardLocked ? BILLING_ONLY_NAV : [],

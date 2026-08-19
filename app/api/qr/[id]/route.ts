@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
+import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 
 interface QrScanRouteProps {
   params: Promise<{ id: string }>;
@@ -47,36 +48,17 @@ async function isQrRestaurantOnline(
     return false;
   }
 
-  const { data: sub } = await admin
-    .from("restaurant_subscriptions")
-    .select(
-      "plan, status, trial_started_at, trial_ends_at, grace_period_days, renewal_date, cancelled_at",
-    )
-    .eq("restaurant_id", restaurantId)
-    .maybeSingle();
-
-  if (!sub) return true;
-
-  const row = sub as {
-    plan: string;
-    status: string;
-    trial_started_at: string | null;
-    trial_ends_at: string | null;
-    grace_period_days: number | null;
-    renewal_date: string | null;
-    cancelled_at: string | null;
-  };
+  const effective = await resolveEffectiveOwnerSubscription(admin, restaurantId);
+  if (!effective) return true;
 
   const access = getSubscriptionAccess({
-    plan:
-      row.plan ??
-      (restaurant as { subscription_plan?: string }).subscription_plan,
-    status: row.status,
-    trialStartedAt: row.trial_started_at,
-    trialEndsAt: row.trial_ends_at,
-    gracePeriodDays: row.grace_period_days,
-    renewalDate: row.renewal_date,
-    cancelledAt: row.cancelled_at,
+    plan: effective.locationPlan,
+    status: effective.canonical.status,
+    trialStartedAt: effective.canonical.trial_started_at,
+    trialEndsAt: effective.canonical.trial_ends_at,
+    gracePeriodDays: effective.canonical.grace_period_days,
+    renewalDate: effective.canonical.renewal_date,
+    cancelledAt: effective.canonical.cancelled_at,
   });
 
   return access.publicMenuOnline;

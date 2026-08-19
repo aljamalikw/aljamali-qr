@@ -110,9 +110,9 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
 
   const loyaltyAllowed =
-    isAdminRole(role) || planAllowsLoyalty(access.plan);
+    isAdminRole(role) || planAllowsLoyalty(access.locationPlan);
   const marketingAllowed =
-    isAdminRole(role) || planAllowsMarketing(access.plan);
+    isAdminRole(role) || planAllowsMarketing(access.locationPlan);
 
   const tabs = useMemo(() => {
     const next = [...BASE_TABS];

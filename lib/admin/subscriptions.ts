@@ -7,6 +7,15 @@ import {
 } from "@/lib/subscriptions/engine";
 import { getPlanMonthlyPrices, PLAN_PRICES } from "@/lib/subscriptions/pricing";
 import {
+  getMaxRestaurants,
+} from "@/lib/subscriptions/plans";
+import {
+  assertRestaurantsOwnedByOwner,
+  attachRestaurantToOwnerSubscription,
+  computeCoveredRestaurantIds,
+  resolveEffectiveOwnerSubscription,
+} from "@/lib/subscriptions/owner-subscription";
+import {
   firstNonEmpty,
   groupItemsByOwnerId,
   pickPrimaryByPlan,
@@ -52,12 +61,14 @@ export type RestaurantSubscription = {
   createdAt: string;
   updatedAt: string;
   isActiveRestaurant: boolean;
+  isCovered: boolean;
 };
 
 export type OwnerRestaurantSummary = {
   restaurantId: string;
   restaurantName: string | null;
   subscriptionId: string | null;
+  isCovered: boolean;
 };
 
 /** One admin-list row per owner account (multi-restaurant aware). */
@@ -71,6 +82,7 @@ export type OwnerSubscriptionAccount = {
   status: SubscriptionStatus;
   renewalDate: string | null;
   restaurantCount: number;
+  coveredCount: number;
   restaurants: OwnerRestaurantSummary[];
   primarySubscriptionId: string;
   primaryRestaurantId: string;
@@ -96,6 +108,7 @@ type SubscriptionRow = {
   grace_period_days?: number | null;
   created_at: string;
   updated_at: string;
+  is_covered?: boolean | null;
   restaurants:
     | {
         owner_id: string;
@@ -158,6 +171,7 @@ function mapRow(row: SubscriptionRow): RestaurantSubscription {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     isActiveRestaurant: Boolean(restaurant?.is_active ?? true),
+    isCovered: row.is_covered !== false,
   };
 }
 
@@ -232,17 +246,19 @@ export function groupSubscriptionsByOwner(
     owner_name: string | null;
     email: string | null;
     restaurant_name: string | null;
+    created_at: string;
   }> = [],
 ): OwnerSubscriptionAccount[] {
   const subsByOwner = groupItemsByOwnerId(subscriptions);
 
-  const restaurantsByOwner = new Map<
+    const restaurantsByOwner = new Map<
     string,
     Array<{
       id: string;
       owner_name: string | null;
       email: string | null;
       restaurant_name: string | null;
+      created_at: string;
     }>
   >();
   for (const restaurant of restaurants) {
@@ -271,6 +287,7 @@ export function groupSubscriptionsByOwner(
         restaurantId: restaurant.id,
         restaurantName: restaurant.restaurant_name,
         subscriptionId: null,
+        isCovered: false,
       });
     }
     for (const sub of ownerSubs) {
@@ -278,12 +295,41 @@ export function groupSubscriptionsByOwner(
         restaurantId: sub.restaurantId,
         restaurantName: sub.restaurantName,
         subscriptionId: sub.id,
+        isCovered: sub.isCovered,
       });
     }
 
     const restaurantSummaries = [...restaurantMap.values()].sort((a, b) =>
       (a.restaurantName ?? "").localeCompare(b.restaurantName ?? ""),
     );
+
+    const coveredIds = new Set(
+      computeCoveredRestaurantIds(
+        ownedRestaurants.map((restaurant) => ({
+          id: restaurant.id,
+          owner_id: ownerId,
+          created_at: restaurant.created_at,
+          restaurant_name: restaurant.restaurant_name,
+        })),
+        ownerSubs.map((sub) => ({
+          id: sub.id,
+          restaurant_id: sub.restaurantId,
+          plan: sub.plan,
+          status: sub.status,
+          renewal_date: sub.renewalDate,
+          cancelled_at: sub.cancelledAt,
+          trial_started_at: sub.trialStartedAt,
+          trial_ends_at: sub.trialEndsAt,
+          grace_period_days: sub.gracePeriodDays,
+          is_covered: sub.isCovered,
+        })),
+        primary.plan,
+      ),
+    );
+
+    for (const summary of restaurantSummaries) {
+      summary.isCovered = coveredIds.has(summary.restaurantId);
+    }
 
     accounts.push({
       ownerId,
@@ -301,6 +347,7 @@ export function groupSubscriptionsByOwner(
       status: primary.status,
       renewalDate: primary.renewalDate,
       restaurantCount: restaurantSummaries.length,
+      coveredCount: coveredIds.size,
       restaurants: restaurantSummaries,
       primarySubscriptionId: primary.id,
       primaryRestaurantId: primary.restaurantId,
@@ -321,7 +368,7 @@ export async function fetchOwnerSubscriptionAccounts(): Promise<
       fetchSubscriptions(),
       supabase
         .from("restaurants")
-        .select("id, owner_id, owner_name, email, restaurant_name")
+        .select("id, owner_id, owner_name, email, restaurant_name, created_at")
         .order("created_at", { ascending: true }),
     ]);
 
@@ -343,6 +390,7 @@ export async function fetchOwnerSubscriptionAccounts(): Promise<
           owner_name: string | null;
           email: string | null;
           restaurant_name: string | null;
+          created_at: string;
         }>,
       ),
     };
@@ -367,7 +415,34 @@ export async function fetchOwnerSubscription(
     if (!data) return { ok: true, data: null };
 
     const synced = await syncStoredStatus(data as SubscriptionRow);
-    return { ok: true, data: mapRow(synced) };
+    const mapped = mapRow(synced);
+    const effective = await resolveEffectiveOwnerSubscription(
+      supabase,
+      restaurantId,
+    );
+    if (!effective) {
+      return { ok: true, data: mapped };
+    }
+
+    return {
+      ok: true,
+      data: {
+        ...mapped,
+        plan: effective.ownerPlan,
+        monthlyPrice: Number(effective.canonical.monthly_price ?? mapped.monthlyPrice),
+        currency: effective.canonical.currency || mapped.currency,
+        status: (effective.canonical.status as SubscriptionStatus) || mapped.status,
+        renewalDate: effective.canonical.renewal_date,
+        cancelledAt: effective.canonical.cancelled_at,
+        trialStartedAt: effective.canonical.trial_started_at,
+        trialEndsAt: effective.canonical.trial_ends_at,
+        gracePeriodDays:
+          typeof effective.canonical.grace_period_days === "number"
+            ? effective.canonical.grace_period_days
+            : mapped.gracePeriodDays,
+        isCovered: effective.locationCovered,
+      },
+    };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -476,16 +551,73 @@ export async function updateOwnerSubscription(params: {
   ownerId: string;
   subscriptionIds: string[];
   restaurantIds: string[];
+  coveredRestaurantIds?: string[];
   plan?: SubscriptionPlan;
   status?: SubscriptionStatus;
   monthlyPrice?: number;
+  renewalDate?: string | null;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     if (params.subscriptionIds.length === 0) {
       return { ok: false, message: "No subscriptions found for this owner." };
     }
 
+    const { data: ownerRestaurants, error: ownerRestaurantsError } =
+      await supabase
+        .from("restaurants")
+        .select("id, owner_id, created_at, restaurant_name")
+        .eq("owner_id", params.ownerId);
+
+    if (ownerRestaurantsError) {
+      return { ok: false, message: ownerRestaurantsError.message || ERROR };
+    }
+
+    const owned = (ownerRestaurants ?? []) as Array<{
+      id: string;
+      owner_id: string;
+      created_at: string;
+      restaurant_name: string | null;
+    }>;
+
+    const ownershipError = assertRestaurantsOwnedByOwner(
+      params.ownerId,
+      owned,
+      params.restaurantIds,
+    );
+    if (ownershipError) return { ok: false, message: ownershipError };
+
     const plan = params.plan;
+    const max = plan ? getMaxRestaurants(plan) : Number.POSITIVE_INFINITY;
+    const requestedCovered = params.coveredRestaurantIds
+      ? [...new Set(params.coveredRestaurantIds)]
+      : params.restaurantIds;
+
+    const coveredOwnershipError = assertRestaurantsOwnedByOwner(
+      params.ownerId,
+      owned,
+      requestedCovered,
+    );
+    if (coveredOwnershipError) {
+      return { ok: false, message: coveredOwnershipError };
+    }
+
+    if (Number.isFinite(max) && requestedCovered.length > max) {
+      return {
+        ok: false,
+        message:
+          plan === "Starter"
+            ? "Starter supports 1 restaurant. Select exactly one covered restaurant."
+            : `Professional supports 2 restaurants. Select up to ${max} restaurants that will remain covered.`,
+      };
+    }
+
+    if (Number.isFinite(max) && requestedCovered.length < 1) {
+      return {
+        ok: false,
+        message: "Select at least one restaurant to cover.",
+      };
+    }
+
     const prices = await getPlanMonthlyPrices();
     const monthlyPrice =
       params.monthlyPrice ?? (plan ? prices[plan] : undefined);
@@ -504,13 +636,16 @@ export async function updateOwnerSubscription(params: {
         payload.renewal_date = window.renewalDate;
       }
 
-      if (params.status === "active") {
+      if (params.status === "active" && params.renewalDate === undefined) {
         payload.renewal_date = new Date(Date.now() + 30 * 86400000)
           .toISOString()
           .slice(0, 10);
       }
     }
     if (monthlyPrice !== undefined) payload.monthly_price = monthlyPrice;
+    if (params.renewalDate !== undefined) {
+      payload.renewal_date = params.renewalDate;
+    }
 
     const { error } = await supabase
       .from("restaurant_subscriptions")
@@ -519,15 +654,37 @@ export async function updateOwnerSubscription(params: {
 
     if (error) return { ok: false, message: error.message || ERROR };
 
-    if (params.restaurantIds.length > 0) {
-      const restaurantPayload: Record<string, unknown> = {};
-      if (plan) restaurantPayload.subscription_plan = plan;
+    const coveredSet = new Set(requestedCovered);
+    for (const restaurant of owned) {
+      const covered = coveredSet.has(restaurant.id);
+      const coveragePayload: Record<string, unknown> = {
+        is_covered: covered,
+      };
+      if (plan) {
+        coveragePayload.plan = covered ? plan : "Starter";
+        coveragePayload.monthly_price = covered
+          ? (monthlyPrice ?? prices[plan])
+          : prices.Starter;
+      }
+      const { error: coverageError } = await supabase
+        .from("restaurant_subscriptions")
+        .update(coveragePayload)
+        .eq("restaurant_id", restaurant.id);
+      if (
+        coverageError &&
+        !/is_covered|column/i.test(coverageError.message)
+      ) {
+        return { ok: false, message: coverageError.message || ERROR };
+      }
 
+      const restaurantPayload: Record<string, unknown> = {};
+      if (plan) {
+        restaurantPayload.subscription_plan = covered ? plan : "Starter";
+      }
       if (params.status === "active" || params.status === "trial") {
         restaurantPayload.is_active = true;
         restaurantPayload.is_archived = false;
       }
-
       if (
         params.status === "suspended" ||
         params.status === "expired" ||
@@ -535,16 +692,11 @@ export async function updateOwnerSubscription(params: {
       ) {
         restaurantPayload.is_active = false;
       }
-
       if (Object.keys(restaurantPayload).length > 0) {
-        const { error: restaurantError } = await supabase
+        await supabase
           .from("restaurants")
           .update(restaurantPayload)
-          .in("id", params.restaurantIds);
-
-        if (restaurantError) {
-          return { ok: false, message: restaurantError.message || ERROR };
-        }
+          .eq("id", restaurant.id);
       }
     }
 
@@ -592,6 +744,19 @@ export async function ensureRestaurantSubscription(
       .from("restaurants")
       .update({ subscription_plan: plan })
       .eq("id", restaurantId);
+
+    const { data: restaurant } = await supabase
+      .from("restaurants")
+      .select("owner_id")
+      .eq("id", restaurantId)
+      .maybeSingle();
+    if (restaurant?.owner_id) {
+      await attachRestaurantToOwnerSubscription(
+        supabase,
+        restaurant.owner_id as string,
+        restaurantId,
+      );
+    }
 
     return { ok: true, data: mapRow(data as SubscriptionRow) };
   } catch {
@@ -672,6 +837,7 @@ export function exportOwnerSubscriptionsToCsv(
     "Renewal",
     "Restaurant Count",
     "Restaurants",
+    "Covered",
   ];
 
   const rows = items.map((item) => [
@@ -686,6 +852,7 @@ export function exportOwnerSubscriptionsToCsv(
     item.restaurants
       .map((r) => r.restaurantName?.trim() || "Unnamed restaurant")
       .join(", "),
+    String(item.coveredCount),
   ]);
 
   return buildCsv(headers, rows);

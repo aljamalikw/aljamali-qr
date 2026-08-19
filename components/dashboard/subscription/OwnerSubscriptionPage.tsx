@@ -294,6 +294,7 @@ export function OwnerSubscriptionPage() {
     currentPlan,
     restaurantCount,
   );
+  const thisLocationCovered = subscription?.isCovered !== false;
 
   const isExpired =
     effectiveStatus === "expired" || effectiveStatus === "cancelled";
@@ -411,6 +412,12 @@ export function OwnerSubscriptionPage() {
               <dd className="mt-1 text-sm text-white/85">
                 {restaurantUsageLabel}
               </dd>
+              {!thisLocationCovered ? (
+                <p className="mt-2 text-xs text-amber-200/80">
+                  This restaurant is not covered by your {currentPlan} plan.
+                  Upgrade to Enterprise to cover additional restaurants.
+                </p>
+              ) : null}
             </div>
             <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
               <dt className="text-[11px] uppercase tracking-wider text-white/40">

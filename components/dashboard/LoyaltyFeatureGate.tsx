@@ -27,7 +27,7 @@ export function LoyaltyFeatureGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isAdminRole(role) || planAllowsLoyalty(access.plan)) {
+  if (isAdminRole(role) || planAllowsLoyalty(access.locationPlan)) {
     return <>{children}</>;
   }
 

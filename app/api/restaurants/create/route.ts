@@ -4,9 +4,10 @@ import {
   countOwnerRestaurants,
   resolveOwnerSubscriptionPlan,
 } from "@/lib/restaurants/owner-plan";
+import { attachRestaurantToOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 import {
-  STARTER_RESTAURANT_LIMIT_MESSAGE,
   canCreateRestaurant,
+  restaurantLimitMessage,
 } from "@/lib/subscriptions/plans";
 
 export const runtime = "nodejs";
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
 
   if (!canCreateRestaurant(plan, restaurantCount)) {
     return NextResponse.json(
-      { ok: false, error: STARTER_RESTAURANT_LIMIT_MESSAGE },
+      { ok: false, error: restaurantLimitMessage(plan) },
       { status: 403 },
     );
   }
@@ -144,11 +145,17 @@ export async function POST(request: NextRequest) {
       {
         ok: false,
         error:
-          status === 403 ? STARTER_RESTAURANT_LIMIT_MESSAGE : message,
+          status === 403 ? restaurantLimitMessage(plan) : message,
       },
       { status },
     );
   }
+
+  await attachRestaurantToOwnerSubscription(
+    admin,
+    auth.userId,
+    (data as { id: string }).id,
+  );
 
   return NextResponse.json({ ok: true, data });
 }

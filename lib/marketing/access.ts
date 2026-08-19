@@ -4,6 +4,7 @@ import {
   MARKETING_UPGRADE_MESSAGE,
   planAllowsMarketing,
 } from "@/lib/subscriptions/plans";
+import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 
 export { MARKETING_UPGRADE_MESSAGE, planAllowsMarketing };
 
@@ -32,16 +33,8 @@ export async function resolveMarketingAccess(
     if (isAdminRole(role)) bypassAdmin = true;
   }
 
-  const { data: subscription } = await client
-    .from("restaurant_subscriptions")
-    .select("plan")
-    .eq("restaurant_id", restaurantId)
-    .maybeSingle();
-
-  let plan =
-    typeof subscription?.plan === "string" && subscription.plan.trim()
-      ? subscription.plan.trim()
-      : "";
+  const effective = await resolveEffectiveOwnerSubscription(client, restaurantId);
+  let plan = effective?.locationPlan ?? "";
 
   if (!plan) {
     const { data: restaurant } = await client

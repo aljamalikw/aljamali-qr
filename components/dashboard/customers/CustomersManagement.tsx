@@ -69,7 +69,7 @@ export function CustomersManagement() {
   );
 
   const canCreateCampaign =
-    isAdminRole(role) || planAllowsMarketing(access.plan);
+    isAdminRole(role) || planAllowsMarketing(access.locationPlan);
 
   const load = useCallback(async (options?: { quiet?: boolean }) => {
     if (!restaurant?.id) {
@@ -502,7 +502,7 @@ export function CustomersManagement() {
           open={campaignBuilderOpen}
           restaurantId={restaurant.id}
           restaurantName={restaurant.restaurant_name ?? "Restaurant"}
-          plan={access.plan}
+          plan={access.locationPlan}
           bypassAdmin={isAdminRole(role)}
           onClose={() => setCampaignBuilderOpen(false)}
           onCreated={() => {

@@ -4,6 +4,7 @@ import {
   LOYALTY_UPGRADE_MESSAGE,
   planAllowsLoyalty,
 } from "@/lib/subscriptions/plans";
+import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 
 export { LOYALTY_UPGRADE_MESSAGE, planAllowsLoyalty };
 
@@ -56,16 +57,8 @@ export async function resolveLoyaltyAccess(
     }
   }
 
-  const { data: subscription } = await client
-    .from("restaurant_subscriptions")
-    .select("plan")
-    .eq("restaurant_id", restaurantId)
-    .maybeSingle();
-
-  let plan =
-    typeof subscription?.plan === "string" && subscription.plan.trim()
-      ? subscription.plan.trim()
-      : "";
+  const effective = await resolveEffectiveOwnerSubscription(client, restaurantId);
+  let plan = effective?.locationPlan ?? "";
 
   if (!plan) {
     plan =

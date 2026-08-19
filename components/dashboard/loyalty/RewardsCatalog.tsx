@@ -78,7 +78,7 @@ export function RewardsCatalog() {
   const [customerSearch, setCustomerSearch] = useState("");
 
   const showAnalytics =
-    isAdminRole(role) || planAllowsRewardAnalytics(access.plan);
+    isAdminRole(role) || planAllowsRewardAnalytics(access.locationPlan);
 
   const load = useCallback(async () => {
     if (!restaurant?.id) {
@@ -179,7 +179,7 @@ export function RewardsCatalog() {
       pointsRequired: Number(points) || 1,
       rewardType,
       status,
-      plan: access.plan,
+      plan: access.locationPlan,
     });
     setSaving(false);
     if (!result.ok) {

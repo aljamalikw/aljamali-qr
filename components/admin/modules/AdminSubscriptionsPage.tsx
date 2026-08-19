@@ -22,10 +22,11 @@ import {
   paginateDemoRequests,
 } from "@/lib/demo-requests/utils";
 import {
+  formatCoveredRestaurantUsage,
   formatPlanPriceLabel,
+  getMaxRestaurants,
   getPlanMonthlyAmount,
 } from "@/lib/subscriptions/plans";
-import { restaurantCountLabel } from "@/lib/admin/group-by-owner";
 import { getCatalogMonthlyPrices } from "@/lib/subscriptions/pricing";
 import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
 
@@ -63,6 +64,9 @@ export function AdminSubscriptionsPage() {
   const [editing, setEditing] = useState<OwnerSubscriptionAccount | null>(null);
   const [nextPlan, setNextPlan] = useState<SubscriptionPlan>("Starter");
   const [nextStatus, setNextStatus] = useState<SubscriptionStatus>("active");
+  const [nextRenewal, setNextRenewal] = useState("");
+  const [coveredIds, setCoveredIds] = useState<string[]>([]);
+  const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<Set<string>>(
     new Set(),
@@ -121,6 +125,13 @@ export function AdminSubscriptionsPage() {
     setEditing(item);
     setNextPlan(item.plan);
     setNextStatus(item.status);
+    setNextRenewal(item.renewalDate ?? "");
+    setCoveredIds(
+      item.restaurants
+        .filter((restaurant) => restaurant.isCovered)
+        .map((restaurant) => restaurant.restaurantId),
+    );
+    setEditError(null);
   };
 
   const toggleExpanded = useCallback((ownerId: string) => {
@@ -134,18 +145,35 @@ export function AdminSubscriptionsPage() {
 
   const handleConfirm = async () => {
     if (!editing) return;
+    const max = getMaxRestaurants(nextPlan);
+    if (Number.isFinite(max) && coveredIds.length > max) {
+      setEditError(
+        nextPlan === "Starter"
+          ? "Starter supports 1 restaurant. Select exactly one covered restaurant."
+          : "Professional supports 2 restaurants. Select the restaurants that will remain covered.",
+      );
+      return;
+    }
+    if (coveredIds.length === 0) {
+      setEditError("Select at least one restaurant to cover.");
+      return;
+    }
     setSaving(true);
+    setEditError(null);
     const result = await updateOwnerSubscription({
       ownerId: editing.ownerId,
       subscriptionIds: editing.subscriptionIds,
       restaurantIds: editing.restaurantIds,
+      coveredRestaurantIds: coveredIds,
       plan: nextPlan,
       status: nextStatus,
       monthlyPrice: getPlanMonthlyAmount(nextPlan) ?? planPrices[nextPlan],
+      renewalDate: nextRenewal.trim() || null,
     });
     setSaving(false);
     if (!result.ok) {
       showToast(result.message, "error");
+      setEditError(result.message);
       return;
     }
     setEditing(null);
@@ -422,7 +450,11 @@ export function AdminSubscriptionsPage() {
                             {formatDemoDate(item.renewalDate)}
                           </td>
                           <td className="px-3 py-3 text-sm text-white/70">
-                            {restaurantCountLabel(item.restaurantCount)}
+                            {formatCoveredRestaurantUsage(
+                              item.plan,
+                              item.coveredCount,
+                              item.restaurantCount,
+                            )}
                           </td>
                           <td className="px-3 py-3">
                             <button
@@ -456,6 +488,15 @@ export function AdminSubscriptionsPage() {
                                     <span>
                                       {restaurant.restaurantName?.trim() ||
                                         "Unnamed restaurant"}
+                                      {restaurant.isCovered ? (
+                                        <span className="ms-2 text-[11px] uppercase tracking-wider text-emerald-300">
+                                          Covered
+                                        </span>
+                                      ) : (
+                                        <span className="ms-2 text-[11px] uppercase tracking-wider text-white/35">
+                                          Not covered
+                                        </span>
+                                      )}
                                     </span>
                                   </li>
                                 ))}
@@ -482,29 +523,36 @@ export function AdminSubscriptionsPage() {
 
       <ConfirmModal
         open={Boolean(editing)}
-        title="Update Owner Subscription"
+        title="Manage Owner Subscription"
         description={
           editing ? (
             <div className="space-y-3 text-left">
               <div>
                 <p className="text-sm text-white/80">
-                  {editing.ownerName?.trim() || "Unnamed owner"}
+                  Owner: {editing.ownerName?.trim() || "Unnamed owner"}
                 </p>
                 <p className="mt-0.5 text-xs text-white/45">
-                  {editing.ownerEmail ?? "—"} ·{" "}
-                  {restaurantCountLabel(editing.restaurantCount)}
+                  Email: {editing.ownerEmail ?? "—"}
                 </p>
-                <p className="mt-2 text-xs text-white/40">
-                  Changes apply to every restaurant under this owner account.
+                <p className="mt-2 text-xs text-white/50">
+                  Current plan: {editing.plan} · {formatPlanPriceLabel(editing.plan)}
                 </p>
               </div>
               <label className="block text-xs uppercase tracking-wider text-white/40">
                 Plan
                 <select
                   value={nextPlan}
-                  onChange={(e) =>
-                    setNextPlan(e.target.value as SubscriptionPlan)
-                  }
+                  onChange={(e) => {
+                    const plan = e.target.value as SubscriptionPlan;
+                    setNextPlan(plan);
+                    const max = getMaxRestaurants(plan);
+                    if (Number.isFinite(max) && coveredIds.length > max) {
+                      setCoveredIds(coveredIds.slice(0, max));
+                    }
+                    if (plan === "Enterprise") {
+                      setCoveredIds(editing.restaurantIds);
+                    }
+                  }}
                   className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
                 >
                   {SUBSCRIPTION_PLANS.map((p) => (
@@ -530,10 +578,67 @@ export function AdminSubscriptionsPage() {
                   ))}
                 </select>
               </label>
+              <label className="block text-xs uppercase tracking-wider text-white/40">
+                Renewal
+                <input
+                  type="date"
+                  value={nextRenewal}
+                  onChange={(e) => setNextRenewal(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                />
+              </label>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-white/40">
+                  Covered restaurants
+                </p>
+                <p className="mt-1 text-xs text-white/45">
+                  {formatCoveredRestaurantUsage(
+                    nextPlan,
+                    coveredIds.length,
+                    editing.restaurantCount,
+                  )}
+                </p>
+                <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
+                  {editing.restaurants.map((restaurant) => {
+                    const checked = coveredIds.includes(restaurant.restaurantId);
+                    const max = getMaxRestaurants(nextPlan);
+                    const disableCheck =
+                      !checked &&
+                      Number.isFinite(max) &&
+                      coveredIds.length >= max;
+                    return (
+                      <li key={restaurant.restaurantId}>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm text-white/75">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disableCheck}
+                            onChange={() => {
+                              setCoveredIds((current) =>
+                                current.includes(restaurant.restaurantId)
+                                  ? current.filter(
+                                      (id) => id !== restaurant.restaurantId,
+                                    )
+                                  : [...current, restaurant.restaurantId],
+                              );
+                            }}
+                            className="h-4 w-4 accent-gold"
+                          />
+                          {restaurant.restaurantName?.trim() ||
+                            "Unnamed restaurant"}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+              {editError ? (
+                <p className="text-sm text-red-300">{editError}</p>
+              ) : null}
             </div>
           ) : null
         }
-        confirmLabel="Save"
+        confirmLabel="Save Changes"
         loading={saving}
         onConfirm={() => void handleConfirm()}
         onCancel={() => setEditing(null)}

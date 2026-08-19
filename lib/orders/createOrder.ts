@@ -8,6 +8,7 @@ import {
   planAllowsLoyalty,
   planAllowsOnlineOrdering,
 } from "@/lib/subscriptions/plans";
+import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 import { mapOrderRow } from "./mappers";
 import type { CreateOrderInput, Order, OrderItemRecord, OrderRecord } from "./types";
 import { isMissingTableError } from "./utils";
@@ -97,14 +98,12 @@ export async function createOrderWithClient(
       return { ok: false, message: UNAVAILABLE_ERROR };
     }
 
-    // Canonical plan is restaurant_subscriptions.plan (mirrors Billing).
-    const { data: subscription } = await client
-      .from("restaurant_subscriptions")
-      .select("plan")
-      .eq("restaurant_id", input.restaurantId)
-      .maybeSingle();
+    const effective = await resolveEffectiveOwnerSubscription(
+      client,
+      input.restaurantId,
+    );
     const plan =
-      (typeof subscription?.plan === "string" && subscription.plan.trim()) ||
+      effective?.locationPlan ||
       (typeof restaurant.subscription_plan === "string" &&
         restaurant.subscription_plan.trim()) ||
       "Starter";

@@ -4,6 +4,7 @@ import type { CategoryRow } from "@/lib/categories/types";
 import type { MenuItemRow } from "@/lib/menu-items/types";
 import type { Restaurant } from "@/lib/restaurants/types";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
+import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 import {
   groupMenuItemsByCategory,
   mapCategoryRowToPublic,
@@ -93,14 +94,21 @@ export async function fetchPublicMenuBySlug(
   let subscription: SubscriptionPublicRow | null = null;
   try {
     const admin = createServiceSupabaseClient();
-    const { data } = await admin
-      .from("restaurant_subscriptions")
-      .select(
-        "plan, status, trial_started_at, trial_ends_at, grace_period_days, renewal_date, cancelled_at",
-      )
-      .eq("restaurant_id", typedRestaurant.id)
-      .maybeSingle();
-    subscription = (data as SubscriptionPublicRow | null) ?? null;
+    const effective = await resolveEffectiveOwnerSubscription(
+      admin,
+      typedRestaurant.id,
+    );
+    if (effective) {
+      subscription = {
+        plan: effective.locationPlan,
+        status: effective.canonical.status,
+        trial_started_at: effective.canonical.trial_started_at,
+        trial_ends_at: effective.canonical.trial_ends_at,
+        grace_period_days: effective.canonical.grace_period_days,
+        renewal_date: effective.canonical.renewal_date,
+        cancelled_at: effective.canonical.cancelled_at,
+      };
+    }
   } catch {
     subscription = null;
   }

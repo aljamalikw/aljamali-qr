@@ -28,7 +28,7 @@ export function ReviewsManagement() {
   const [error, setError] = useState<string | null>(null);
 
   const allowed =
-    isAdminRole(role) || planAllowsReviews(access.plan);
+    isAdminRole(role) || planAllowsReviews(access.locationPlan);
 
   const load = useCallback(async () => {
     if (!restaurant?.id || !allowed) {

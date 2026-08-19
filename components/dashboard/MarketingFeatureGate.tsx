@@ -24,7 +24,7 @@ export function MarketingFeatureGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isAdminRole(role) || planAllowsMarketing(access.plan)) {
+  if (isAdminRole(role) || planAllowsMarketing(access.locationPlan)) {
     return <>{children}</>;
   }
 

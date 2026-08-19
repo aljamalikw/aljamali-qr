@@ -66,7 +66,7 @@ function MarketingManagementContent() {
   const { access } = useSubscriptionAccess();
   const { role } = useAuthUser();
   const bypassAdmin = isAdminRole(role);
-  const plan = access.plan;
+  const plan = access.locationPlan;
   const templatesAllowed =
     bypassAdmin || planAllowsMarketingTemplates(plan);
   const schedulingAllowed =

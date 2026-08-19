@@ -12,15 +12,15 @@ const PLAN_RANK: Record<SubscriptionPlanId, number> = {
 
 /**
  * Resolve the owner's entitlement plan from restaurant_subscriptions
- * (never restaurants.subscription_plan). Prefers the source restaurant's
- * subscription when provided and owned; otherwise the highest plan among
- * all owned restaurants. Defaults to Starter when none exist.
+ * (never restaurants.subscription_plan). Uses the highest plan among
+ * owned restaurants so a covered Professional location covers the account.
  */
 export async function resolveOwnerSubscriptionPlan(
   admin: SupabaseClient,
   ownerId: string,
   sourceRestaurantId?: string | null,
 ): Promise<SubscriptionPlanId> {
+  void sourceRestaurantId;
   const { data: restaurants, error } = await admin
     .from("restaurants")
     .select("id")
@@ -32,10 +32,6 @@ export async function resolveOwnerSubscriptionPlan(
   }
 
   const ids = restaurants.map((r) => r.id as string);
-  const preferred =
-    sourceRestaurantId && ids.includes(sourceRestaurantId)
-      ? sourceRestaurantId
-      : null;
 
   const { data: subs } = await admin
     .from("restaurant_subscriptions")
@@ -44,13 +40,6 @@ export async function resolveOwnerSubscriptionPlan(
 
   if (!subs?.length) {
     return "Starter";
-  }
-
-  if (preferred) {
-    const preferredSub = subs.find((s) => s.restaurant_id === preferred);
-    if (preferredSub?.plan) {
-      return normalizePlanId(preferredSub.plan as string);
-    }
   }
 
   let best: SubscriptionPlanId = "Starter";

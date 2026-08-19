@@ -90,7 +90,7 @@ export function BusinessIntelligenceDashboard() {
   const [multiLoading, setMultiLoading] = useState(false);
 
   const isAdmin = isAdminRole(role);
-  const plan = access.plan;
+  const plan = access.locationPlan;
   const allowsBi = isAdmin || planAllowsBusinessIntelligence(plan);
   const allowsInsights = isAdmin || planAllowsAiInsights(plan);
   const allowsMulti =

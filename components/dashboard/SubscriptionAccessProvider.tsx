@@ -10,6 +10,8 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchOwnerSubscription } from "@/lib/admin/subscriptions";
+import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
+import { supabase } from "@/lib/supabase";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
   getSubscriptionAccess,
@@ -21,6 +23,8 @@ import type { DashboardNavId } from "@/lib/dashboard/types";
 const FULL_ACCESS: SubscriptionAccess = {
   effectiveStatus: "active",
   plan: "Starter",
+  locationPlan: "Starter",
+  locationCovered: true,
   publicMenuOnline: true,
   dashboardLocked: false,
   allowedNavIds: [],
@@ -59,7 +63,10 @@ export function SubscriptionAccessProvider({
     }
 
     setLoading(true);
-    const result = await fetchOwnerSubscription(restaurant.id);
+    const [result, effective] = await Promise.all([
+      fetchOwnerSubscription(restaurant.id),
+      resolveEffectiveOwnerSubscription(supabase, restaurant.id),
+    ]);
     if (!result.ok || !result.data) {
       // Missing row: ensure path may create later; allow access meanwhile.
       setAccess(
@@ -75,17 +82,33 @@ export function SubscriptionAccessProvider({
     }
 
     const sub = result.data;
-    setAccess(
-      getSubscriptionAccess({
-        plan: sub.plan,
-        status: sub.status,
-        trialStartedAt: sub.trialStartedAt,
-        trialEndsAt: sub.trialEndsAt,
-        gracePeriodDays: sub.gracePeriodDays,
-        renewalDate: sub.renewalDate,
-        cancelledAt: sub.cancelledAt,
-      }),
-    );
+    const ownerPlan = effective?.ownerPlan ?? sub.plan;
+    const locationCovered = effective?.locationCovered ?? true;
+    const locationPlan = effective?.locationPlan ?? ownerPlan;
+    const ownerAccess = getSubscriptionAccess({
+      plan: ownerPlan,
+      status: sub.status,
+      trialStartedAt: sub.trialStartedAt,
+      trialEndsAt: sub.trialEndsAt,
+      gracePeriodDays: sub.gracePeriodDays,
+      renewalDate: sub.renewalDate,
+      cancelledAt: sub.cancelledAt,
+    });
+    const locationAccess = getSubscriptionAccess({
+      plan: locationPlan,
+      status: sub.status,
+      trialStartedAt: sub.trialStartedAt,
+      trialEndsAt: sub.trialEndsAt,
+      gracePeriodDays: sub.gracePeriodDays,
+      renewalDate: sub.renewalDate,
+      cancelledAt: sub.cancelledAt,
+    });
+    setAccess({
+      ...ownerAccess,
+      locationPlan,
+      locationCovered,
+      publicMenuOnline: locationAccess.publicMenuOnline,
+    });
     setLoading(false);
   }, [restaurant]);
 
