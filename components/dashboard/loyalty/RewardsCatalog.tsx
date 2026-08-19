@@ -9,6 +9,14 @@ import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { isAdminRole } from "@/lib/auth/roles";
 import { fetchCustomers, type Customer } from "@/lib/customers/queries";
 import { RewardTemplatePicker } from "@/components/dashboard/loyalty/RewardTemplatePicker";
+import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
+import {
+  buildLoyaltyMembersExportDataset,
+} from "@/lib/export/datasets/customers";
+import {
+  buildLoyaltyRedemptionsExportDataset,
+  buildLoyaltyRewardsExportDataset,
+} from "@/lib/export/datasets/loyalty";
 import {
   createLoyaltyReward,
   fetchLoyaltyRedemptions,
@@ -222,8 +230,86 @@ export function RewardsCatalog() {
     );
   }
 
+  const restaurantName =
+    restaurant.restaurant_name?.trim() || "Restaurant";
+
+  const enrolledCustomers = customers.filter(
+    (customer) => customer.metadata.loyalty?.enrolled === true,
+  );
+
+  const getMembersDataset = () =>
+    buildLoyaltyMembersExportDataset({
+      customers: enrolledCustomers,
+      restaurantName,
+    });
+
+  const getRewardsDataset = () =>
+    buildLoyaltyRewardsExportDataset({
+      rewards,
+      restaurantName,
+    });
+
+  const getRedemptionsDataset = () =>
+    buildLoyaltyRedemptionsExportDataset({
+      redemptions,
+      restaurantName,
+    });
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-serif text-xl font-bold text-white">
+            Rewards & loyalty exports
+          </h2>
+          <p className="mt-1 text-sm text-white/45">
+            Export members, reward catalog, or redemption history for the current
+            restaurant.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ExportMenu
+            label="Members"
+            getDataset={getMembersDataset}
+            onEmpty={() => showToast("No loyalty members to export.", "error")}
+            onError={(message) => showToast(message, "error")}
+            onSuccess={(format, rowCount) =>
+              showToast(
+                format === "pdf"
+                  ? exportFormatSuccessLabel(format)
+                  : `✓ Exported ${rowCount} loyalty members`,
+              )
+            }
+          />
+          <ExportMenu
+            label="Rewards"
+            getDataset={getRewardsDataset}
+            onEmpty={() => showToast("No rewards to export.", "error")}
+            onError={(message) => showToast(message, "error")}
+            onSuccess={(format, rowCount) =>
+              showToast(
+                format === "pdf"
+                  ? exportFormatSuccessLabel(format)
+                  : `✓ Exported ${rowCount} rewards`,
+              )
+            }
+          />
+          <ExportMenu
+            label="Redemptions"
+            getDataset={getRedemptionsDataset}
+            onEmpty={() => showToast("No redemptions to export.", "error")}
+            onError={(message) => showToast(message, "error")}
+            onSuccess={(format, rowCount) =>
+              showToast(
+                format === "pdf"
+                  ? exportFormatSuccessLabel(format)
+                  : `✓ Exported ${rowCount} redemptions`,
+              )
+            }
+          />
+        </div>
+      </div>
+
       {showAnalytics ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[

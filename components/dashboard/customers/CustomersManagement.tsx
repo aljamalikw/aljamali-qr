@@ -26,6 +26,11 @@ import { buildTelHref } from "@/lib/marketing/whatsapp/phone";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsMarketing } from "@/lib/subscriptions/plans";
 import { supabase } from "@/lib/supabase";
+import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
+import {
+  buildCustomersExportDataset,
+  buildCustomersFilterSummary,
+} from "@/lib/export/datasets/customers";
 
 const PAGE_SIZE = 10;
 
@@ -147,6 +152,23 @@ export function CustomersManagement() {
     [filtered, page],
   );
 
+  const restaurantName =
+    restaurant?.restaurant_name?.trim() || "Restaurant";
+
+  const getExportDataset = useCallback(
+    () =>
+      buildCustomersExportDataset({
+        customers: filtered,
+        restaurantName,
+        filterSummary: buildCustomersFilterSummary({
+          search,
+          filter,
+          birthdayMonth,
+        }),
+      }),
+    [filtered, restaurantName, search, filter, birthdayMonth],
+  );
+
   if (restaurantLoading || loading) {
     return (
       <div className="space-y-6">
@@ -192,6 +214,20 @@ export function CustomersManagement() {
               New Campaign
             </Link>
           )}
+          <ExportMenu
+            getDataset={getExportDataset}
+            onEmpty={() =>
+              showToast("No data matches the current filters.", "error")
+            }
+            onError={(message) => showToast(message, "error")}
+            onSuccess={(format, rowCount) =>
+              showToast(
+                format === "pdf"
+                  ? exportFormatSuccessLabel(format)
+                  : `✓ Exported ${rowCount} customers`,
+              )
+            }
+          />
           <button
             type="button"
             onClick={() => void load()}

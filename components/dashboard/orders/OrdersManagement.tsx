@@ -17,17 +17,20 @@ import {
   type OrderStatusFilter,
   type OrderTypeFilter,
   computeOrderKpis,
-  exportOrdersToCsv,
   filterOrders,
   getLiveOrders,
   getNextOrderStatus,
   getTodayOrders,
   paginate,
 } from "@/lib/orders/utils";
+import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
 import { OnlineOrderingFeatureGate } from "@/components/dashboard/OnlineOrderingFeatureGate";
+import {
+  buildOrdersExportDataset,
+  buildOrdersFilterSummary,
+} from "@/lib/export/datasets/orders";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { supabase } from "@/lib/supabase";
-import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
 import { OrderAnalyticsSection } from "./OrderAnalyticsSection";
 import { OrderBulkActionsBar } from "./OrderBulkActionsBar";
 import { OrderDetailsDrawer } from "./OrderDetailsDrawer";
@@ -431,15 +434,24 @@ function OrdersManagementContent() {
     [replaceOrder, showToast],
   );
 
-  const handleExport = useCallback(() => {
-    if (filtered.length === 0) {
-      showToast("No rows available to export", "error");
-      return;
-    }
-    const csv = exportOrdersToCsv(filtered);
-    downloadCsv(`orders-${csvTimestamp()}.csv`, csv);
-    showToast(`Exported ${filtered.length} orders`);
-  }, [filtered, showToast]);
+  const restaurantName =
+    restaurant?.restaurant_name?.trim() || "Restaurant";
+
+  const getExportDataset = useCallback(
+    () =>
+      buildOrdersExportDataset({
+        orders: filtered,
+        restaurantName,
+        tabLabel: TABS.find((item) => item.id === tab)?.label ?? tab,
+        filterSummary: buildOrdersFilterSummary({
+          tabLabel: TABS.find((item) => item.id === tab)?.label ?? tab,
+          search,
+          status,
+          orderType,
+        }),
+      }),
+    [filtered, restaurantName, tab, search, status, orderType],
+  );
 
   if (restaurantLoading) {
     return (
@@ -471,9 +483,20 @@ function OrdersManagementContent() {
             Manage online orders submitted from your public menu.
           </p>
         </div>
-        <button type="button" onClick={handleExport} className="menu-btn-secondary shrink-0">
-          Export CSV
-        </button>
+        <ExportMenu
+          getDataset={getExportDataset}
+          onEmpty={() =>
+            showToast("No data matches the current filters.", "error")
+          }
+          onError={(message) => showToast(message, "error")}
+          onSuccess={(format, rowCount) =>
+            showToast(
+              format === "pdf"
+                ? exportFormatSuccessLabel(format)
+                : `✓ Exported ${rowCount} orders`,
+            )
+          }
+        />
       </div>
 
       {loading ? (

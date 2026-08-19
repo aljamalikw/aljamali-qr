@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { FormSkeleton, StatCardSkeleton } from "@/components/ui/Skeleton";
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
@@ -14,8 +15,11 @@ import {
 } from "@/lib/reviews/reviews";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsReviews } from "@/lib/subscriptions/plans";
+import { buildReviewsExportDataset } from "@/lib/export/datasets/reviews";
+import { useToast } from "@/components/ui/ToastProvider";
 
 export function ReviewsManagement() {
+  const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
   const { access, loading: accessLoading } = useSubscriptionAccess();
   const { role, loading: authLoading } = useAuthUser();
@@ -48,6 +52,19 @@ export function ReviewsManagement() {
   }, [load]);
 
   const summary = useMemo(() => summarizeReviews(reviews), [reviews]);
+
+  const restaurantName =
+    restaurant?.restaurant_name?.trim() || "Restaurant";
+
+  const getExportDataset = useCallback(
+    () =>
+      buildReviewsExportDataset({
+        reviews,
+        summary,
+        restaurantName,
+      }),
+    [reviews, summary, restaurantName],
+  );
 
   if (accessLoading || authLoading || restaurantLoading) {
     return (
@@ -94,13 +111,30 @@ export function ReviewsManagement() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
-          Reviews
-        </h1>
-        <p className="mt-1 text-sm text-white/45">
-          Guest ratings and feedback from completed orders.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
+            Reviews
+          </h1>
+          <p className="mt-1 text-sm text-white/45">
+            Guest ratings and feedback from completed orders.
+          </p>
+        </div>
+        <ExportMenu
+          getDataset={getExportDataset}
+          disabled={loading}
+          onEmpty={() =>
+            showToast("No data matches the current filters.", "error")
+          }
+          onError={(message) => showToast(message, "error")}
+          onSuccess={(format, rowCount) =>
+            showToast(
+              format === "pdf"
+                ? exportFormatSuccessLabel(format)
+                : `✓ Exported ${rowCount} reviews`,
+            )
+          }
+        />
       </div>
 
       {loading ? (

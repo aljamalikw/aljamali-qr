@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/ToastProvider";
+import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { isAdminRole } from "@/lib/auth/roles";
@@ -12,12 +14,11 @@ import { fetchBusinessIntelligence } from "@/lib/intelligence/bi";
 import { generateRestaurantInsights } from "@/lib/intelligence/insights";
 import { fetchMultiRestaurantAnalytics } from "@/lib/intelligence/multi-restaurant";
 import {
-  exportBiCsv,
-  exportBiExcel,
-  exportBiPdf,
-} from "@/lib/intelligence/export";
+  buildBiExportDataset,
+} from "@/lib/export/datasets/bi";
 import {
   formatMoney,
+  resolveIntelligenceRange,
   type IntelligenceRangeId,
 } from "@/lib/intelligence/ranges";
 import type {
@@ -64,18 +65,8 @@ function formatKpiValue(
   return String(raw);
 }
 
-function biExportRows(data: BiDashboardData): string[][] {
-  return [
-    ...KPI_LABELS.map(({ key, label, money }) => [
-      label,
-      formatKpiValue(key, data, money),
-    ]),
-    ["Repeat customer %", String(data.performance.repeatCustomerPct)],
-    ["First-time customer %", String(data.performance.firstTimeCustomerPct)],
-  ];
-}
-
 export function BusinessIntelligenceDashboard() {
+  const { showToast } = useToast();
   const { restaurant, restaurants, loading: restaurantLoading } = useRestaurant();
   const { access, loading: accessLoading } = useSubscriptionAccess();
   const { role, loading: authLoading } = useAuthUser();
@@ -106,6 +97,30 @@ export function BusinessIntelligenceDashboard() {
     (isAdmin || planAllowsMultiRestaurantAnalytics(plan)) &&
     restaurants.length > 1;
   const allowsAdvancedExport = isAdmin || planAllowsAdvancedExport(plan);
+
+  const dateRangeLabel = useMemo(() => {
+    const range = resolveIntelligenceRange(
+      rangeId,
+      customStart,
+      customEnd,
+    );
+    if (range.id === "custom" && customStart && customEnd) {
+      return `${customStart}_to_${customEnd}`;
+    }
+    return range.label;
+  }, [rangeId, customStart, customEnd]);
+
+  const getBiExportDataset = useCallback(() => {
+    if (!bi || !restaurant) {
+      throw new Error("Report data is not ready.");
+    }
+    return buildBiExportDataset({
+      bi,
+      restaurantName: restaurant.restaurant_name?.trim() || "Restaurant",
+      dateRangeLabel,
+      multiRestaurantRows: allowsMulti ? multiRows : [],
+    });
+  }, [bi, restaurant, dateRangeLabel, allowsMulti, multiRows]);
 
   const loadBi = useCallback(async () => {
     if (!restaurant?.id || !allowsBi) {
@@ -230,58 +245,24 @@ export function BusinessIntelligenceDashboard() {
             {restaurant.restaurant_name?.trim() || "your restaurant"}.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="menu-btn-secondary !px-3 !py-2 text-sm"
-            disabled={!bi}
-            onClick={() => {
-              if (!bi) return;
-              exportBiCsv("bi-kpis", ["Metric", "Value"], biExportRows(bi));
-            }}
-          >
-            Export CSV
-          </button>
-          {allowsAdvancedExport ? (
-            <>
-              <button
-                type="button"
-                className="menu-btn-secondary !px-3 !py-2 text-sm"
-                disabled={!bi}
-                onClick={() => {
-                  if (!bi) return;
-                  exportBiExcel("bi-kpis", ["Metric", "Value"], biExportRows(bi));
-                }}
-              >
-                Export Excel
-              </button>
-              <button
-                type="button"
-                className="menu-btn-secondary !px-3 !py-2 text-sm"
-                disabled={!bi}
-                onClick={() => {
-                  if (!bi) return;
-                  exportBiPdf("Business Intelligence", [
-                    {
-                      heading: "KPIs",
-                      lines: biExportRows(bi).map(([k, v]) => `${k}: ${v}`),
-                    },
-                    {
-                      heading: "Performance",
-                      lines: [
-                        `Repeat customers: ${bi.performance.repeatCustomerPct}%`,
-                        `First-time: ${bi.performance.firstTimeCustomerPct}%`,
-                        `Avg spend: ${formatMoney(bi.performance.averageSpend, bi.kpis.currency)}`,
-                      ],
-                    },
-                  ]);
-                }}
-              >
-                Export PDF
-              </button>
-            </>
-          ) : null}
-        </div>
+        <ExportMenu
+          getDataset={getBiExportDataset}
+          disabled={!bi}
+          isFormatAllowed={(format) =>
+            format === "csv" || allowsAdvancedExport
+          }
+          onEmpty={() =>
+            showToast("No data matches the current filters.", "error")
+          }
+          onError={(message) => showToast(message, "error")}
+          onSuccess={(format) =>
+            showToast(
+              format === "pdf"
+                ? exportFormatSuccessLabel(format)
+                : "✓ Export ready",
+            )
+          }
+        />
       </div>
 
       <DashboardCard className="p-4 sm:p-5" hover={false}>

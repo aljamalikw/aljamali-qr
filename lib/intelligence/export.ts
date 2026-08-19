@@ -1,7 +1,9 @@
 import { buildCsv, csvTimestamp, downloadCsv } from "@/lib/utils/csv";
+import { runExport } from "@/lib/export/export-data";
+import { buildBiExportDataset, biExportRows } from "@/lib/export/datasets/bi";
+import type { ExportFormat } from "@/lib/export/types";
 
-/** Professional: CSV. Enterprise helpers also expose Excel-like TSV and printable HTML→PDF. */
-
+/** @deprecated Use runExport with buildBiExportDataset instead. */
 export function exportBiCsv(
   filenamePrefix: string,
   headers: string[],
@@ -10,60 +12,46 @@ export function exportBiCsv(
   downloadCsv(`${filenamePrefix}-${csvTimestamp()}.csv`, buildCsv(headers, rows));
 }
 
-/** Excel-friendly TSV (.xls extension opens in Excel). */
+/** @deprecated Use runExport(format, dataset) instead. */
 export function exportBiExcel(
   filenamePrefix: string,
   headers: string[],
   rows: string[][],
 ): void {
-  const lines = [
-    headers.join("\t"),
-    ...rows.map((row) => row.map((cell) => String(cell).replace(/\t/g, " ")).join("\t")),
-  ];
-  const blob = new Blob([lines.join("\n")], {
-    type: "application/vnd.ms-excel;charset=utf-8;",
+  void runExport("xlsx", {
+    filenamePrefix,
+    meta: { title: filenamePrefix },
+    columns: headers.map((header, index) => ({
+      key: `col_${index}`,
+      header,
+    })),
+    rows: rows.map((row) =>
+      Object.fromEntries(row.map((cell, index) => [`col_${index}`, cell])),
+    ),
   });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${filenamePrefix}-${csvTimestamp()}.xls`;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
-/** Opens a printable summary the browser can Save as PDF. */
+/** @deprecated Use runExport(format, dataset) instead. */
 export function exportBiPdf(
   title: string,
   sections: Array<{ heading: string; lines: string[] }>,
 ): void {
-  const html = `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title>
-  <style>
-    body{font-family:Georgia,serif;padding:32px;color:#111;background:#fff}
-    h1{font-size:22px;margin:0 0 8px} h2{font-size:16px;margin:24px 0 8px;color:#8a6a1a}
-    p{margin:4px 0;font-size:13px;color:#333} .meta{color:#777;font-size:12px}
-  </style></head><body>
-  <h1>${escapeHtml(title)}</h1>
-  <p class="meta">Generated ${new Date().toLocaleString()}</p>
-  ${sections
-    .map(
-      (s) =>
-        `<h2>${escapeHtml(s.heading)}</h2>${s.lines
-          .map((l) => `<p>${escapeHtml(l)}</p>`)
-          .join("")}`,
-    )
-    .join("")}
-  <script>window.onload=()=>window.print()</script>
-  </body></html>`;
-  const w = window.open("", "_blank", "noopener,noreferrer");
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
+  const rows = sections.flatMap((section) =>
+    section.lines.map((line) => ({
+      metric: section.heading,
+      value: line,
+    })),
+  );
+  void runExport("pdf", {
+    filenamePrefix: title.toLowerCase().replace(/\s+/g, "_"),
+    meta: { title },
+    columns: [
+      { key: "metric", header: "Section" },
+      { key: "value", header: "Detail" },
+    ],
+    rows,
+  });
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
+export { runExport, buildBiExportDataset, biExportRows };
+export type { ExportFormat };

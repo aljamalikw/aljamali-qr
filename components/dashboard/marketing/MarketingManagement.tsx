@@ -11,6 +11,11 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { isAdminRole } from "@/lib/auth/roles";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { WhatsAppChatModal } from "@/components/dashboard/customers/WhatsAppChatModal";
+import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
+import {
+  buildMarketingCampaignsExportDataset,
+  buildMarketingRecipientsExportDataset,
+} from "@/lib/export/datasets/marketing";
 import {
   cancelMarketingCampaign,
   deleteMarketingCampaign,
@@ -207,6 +212,28 @@ function MarketingManagementContent() {
     await load();
   };
 
+  const restaurantName =
+    restaurant?.restaurant_name?.trim() || "Restaurant";
+
+  const getCampaignsExportDataset = useCallback(
+    () =>
+      buildMarketingCampaignsExportDataset({
+        campaigns: summaryCampaigns,
+        restaurantName,
+      }),
+    [summaryCampaigns, restaurantName],
+  );
+
+  const getRecipientsExportDataset = useCallback(
+    () =>
+      buildMarketingRecipientsExportDataset({
+        campaignName: recipientsCampaignName,
+        recipients,
+        restaurantName,
+      }),
+    [recipientsCampaignName, recipients, restaurantName],
+  );
+
   if (restaurantLoading || loading) {
     return (
       <div className="space-y-6">
@@ -232,13 +259,29 @@ function MarketingManagementContent() {
             credentials required.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setBuilderOpen(true)}
-          className="menu-btn-primary shrink-0"
-        >
-          New Campaign
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <ExportMenu
+            getDataset={getCampaignsExportDataset}
+            onEmpty={() =>
+              showToast("No data matches the current filters.", "error")
+            }
+            onError={(message) => showToast(message, "error")}
+            onSuccess={(format, rowCount) =>
+              showToast(
+                format === "pdf"
+                  ? exportFormatSuccessLabel(format)
+                  : `✓ Exported ${rowCount} campaigns`,
+              )
+            }
+          />
+          <button
+            type="button"
+            onClick={() => setBuilderOpen(true)}
+            className="menu-btn-primary shrink-0"
+          >
+            New Campaign
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-wrap gap-2">
@@ -783,14 +826,30 @@ function MarketingManagementContent() {
                   {recipients.length === 1 ? "" : "s"}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setRecipientsOpen(false)}
-                className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-white"
-                aria-label="Close"
-              >
-                ✕
-              </button>
+              <div className="flex items-start gap-2">
+                <ExportMenu
+                  getDataset={getRecipientsExportDataset}
+                  onEmpty={() =>
+                    showToast("No data matches the current filters.", "error")
+                  }
+                  onError={(message) => showToast(message, "error")}
+                  onSuccess={(format, rowCount) =>
+                    showToast(
+                      format === "pdf"
+                        ? exportFormatSuccessLabel(format)
+                        : `✓ Exported ${rowCount} recipients`,
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setRecipientsOpen(false)}
+                  className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-white"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             <div className="max-h-[60vh] space-y-2 overflow-y-auto px-5 py-4">
               {recipients.length === 0 ? (

@@ -21,13 +21,16 @@ import {
   RESERVATION_STATUS_FILTERS,
   RESERVATION_TYPE_FILTERS,
   computeReservationKpis,
-  exportReservationsToCsv,
   filterReservations,
   formatReservationDateShort,
   paginateReservations,
   sortReservationsByDate,
 } from "@/lib/reservations/utils";
-import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
+import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
+import {
+  buildReservationsExportDataset,
+  buildReservationsFilterSummary,
+} from "@/lib/export/datasets/reservations";
 import { ReservationCalendar } from "./ReservationCalendar";
 import { ReservationDetailsDrawer } from "./ReservationDetailsDrawer";
 import { ReservationKpiCards } from "./ReservationKpiCards";
@@ -193,15 +196,23 @@ export function ReservationsManagement() {
     [replaceItem, showToast],
   );
 
-  const handleExport = useCallback(() => {
-    if (filtered.length === 0) {
-      showToast("No rows available to export", "error");
-      return;
-    }
-    const csv = exportReservationsToCsv(filtered);
-    downloadCsv(`reservations-${csvTimestamp()}.csv`, csv);
-    showToast(`Exported ${filtered.length} reservations`);
-  }, [filtered, showToast]);
+  const restaurantName =
+    restaurant?.restaurant_name?.trim() || "Restaurant";
+
+  const getExportDataset = useCallback(
+    () =>
+      buildReservationsExportDataset({
+        reservations: filtered,
+        restaurantName,
+        filterSummary: buildReservationsFilterSummary({
+          search,
+          status,
+          type,
+          selectedDate: selectedDate ?? undefined,
+        }),
+      }),
+    [filtered, restaurantName, search, status, type, selectedDate],
+  );
 
   if (restaurantLoading) {
     return (
@@ -235,9 +246,20 @@ export function ReservationsManagement() {
             Manage table reservations submitted from your public menu.
           </p>
         </div>
-        <button type="button" onClick={handleExport} className="menu-btn-secondary shrink-0">
-          Export CSV
-        </button>
+        <ExportMenu
+          getDataset={getExportDataset}
+          onEmpty={() =>
+            showToast("No data matches the current filters.", "error")
+          }
+          onError={(message) => showToast(message, "error")}
+          onSuccess={(format, rowCount) =>
+            showToast(
+              format === "pdf"
+                ? exportFormatSuccessLabel(format)
+                : `✓ Exported ${rowCount} reservations`,
+            )
+          }
+        />
       </div>
 
       {loading ? (
