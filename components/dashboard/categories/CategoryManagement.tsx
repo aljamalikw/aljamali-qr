@@ -15,6 +15,8 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { DashboardPrimaryButton } from "../ui/DashboardPrimaryButton";
 import { CategoryEmptyState } from "./CategoryEmptyState";
+import { CategoryTemplatePicker } from "./CategoryTemplatePicker";
+import type { CategoryTemplate } from "@/lib/categories/category-templates";
 
 const inputClass =
   "w-full rounded-xl border border-gold/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/15";
@@ -31,6 +33,8 @@ export function CategoryManagement() {
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DashboardCategory | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [duplicateTemplate, setDuplicateTemplate] = useState<CategoryTemplate | null>(null);
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
@@ -50,9 +54,39 @@ export function CategoryManagement() {
     loadCategories();
   }, [loadCategories]);
 
-  const openCreate = () => {
+  const openPicker = () => {
+    setPickerOpen(true);
+  };
+
+  const openCreateCustom = () => {
+    setPickerOpen(false);
     setEditingId(null);
     setForm(createEmptyCategoryForm());
+    setError(null);
+    setModalOpen(true);
+  };
+
+  const handleSelectTemplate = (template: CategoryTemplate) => {
+    const exists = items.some(
+      (c) => c.nameEn.toLowerCase().trim() === template.nameEn.toLowerCase().trim(),
+    );
+    if (exists) {
+      setDuplicateTemplate(template);
+      return;
+    }
+    applyTemplate(template);
+  };
+
+  const applyTemplate = (template: CategoryTemplate) => {
+    setPickerOpen(false);
+    setDuplicateTemplate(null);
+    setEditingId(null);
+    setForm({
+      nameEn: template.nameEn,
+      nameAr: template.nameAr,
+      icon: template.icon,
+      visible: true,
+    });
     setError(null);
     setModalOpen(true);
   };
@@ -145,7 +179,7 @@ export function CategoryManagement() {
           <p className="mt-1 text-sm text-white/45">Organize your menu into sections</p>
         </div>
         {!showEmpty && (
-          <DashboardPrimaryButton variant="cta" onClick={openCreate}>
+          <DashboardPrimaryButton variant="cta" onClick={openPicker}>
             + Add Category
           </DashboardPrimaryButton>
         )}
@@ -156,7 +190,7 @@ export function CategoryManagement() {
           <TableSkeleton rows={4} />
         </div>
       ) : showEmpty ? (
-        <CategoryEmptyState onAdd={openCreate} />
+        <CategoryEmptyState onAdd={openPicker} />
       ) : (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item, index) => (
@@ -258,6 +292,30 @@ export function CategoryManagement() {
         loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <CategoryTemplatePicker
+        open={pickerOpen}
+        existingNames={items.map((c) => c.nameEn)}
+        onSelectTemplate={handleSelectTemplate}
+        onCreateCustom={openCreateCustom}
+        onClose={() => setPickerOpen(false)}
+      />
+
+      <ConfirmModal
+        open={duplicateTemplate !== null}
+        title="Category already exists"
+        description={
+          <>
+            <span className="font-medium text-white">{duplicateTemplate?.nameEn}</span> already exists in this restaurant.
+          </>
+        }
+        confirmLabel="Create Anyway"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          if (duplicateTemplate) applyTemplate(duplicateTemplate);
+        }}
+        onCancel={() => setDuplicateTemplate(null)}
       />
     </div>
   );

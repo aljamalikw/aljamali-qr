@@ -10,9 +10,9 @@ export function CategoryEmptyState({ onAdd }: CategoryEmptyStateProps) {
   return (
     <EmptyState
       icon="📂"
-      title="No categories yet"
-      description="Organize your menu into beautiful sections — starters, mains, desserts, and more."
-      actionLabel="+ Create First Category"
+      title="Organize your menu into sections"
+      description="Choose a category to get started."
+      actionLabel="+ Add Category"
       onAction={onAdd}
     />
   );
