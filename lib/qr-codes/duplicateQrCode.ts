@@ -5,6 +5,7 @@ import {
 } from "@/lib/dashboard/qr/utils";
 import { supabase } from "@/lib/supabase";
 import { fetchUserRestaurant } from "@/lib/restaurants/setup";
+import type { Restaurant } from "@/lib/restaurants/types";
 import { insertWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { mapQrCodeRowWithScanStats } from "./enrichQrCodeItem";
 import { mapDuplicateRowToInsert } from "./mappers";
@@ -16,11 +17,12 @@ const DESTINATION_ERROR =
 
 export async function duplicateQrCode(
   id: string,
+  restaurantOverride?: Restaurant | null,
 ): Promise<
   { ok: true; data: QrCodeItem } | { ok: false; message: string }
 > {
   try {
-    const restaurant = await fetchUserRestaurant();
+    const restaurant = restaurantOverride ?? (await fetchUserRestaurant());
     if (!restaurant?.id || !restaurant.slug?.trim()) {
       return { ok: false, message: DUPLICATE_ERROR };
     }
@@ -29,6 +31,7 @@ export async function duplicateQrCode(
       .from("qr_codes")
       .select("*")
       .eq("id", id)
+      .eq("restaurant_id", restaurant.id)
       .maybeSingle();
 
     if (fetchError || !source) {

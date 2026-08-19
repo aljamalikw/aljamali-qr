@@ -6,6 +6,7 @@ import {
 } from "@/lib/dashboard/qr/utils";
 import { fetchQrScanSummaries } from "@/lib/qr-analytics/queries";
 import { fetchUserRestaurant } from "@/lib/restaurants/setup";
+import type { Restaurant } from "@/lib/restaurants/types";
 import { insertWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { mapQrCodeRowToItem, mapQrFormToInsert } from "./mappers";
 import type { QrCodeRow } from "./types";
@@ -16,11 +17,12 @@ const DESTINATION_ERROR =
 
 export async function createQrCode(
   form: QrCreateFormData,
+  restaurantOverride?: Restaurant | null,
 ): Promise<
   { ok: true; data: QrCodeItem } | { ok: false; message: string }
 > {
   try {
-    const restaurant = await fetchUserRestaurant();
+    const restaurant = restaurantOverride ?? (await fetchUserRestaurant());
 
     if (!restaurant?.id) {
       return { ok: false, message: CREATE_ERROR };
@@ -45,13 +47,36 @@ export async function createQrCode(
 
     const payload = mapQrFormToInsert(form, restaurant.id, destinationUrl);
 
+    console.info("[QR TRACE] create request", {
+      activeRestaurantId: restaurant.id,
+      ownerId: restaurant.owner_id,
+      restaurantName: restaurant.restaurant_name ?? null,
+      qrName: form.name.trim(),
+      targetUrl: destinationUrl,
+      payload: {
+        restaurant_id: payload.restaurant_id,
+        type: payload.type,
+        table_number: payload.table_number,
+      },
+    });
+
     const result = await insertWithColumnFallback<QrCodeRow>("qr_codes", payload);
 
     if (!result.ok) {
+      console.warn("[QR TRACE] create failed", {
+        activeRestaurantId: restaurant.id,
+        message: result.message,
+        appliedKeys: result.appliedKeys,
+      });
       return { ok: false, message: result.message === "NO_COLUMNS_AVAILABLE" ? CREATE_ERROR : result.message };
     }
 
     const row = result.data;
+    console.info("[QR TRACE] create succeeded", {
+      activeRestaurantId: restaurant.id,
+      insertedRestaurantId: row.restaurant_id,
+      qrId: row.id,
+    });
     const scanSummaries = await fetchQrScanSummaries(restaurant.id, restaurant.timezone);
     const scanSummary = scanSummaries.ok
       ? scanSummaries.data.get(row.id)
@@ -70,7 +95,8 @@ export async function createQrCode(
     });
 
     return { ok: true, data: mapQrCodeRowToItem(row, scanSummary) };
-  } catch {
+  } catch (error) {
+    console.error("[QR TRACE] create exception", error);
     return { ok: false, message: CREATE_ERROR };
   }
 }

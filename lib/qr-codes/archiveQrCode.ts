@@ -1,5 +1,6 @@
 import type { QrCodeItem } from "@/lib/dashboard/qr/types";
 import { fetchUserRestaurant } from "@/lib/restaurants/setup";
+import type { Restaurant } from "@/lib/restaurants/types";
 import { updateWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { mapQrCodeRowWithScanStats } from "./enrichQrCodeItem";
 import type { QrCodeRow } from "./types";
@@ -9,13 +10,14 @@ const ARCHIVE_ERROR = "Unable to update QR code. Please try again.";
 export async function setQrCodeArchived(
   id: string,
   archived: boolean,
+  restaurantOverride?: Restaurant | null,
 ): Promise<{ ok: true; data: QrCodeItem } | { ok: false; message: string }> {
   try {
-    const restaurant = await fetchUserRestaurant();
+    const restaurant = restaurantOverride ?? (await fetchUserRestaurant());
 
     const result = await updateWithColumnFallback<QrCodeRow>(
       "qr_codes",
-      { id },
+      restaurant?.id ? { id, restaurant_id: restaurant.id } : { id },
       { is_archived: archived },
     );
 

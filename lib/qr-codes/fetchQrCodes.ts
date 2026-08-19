@@ -1,21 +1,29 @@
 import type { QrCodeItem } from "@/lib/dashboard/qr/types";
 import { supabase } from "@/lib/supabase";
 import { fetchUserRestaurant } from "@/lib/restaurants/setup";
+import type { Restaurant } from "@/lib/restaurants/types";
 import { fetchQrScanSummaries } from "@/lib/qr-analytics/queries";
 import { mapQrCodeRowToItem } from "./mappers";
 import type { QrCodeRow } from "./types";
 
 const FETCH_ERROR = "Unable to load QR codes. Please try again.";
 
-export async function fetchQrCodes(): Promise<
+export async function fetchQrCodes(
+  restaurantOverride?: Restaurant | null,
+): Promise<
   { ok: true; data: QrCodeItem[] } | { ok: false; message: string }
 > {
   try {
-    const restaurant = await fetchUserRestaurant();
+    const restaurant = restaurantOverride ?? (await fetchUserRestaurant());
 
     if (!restaurant?.id) {
       return { ok: false, message: FETCH_ERROR };
     }
+
+    console.info("[QR TRACE] load list", {
+      activeRestaurantId: restaurant.id,
+      restaurantName: restaurant.restaurant_name ?? null,
+    });
 
     const [qrCodesResult, scanSummariesResult] = await Promise.all([
       supabase
@@ -27,7 +35,11 @@ export async function fetchQrCodes(): Promise<
     ]);
 
     if (qrCodesResult.error) {
-      return { ok: false, message: FETCH_ERROR };
+      console.warn("[QR TRACE] load list failed", {
+        activeRestaurantId: restaurant.id,
+        message: qrCodesResult.error.message,
+      });
+      return { ok: false, message: qrCodesResult.error.message || FETCH_ERROR };
     }
 
     if (!scanSummariesResult.ok) {
@@ -40,7 +52,8 @@ export async function fetchQrCodes(): Promise<
         .filter((row) => !row.deleted_at)
         .map((row) => mapQrCodeRowToItem(row, scanSummariesResult.data.get(row.id))),
     };
-  } catch {
+  } catch (error) {
+    console.error("[QR TRACE] load list exception", error);
     return { ok: false, message: FETCH_ERROR };
   }
 }

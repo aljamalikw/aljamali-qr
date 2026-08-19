@@ -89,11 +89,19 @@ export function QrManagement() {
   }, [restaurant, showToast]);
 
   const loadQrCodes = useCallback(async (options?: { showLoading?: boolean }) => {
+    if (!restaurant?.id) {
+      setItems([]);
+      if (options?.showLoading !== false) {
+        setLoading(false);
+      }
+      return false;
+    }
+
     if (options?.showLoading !== false) {
       setLoading(true);
     }
 
-    const result = await fetchQrCodes();
+    const result = await fetchQrCodes(restaurant);
 
     if (options?.showLoading !== false) {
       setLoading(false);
@@ -107,7 +115,7 @@ export function QrManagement() {
 
     setItems(result.data);
     return true;
-  }, [showToast]);
+  }, [restaurant, showToast]);
 
   useEffect(() => {
     if (restaurantLoading) return;
@@ -141,7 +149,12 @@ export function QrManagement() {
 
   const handleCreate = useCallback(
     async (data: QrCreateFormData) => {
-      const result = await createQrCode(data);
+      if (!restaurant) {
+        showToast("Select a restaurant before creating a QR code.", "error");
+        return false;
+      }
+
+      const result = await createQrCode(data, restaurant);
 
       if (!result.ok) {
         showToast(result.message, "error");
@@ -155,12 +168,17 @@ export function QrManagement() {
 
       return true;
     },
-    [loadOverviewStats, loadQrCodes, showToast],
+    [loadOverviewStats, loadQrCodes, restaurant, showToast],
   );
 
   const handleBulkGenerate = async (form: BulkQrGenerateFormData) => {
+    if (!restaurant) {
+      showToast("Select a restaurant before creating QR codes.", "error");
+      return;
+    }
+
     setBulkGenerating(true);
-    const result = await bulkCreateQrCodes(form);
+    const result = await bulkCreateQrCodes(form, restaurant);
     setBulkGenerating(false);
 
     if (!result.ok) {
@@ -182,7 +200,11 @@ export function QrManagement() {
 
   const handleToggleArchive = useCallback(
     async (item: QrCodeItem) => {
-      const result = await setQrCodeArchived(item.id, !item.isArchived);
+      if (!restaurant) {
+        showToast("Select a restaurant before updating QR codes.", "error");
+        return;
+      }
+      const result = await setQrCodeArchived(item.id, !item.isArchived, restaurant);
       if (!result.ok) {
         showToast(result.message, "error");
         return;
@@ -191,7 +213,7 @@ export function QrManagement() {
       if (viewItem?.id === item.id) setViewItem(result.data);
       showToast(item.isArchived ? `Restored "${item.name}"` : `Archived "${item.name}"`);
     },
-    [showToast, viewItem],
+    [restaurant, showToast, viewItem],
   );
 
   const handleAction = useCallback(
@@ -204,7 +226,11 @@ export function QrManagement() {
           setRenameTarget(item);
           break;
         case "duplicate": {
-          const result = await duplicateQrCode(item.id);
+          if (!restaurant) {
+            showToast("Select a restaurant before duplicating QR codes.", "error");
+            return;
+          }
+          const result = await duplicateQrCode(item.id, restaurant);
           if (!result.ok) {
             showToast(result.message, "error");
             return;
@@ -233,7 +259,11 @@ export function QrManagement() {
           break;
         case "toggle-status": {
           const next = item.status === "active" ? "inactive" : "active";
-          const result = await updateQrCodeStatus(item.id, next);
+          if (!restaurant) {
+            showToast("Select a restaurant before updating QR codes.", "error");
+            return;
+          }
+          const result = await updateQrCodeStatus(item.id, next, restaurant);
           if (!result.ok) {
             showToast(result.message, "error");
             return;
@@ -254,13 +284,13 @@ export function QrManagement() {
           break;
       }
     },
-    [handleToggleArchive, loadOverviewStats, showToast, viewItem],
+    [handleToggleArchive, loadOverviewStats, restaurant, showToast, viewItem],
   );
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
-    const result = await softDeleteQrCode(deleteTarget.id);
+    const result = await softDeleteQrCode(deleteTarget.id, restaurant);
     if (!result.ok) {
       showToast(result.message, "error");
       return;
@@ -278,7 +308,7 @@ export function QrManagement() {
   const confirmRename = async (name: string) => {
     if (!renameTarget) return;
 
-    const result = await renameQrCode(renameTarget.id, name);
+    const result = await renameQrCode(renameTarget.id, name, restaurant);
     if (!result.ok) {
       showToast(result.message, "error");
       return;
@@ -325,7 +355,7 @@ export function QrManagement() {
     let failures = 0;
     for (const item of selectedItems) {
       // eslint-disable-next-line no-await-in-loop
-      const result = await setQrCodeArchived(item.id, archived);
+      const result = await setQrCodeArchived(item.id, archived, restaurant);
       if (!result.ok) failures += 1;
     }
     clearSelection();
@@ -345,7 +375,7 @@ export function QrManagement() {
     let failures = 0;
     for (const item of selectedItems) {
       // eslint-disable-next-line no-await-in-loop
-      const result = await softDeleteQrCode(item.id);
+      const result = await softDeleteQrCode(item.id, restaurant);
       if (!result.ok) failures += 1;
     }
     setBulkDeleteOpen(false);

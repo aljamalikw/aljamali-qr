@@ -2,6 +2,7 @@ import type { QrCodeItem, QrMode, QrStatus } from "@/lib/dashboard/qr/types";
 import { buildQrDestinationUrl, getAppBaseUrl } from "@/lib/dashboard/qr/utils";
 import { supabase } from "@/lib/supabase";
 import { fetchUserRestaurant } from "@/lib/restaurants/setup";
+import type { Restaurant } from "@/lib/restaurants/types";
 import { updateWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { mapQrCodeRowWithScanStats } from "./enrichQrCodeItem";
 import { mapStatusToIsActive } from "./mappers";
@@ -21,9 +22,13 @@ export interface QrDetailsUpdate {
 export async function updateQrCodeDetails(
   id: string,
   updates: QrDetailsUpdate,
+  restaurantOverride?: Restaurant | null,
 ): Promise<{ ok: true; data: QrCodeItem } | { ok: false; message: string }> {
   try {
-    const restaurant = await fetchUserRestaurant();
+    const restaurant = restaurantOverride ?? (await fetchUserRestaurant());
+    if (!restaurant?.id) {
+      return { ok: false, message: UPDATE_ERROR };
+    }
 
     const payload: Record<string, unknown> = {};
     if (updates.area !== undefined) payload.table_area = updates.area.trim() || null;
@@ -44,15 +49,25 @@ export async function updateQrCodeDetails(
     if (updates.accessPassword !== undefined) payload.access_password = updates.accessPassword;
     if (updates.scanLimit !== undefined) payload.scan_limit = updates.scanLimit;
 
-    const result = await updateWithColumnFallback<QrCodeRow>("qr_codes", { id }, payload);
+    const scopedResult = await updateWithColumnFallback<QrCodeRow>(
+      "qr_codes",
+      { id, restaurant_id: restaurant.id },
+      payload,
+    );
 
-    if (!result.ok) {
-      return { ok: false, message: result.message === "NO_COLUMNS_AVAILABLE" ? UPDATE_ERROR : result.message };
+    if (!scopedResult.ok) {
+      return {
+        ok: false,
+        message:
+          scopedResult.message === "NO_COLUMNS_AVAILABLE"
+            ? UPDATE_ERROR
+            : scopedResult.message,
+      };
     }
 
     return {
       ok: true,
-      data: await mapQrCodeRowWithScanStats(result.data, restaurant?.timezone),
+      data: await mapQrCodeRowWithScanStats(scopedResult.data, restaurant?.timezone),
     };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
@@ -62,12 +77,16 @@ export async function updateQrCodeDetails(
 export async function renameQrCode(
   id: string,
   name: string,
+  restaurantOverride?: Restaurant | null,
 ): Promise<
   { ok: true; data: QrCodeItem } | { ok: false; message: string }
 > {
   try {
     const trimmedName = name.trim();
-    const restaurant = await fetchUserRestaurant();
+    const restaurant = restaurantOverride ?? (await fetchUserRestaurant());
+    if (!restaurant?.id) {
+      return { ok: false, message: UPDATE_ERROR };
+    }
 
     if (!trimmedName) {
       return { ok: false, message: "QR name is required." };
@@ -77,6 +96,7 @@ export async function renameQrCode(
       .from("qr_codes")
       .update({ name: trimmedName })
       .eq("id", id)
+      .eq("restaurant_id", restaurant.id)
       .select("*")
       .single();
 
@@ -96,16 +116,21 @@ export async function renameQrCode(
 export async function updateQrCodeStatus(
   id: string,
   status: QrStatus,
+  restaurantOverride?: Restaurant | null,
 ): Promise<
   { ok: true; data: QrCodeItem } | { ok: false; message: string }
 > {
   try {
-    const restaurant = await fetchUserRestaurant();
+    const restaurant = restaurantOverride ?? (await fetchUserRestaurant());
+    if (!restaurant?.id) {
+      return { ok: false, message: UPDATE_ERROR };
+    }
 
     const { data, error } = await supabase
       .from("qr_codes")
       .update({ is_active: mapStatusToIsActive(status) })
       .eq("id", id)
+      .eq("restaurant_id", restaurant.id)
       .select("*")
       .single();
 

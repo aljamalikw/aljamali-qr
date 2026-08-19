@@ -1,4 +1,5 @@
 import { logActivity } from "@/lib/admin/activity-log";
+import type { Restaurant } from "@/lib/restaurants/types";
 import { NO_COLUMNS_AVAILABLE, updateWithColumnFallback } from "@/lib/supabase/persist-with-fallback";
 import { deleteQrCode } from "./deleteQrCode";
 import type { QrCodeRow } from "./types";
@@ -7,11 +8,12 @@ const DELETE_ERROR = "Unable to delete QR code. Please try again.";
 
 export async function softDeleteQrCode(
   id: string,
+  restaurant?: Restaurant | null,
 ): Promise<{ ok: true; hard: boolean } | { ok: false; message: string }> {
   try {
     const result = await updateWithColumnFallback<QrCodeRow>(
       "qr_codes",
-      { id },
+      restaurant?.id ? { id, restaurant_id: restaurant.id } : { id },
       { deleted_at: new Date().toISOString() },
     );
 
@@ -28,7 +30,7 @@ export async function softDeleteQrCode(
     }
 
     if (result.message === NO_COLUMNS_AVAILABLE) {
-      const hardResult = await deleteQrCode(id);
+      const hardResult = await deleteQrCode(id, restaurant);
       if (!hardResult.ok) return hardResult;
       return { ok: true, hard: true };
     }
@@ -41,10 +43,11 @@ export async function softDeleteQrCode(
 
 export async function restoreQrCode(
   id: string,
+  restaurant?: Restaurant | null,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const result = await updateWithColumnFallback<QrCodeRow>(
     "qr_codes",
-    { id },
+    restaurant?.id ? { id, restaurant_id: restaurant.id } : { id },
     { deleted_at: null },
   );
 

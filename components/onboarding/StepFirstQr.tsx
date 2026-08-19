@@ -60,7 +60,7 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
       tableNumber: tableNumber.trim(),
     };
 
-    const result = await createQrCode(form);
+    const result = await createQrCode(form, restaurant);
     setGenerating(false);
 
     if (!result.ok) {
