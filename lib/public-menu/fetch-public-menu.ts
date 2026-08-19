@@ -114,10 +114,15 @@ export async function fetchPublicMenuBySlug(
     ),
   });
 
-  const { data: categoryRows, error: categoriesError } = await supabase
+  // Use the service-role client for menu data so the public menu works
+  // regardless of whether anon SELECT policies exist on categories / menu_items.
+  // The restaurant was already verified by slug above, so this is safe.
+  const adminClient = createServiceSupabaseClient();
+
+  const { data: categoryRows, error: categoriesError } = await adminClient
     .from("categories")
     .select("*")
-    .eq("restaurant_id", restaurant.id)
+    .eq("restaurant_id", typedRestaurant.id)
     .eq("is_active", true)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
@@ -126,10 +131,10 @@ export async function fetchPublicMenuBySlug(
     return null;
   }
 
-  const { data: itemRows, error: itemsError } = await supabase
+  const { data: itemRows, error: itemsError } = await adminClient
     .from("menu_items")
     .select("*")
-    .eq("restaurant_id", restaurant.id)
+    .eq("restaurant_id", typedRestaurant.id)
     .eq("is_available", true)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });

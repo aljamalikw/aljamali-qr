@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
 
 interface QrScanRouteProps {
@@ -34,9 +35,9 @@ function withTableQuery(
 async function isQrRestaurantOnline(
   restaurantId: string,
 ): Promise<boolean> {
-  const supabase = createServerSupabaseClient();
+  const admin = createServiceSupabaseClient();
 
-  const { data: restaurant } = await supabase
+  const { data: restaurant } = await admin
     .from("restaurants")
     .select("id, is_active, subscription_plan")
     .eq("id", restaurantId)
@@ -46,7 +47,7 @@ async function isQrRestaurantOnline(
     return false;
   }
 
-  const { data: sub } = await supabase
+  const { data: sub } = await admin
     .from("restaurant_subscriptions")
     .select(
       "plan, status, trial_started_at, trial_ends_at, grace_period_days, renewal_date, cancelled_at",
@@ -78,7 +79,7 @@ async function isQrRestaurantOnline(
     cancelledAt: row.cancelled_at,
   });
 
-  return true;
+  return access.publicMenuOnline;
 }
 
 export async function GET(request: NextRequest, { params }: QrScanRouteProps) {
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest, { params }: QrScanRouteProps) {
   }
 
   const supabase = createServerSupabaseClient();
+  const admin = createServiceSupabaseClient();
   const ipAddress =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
@@ -96,7 +98,7 @@ export async function GET(request: NextRequest, { params }: QrScanRouteProps) {
   const userAgent = request.headers.get("user-agent");
   const referrer = request.headers.get("referer");
 
-  const { data: qrMeta } = await supabase
+  const { data: qrMeta } = await admin
     .from("qr_codes")
     .select("table_number, restaurant_id")
     .eq("id", id)
