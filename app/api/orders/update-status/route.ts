@@ -3,12 +3,14 @@ import {
   canManageRestaurantOrder,
   requireOrderRouteUser,
 } from "@/lib/orders/order-route-auth";
-import { maybeAwardLoyaltyPointsForOrder } from "@/lib/orders/loyalty-awards";
+import { updateOrderStatusWithClient } from "@/lib/orders/updateOrderWithClient";
+import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/types";
 
 export const runtime = "nodejs";
 
 type Body = {
   orderId?: unknown;
+  status?: unknown;
 };
 
 export async function POST(request: NextRequest) {
@@ -23,19 +25,17 @@ export async function POST(request: NextRequest) {
   }
 
   const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
-  if (!orderId) {
+  const statusRaw = typeof body.status === "string" ? body.status.trim() : "";
+  const status = (ORDER_STATUSES as readonly string[]).includes(statusRaw)
+    ? (statusRaw as OrderStatus)
+    : null;
+
+  if (!orderId || !status) {
     return NextResponse.json(
-      { ok: false, error: "orderId is required." },
+      { ok: false, error: "orderId and a valid status are required." },
       { status: 400 },
     );
   }
-
-  console.info("[LOYALTY TRACE]", {
-    stage: "trigger entered",
-    source: "loyalty_award_route",
-    orderId,
-    actorUserId: auth.userId,
-  });
 
   const { data: order, error } = await auth.admin
     .from("orders")
@@ -58,40 +58,23 @@ export async function POST(request: NextRequest) {
     restaurantId,
   );
   if (!allowed) {
-    console.warn("[LOYALTY TRACE]", {
-      stage: "award failed",
-      source: "loyalty_award_route",
-      orderId,
-      restaurantId,
-      reason: "forbidden",
-    });
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
 
-  const result = await maybeAwardLoyaltyPointsForOrder(orderId, auth.admin);
+  const result = await updateOrderStatusWithClient(auth.admin, orderId, status, {
+    actorUserId: auth.userId,
+  });
+
   if (!result.ok) {
-    console.warn("[LOYALTY TRACE]", {
-      stage: "award failed",
-      source: "loyalty_award_route",
-      orderId,
-      restaurantId,
-      message: result.message,
-    });
     return NextResponse.json(
       { ok: false, error: result.message },
-      { status: 500 },
+      { status: 400 },
     );
   }
 
-  if (result.awarded) {
-    console.info("[LOYALTY TRACE]", {
-      stage: "award succeeded",
-      source: "loyalty_award_route",
-      orderId,
-      restaurantId,
-      points: result.points,
-    });
-  }
-
-  return NextResponse.json(result);
+  return NextResponse.json({
+    ok: true,
+    data: result.data,
+    loyaltyAward: result.loyaltyAward,
+  });
 }

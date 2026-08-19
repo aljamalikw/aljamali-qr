@@ -1,177 +1,115 @@
-import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
-import { fetchOrderById } from "./fetchOrders";
 import { mapOrderRow } from "./mappers";
 import type { Order, OrderRecord, OrderStatus, PaymentStatus } from "./types";
-import { canCancelOrder, getNextOrderStatus } from "./utils";
 
 const UPDATE_ERROR = "Unable to update the order. Please try again.";
 
-const STATUS_TIMESTAMP_FIELD: Partial<Record<OrderStatus, string>> = {
-  Accepted: "accepted_at",
-  Preparing: "preparing_at",
-  Ready: "ready_at",
-  Completed: "completed_at",
-  Cancelled: "cancelled_at",
+type MutationPayload = {
+  orderId: string;
+  status?: OrderStatus;
+  paymentStatus?: PaymentStatus;
 };
 
-function isAllowedStatusTransition(
-  from: OrderStatus,
-  to: OrderStatus,
-): boolean {
-  if (to === "Cancelled") return canCancelOrder(from);
-  return getNextOrderStatus(from) === to;
-}
-
-async function withLineItems(order: Order): Promise<Order> {
-  if (order.items.length > 0) return order;
-  const refreshed = await fetchOrderById(order.id);
-  if (refreshed.ok && refreshed.data && refreshed.data.items.length > 0) {
-    return refreshed.data;
-  }
-  return order;
-}
-
-async function triggerServerLoyaltyAwardCheck(orderId: string): Promise<void> {
-  console.info("[LOYALTY AWARD TRIGGER]", {
-    orderId,
-    stage: "client_trigger_requested",
-  });
+async function callOrderMutationApi(
+  path: "/api/orders/update-status" | "/api/orders/update-payment",
+  payload: MutationPayload,
+): Promise<
+  | {
+      ok: true;
+      data: Order;
+      loyaltyAward?: { awarded: boolean; points: number };
+    }
+  | { ok: false; message: string }
+> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   const accessToken = session?.access_token;
   if (!accessToken) {
-    console.warn("[LOYALTY AWARD CHECK]", {
-      reason: "missing_session_for_server_check",
-      orderId,
+    console.warn("[LOYALTY TRACE]", {
+      stage: "award failed",
+      reason: "SKIP: missing authenticated session for order mutation",
+      orderId: payload.orderId,
     });
-    return;
+    return { ok: false, message: "Your session expired. Please sign in again." };
   }
 
-  const response = await fetch("/api/orders/loyalty-award", {
+  const body =
+    path === "/api/orders/update-status"
+      ? { orderId: payload.orderId, status: payload.status }
+      : { orderId: payload.orderId, paymentStatus: payload.paymentStatus };
+
+  const response = await fetch(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ orderId }),
+    body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    let payload: { error?: string } = {};
-    try {
-      payload = (await response.json()) as typeof payload;
-    } catch {}
-    console.warn("[LOYALTY AWARD CHECK]", {
-      reason: "server_check_failed",
-      orderId,
-      status: response.status,
-      message: payload.error ?? "Award check request failed.",
-    });
-    return;
+  let result: {
+    ok?: boolean;
+    data?: Order;
+    error?: string;
+    loyaltyAward?: { awarded: boolean; points: number };
+  } = {};
+
+  try {
+    result = (await response.json()) as typeof result;
+  } catch {
+    return { ok: false, message: UPDATE_ERROR };
   }
 
-  let payload: { awarded?: boolean; points?: number } = {};
-  try {
-    payload = (await response.json()) as typeof payload;
-  } catch {}
-  console.info("[LOYALTY AWARD TRIGGER]", {
-    orderId,
-    stage: "client_trigger_completed",
-    awarded: payload.awarded ?? false,
-    points: payload.points ?? 0,
-  });
+  if (!response.ok || !result.ok || !result.data) {
+    console.warn("[LOYALTY TRACE]", {
+      stage: "award failed",
+      reason: "order mutation API failed",
+      orderId: payload.orderId,
+      status: response.status,
+      message: result.error ?? UPDATE_ERROR,
+    });
+    return { ok: false, message: result.error || UPDATE_ERROR };
+  }
+
+  if (result.loyaltyAward?.awarded) {
+    console.info("[LOYALTY TRACE]", {
+      stage: "award succeeded",
+      source: "client_mutation_response",
+      orderId: payload.orderId,
+      points: result.loyaltyAward.points,
+    });
+  }
+
+  return {
+    ok: true,
+    data: result.data,
+    loyaltyAward: result.loyaltyAward,
+  };
 }
 
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
 ): Promise<{ ok: true; data: Order } | { ok: false; message: string }> {
-  try {
-    const { data: previous } = await supabase
-      .from("orders")
-      .select("status, restaurant_id")
-      .eq("id", orderId)
-      .maybeSingle();
-
-    if (!previous) {
-      return { ok: false, message: "Order not found." };
-    }
-
-    const fromStatus = (previous as { status?: OrderStatus }).status;
-    if (
-      fromStatus &&
-      !isAllowedStatusTransition(fromStatus, status)
-    ) {
-      return {
-        ok: false,
-        message: `Cannot change order from ${fromStatus} to ${status}.`,
-      };
-    }
-
-    const payload: Record<string, unknown> = { status };
-    const timestampField = STATUS_TIMESTAMP_FIELD[status];
-    if (timestampField) payload[timestampField] = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from("orders")
-      .update(payload)
-      .eq("id", orderId)
-      .select("*, order_items(*)")
-      .maybeSingle();
-
-    if (error || !data) {
-      return { ok: false, message: error?.message || UPDATE_ERROR };
-    }
-
-    const order = await withLineItems(mapOrderRow(data as OrderRecord));
-    void logActivity({
-      action: "order_status_changed",
-      restaurantId:
-        order.restaurantId ||
-        (previous as { restaurant_id?: string } | null)?.restaurant_id,
-      entityType: "order",
-      entityId: orderId,
-      oldValues: {
-        status: (previous as { status?: string } | null)?.status ?? null,
-      },
-      newValues: { status },
-    });
-
-    await triggerServerLoyaltyAwardCheck(orderId);
-
-    return { ok: true, data: order };
-  } catch {
-    return { ok: false, message: UPDATE_ERROR };
-  }
+  const result = await callOrderMutationApi("/api/orders/update-status", {
+    orderId,
+    status,
+  });
+  if (!result.ok) return result;
+  return { ok: true, data: result.data };
 }
 
 export async function updatePaymentStatus(
   orderId: string,
   paymentStatus: PaymentStatus,
 ): Promise<{ ok: true; data: Order } | { ok: false; message: string }> {
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .update({ payment_status: paymentStatus })
-      .eq("id", orderId)
-      .select("*, order_items(*)")
-      .maybeSingle();
-
-    if (error || !data) {
-      return { ok: false, message: error?.message || UPDATE_ERROR };
-    }
-
-    const order = await withLineItems(mapOrderRow(data as OrderRecord));
-    await triggerServerLoyaltyAwardCheck(orderId);
-    return {
-      ok: true,
-      data: order,
-    };
-  } catch {
-    return { ok: false, message: UPDATE_ERROR };
-  }
+  const result = await callOrderMutationApi("/api/orders/update-payment", {
+    orderId,
+    paymentStatus,
+  });
+  if (!result.ok) return result;
+  return { ok: true, data: result.data };
 }
 
 export async function updateKitchenNotes(
@@ -190,10 +128,7 @@ export async function updateKitchenNotes(
       return { ok: false, message: error?.message || UPDATE_ERROR };
     }
 
-    return {
-      ok: true,
-      data: await withLineItems(mapOrderRow(data as OrderRecord)),
-    };
+    return { ok: true, data: mapOrderRow(data as OrderRecord) };
   } catch {
     return { ok: false, message: UPDATE_ERROR };
   }
