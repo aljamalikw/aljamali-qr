@@ -68,7 +68,7 @@ export function mapCategoryRowToPublic(row: CategoryRow): PublicCategory {
 export function mapMenuItemRowToPublic(row: MenuItemRow): PublicMenuItem | null {
   const mapped = mapMenuItemRowToDashboard(row);
 
-  if (mapped.status !== "published" || !mapped.categoryId || mapped.isArchived) {
+  if (mapped.status !== "published" || mapped.isArchived) {
     return null;
   }
 
@@ -102,14 +102,31 @@ export function groupMenuItemsByCategory(
 ): PublicCategoryGroup[] {
   const categoryIds = new Set(categories.map((category) => category.id));
 
-  const publishedItems = items.filter((item) => categoryIds.has(item.categoryId));
-
-  return categories
+  const grouped = categories
     .map((category) => ({
       category,
-      items: publishedItems
+      items: items
         .filter((item) => item.categoryId === category.id)
         .sort((a, b) => a.sortOrder - b.sortOrder),
     }))
     .filter((group) => group.items.length > 0);
+
+  const uncategorizedItems = items
+    .filter((item) => !item.categoryId || !categoryIds.has(item.categoryId))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  if (uncategorizedItems.length > 0) {
+    grouped.push({
+      category: {
+        id: "__uncategorized__",
+        nameEn: "Other",
+        nameAr: "أخرى",
+        icon: "🍽️",
+        sortOrder: Number.MAX_SAFE_INTEGER,
+      },
+      items: uncategorizedItems,
+    });
+  }
+
+  return grouped;
 }

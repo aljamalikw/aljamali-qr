@@ -80,6 +80,9 @@ export async function fetchPublicMenuBySlug(
     .maybeSingle();
 
   if (restaurantError || !restaurantRow) {
+    console.info("[PUBLIC MENU TRACE] restaurant not found", {
+      slug: normalizedSlug,
+    });
     return null;
   }
 
@@ -103,6 +106,13 @@ export async function fetchPublicMenuBySlug(
   }
 
   if (!isPublicMenuAllowed(typedRestaurant, subscription)) {
+    console.info("[PUBLIC MENU TRACE] public menu blocked by subscription/active flag", {
+      slug: normalizedSlug,
+      restaurantId: typedRestaurant.id,
+      isActive: typedRestaurant.is_active,
+      subscriptionStatus: subscription?.status ?? null,
+      subscriptionPlan: subscription?.plan ?? null,
+    });
     return null;
   }
 
@@ -128,6 +138,10 @@ export async function fetchPublicMenuBySlug(
     .order("created_at", { ascending: true });
 
   if (categoriesError) {
+    console.info("[PUBLIC MENU TRACE] categories query failed", {
+      slug: normalizedSlug,
+      restaurantId: typedRestaurant.id,
+    });
     return null;
   }
 
@@ -140,17 +154,39 @@ export async function fetchPublicMenuBySlug(
     .order("created_at", { ascending: true });
 
   if (itemsError) {
+    console.info("[PUBLIC MENU TRACE] menu items query failed", {
+      slug: normalizedSlug,
+      restaurantId: typedRestaurant.id,
+    });
     return null;
   }
 
-  const categories = (categoryRows as CategoryRow[]).map(mapCategoryRowToPublic);
-  const items = (itemRows as MenuItemRow[])
+  const rawCategories = (categoryRows as CategoryRow[]) ?? [];
+  const rawItems = (itemRows as MenuItemRow[]) ?? [];
+
+  const categories = rawCategories.map(mapCategoryRowToPublic);
+  const items = rawItems
     .map(mapMenuItemRowToPublic)
     .filter((item): item is NonNullable<typeof item> => item !== null);
 
   const groups = groupMenuItemsByCategory(categories, items);
-  const categoryIds = new Set(categories.map((category) => category.id));
-  const publishedItems = items.filter((item) => categoryIds.has(item.categoryId));
+  const publishedItems = items;
+
+  console.info("[PUBLIC MENU TRACE]", {
+    slug: normalizedSlug,
+    restaurantFound: true,
+    restaurantId: typedRestaurant.id,
+    restaurantName: typedRestaurant.restaurant_name ?? null,
+    filters: {
+      categories: { restaurant_id: typedRestaurant.id, is_active: true },
+      menuItems: { restaurant_id: typedRestaurant.id, is_available: true },
+    },
+    categoriesCount: rawCategories.length,
+    menuItemsCount: rawItems.length,
+    mappedPublishedCount: items.length,
+    groupedItemCount: groups.reduce((sum, group) => sum + group.items.length, 0),
+    nullCategoryCount: rawItems.filter((row) => !row.category_id).length,
+  });
 
   return {
     restaurant,
