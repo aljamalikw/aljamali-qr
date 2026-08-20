@@ -17,19 +17,18 @@ import type { ActivityItem } from "@/lib/dashboard/types";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { isRestaurantSetupComplete } from "@/lib/restaurants/setup";
 import { formatDemoDateTime } from "@/lib/demo-requests/utils";
-import { supabase } from "@/lib/supabase";
+import { fetchPublishedAnnouncementsForOwner } from "@/lib/announcements/owner-queries";
+import type { AnnouncementItem } from "@/lib/announcements/types";
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { isAdminRole } from "@/lib/auth/roles";
 import { planAllowsBusinessIntelligence } from "@/lib/subscriptions/plans";
 import { BusinessIntelligenceDashboard } from "@/components/dashboard/intelligence/BusinessIntelligenceDashboard";
 
-type Announcement = {
-  id: string;
-  title?: string | null;
-  message?: string | null;
-  created_at?: string | null;
-};
+type Announcement = Pick<
+  AnnouncementItem,
+  "id" | "title" | "message" | "createdAt"
+>;
 
 type DashboardData = {
   restaurant: Restaurant | null;
@@ -59,19 +58,13 @@ const QUICK_ACTIONS = [
 ] as const;
 
 async function fetchPublishedAnnouncements(): Promise<Announcement[]> {
-  try {
-    const { data, error } = await supabase
-      .from("announcements")
-      .select("*")
-      .eq("status", "Published")
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (error) return [];
-    return (data ?? []) as Announcement[];
-  } catch {
-    return [];
-  }
+  const items = await fetchPublishedAnnouncementsForOwner();
+  return items.slice(0, 5).map((item) => ({
+    id: item.id,
+    title: item.title,
+    message: item.message,
+    createdAt: item.createdAt,
+  }));
 }
 
 function buildRecentActivity(
@@ -245,9 +238,9 @@ export function DashboardHome() {
                   {announcement.message}
                 </p>
               ) : null}
-              {announcement.created_at ? (
+              {announcement.createdAt ? (
                 <p className="mt-2 text-xs text-white/35">
-                  {formatDemoDateTime(announcement.created_at)}
+                  {formatDemoDateTime(announcement.createdAt)}
                 </p>
               ) : null}
             </div>

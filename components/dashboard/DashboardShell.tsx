@@ -7,6 +7,8 @@ import { ImpersonationBannerHost } from "./ImpersonationBannerHost";
 import { RestaurantProvider } from "./RestaurantProvider";
 import { SubscriptionAccessProvider } from "./SubscriptionAccessProvider";
 import { SubscriptionLockBanner } from "./SubscriptionLockBanner";
+import { AnnouncementProvider } from "@/components/announcements/AnnouncementProvider";
+import { OwnerAnnouncementBanner } from "@/components/announcements/OwnerAnnouncementBanner";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -46,7 +48,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
     <AuthGuard>
       <RestaurantProvider>
         <SubscriptionAccessProvider>
-          <div className="min-h-screen bg-background">
+          <AnnouncementProvider>
+            <div className="min-h-screen bg-background">
             <Sidebar
               collapsed={collapsed}
               mobileOpen={mobileOpen}
@@ -64,10 +67,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <main className="px-4 pb-10 pt-2 sm:px-6 lg:px-8">
                 <ImpersonationBannerHost />
                 <SubscriptionLockBanner />
+                <OwnerAnnouncementBanner />
                 {children}
               </main>
             </motion.div>
           </div>
+          </AnnouncementProvider>
         </SubscriptionAccessProvider>
       </RestaurantProvider>
     </AuthGuard>

@@ -7,7 +7,11 @@ import { DashboardIcon } from "@/components/dashboard/icons/DashboardIcons";
 import { fetchNotifications } from "@/lib/notifications/fetchNotifications";
 import { markAllNotificationsRead } from "@/lib/notifications/markAllNotificationsRead";
 import { markNotificationRead } from "@/lib/notifications/markNotificationRead";
-import type { NotificationItem } from "@/lib/notifications/types";
+import {
+  getAnnouncementIdFromNotification,
+  type NotificationItem,
+} from "@/lib/notifications/types";
+import { useAnnouncementsOptional } from "@/components/announcements/AnnouncementProvider";
 
 const POLL_INTERVAL_MS = 60000;
 
@@ -27,6 +31,7 @@ function formatRelativeTime(iso: string): string {
 
 export function NotificationCenter() {
   const router = useRouter();
+  const announcements = useAnnouncementsOptional();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -75,6 +80,13 @@ export function NotificationCenter() {
       void markNotificationRead(item.id);
     }
     setOpen(false);
+
+    const announcementId = getAnnouncementIdFromNotification(item);
+    if (announcementId && announcements) {
+      void announcements.openDetail(announcementId);
+      return;
+    }
+
     if (item.href) router.push(item.href);
   };
 
@@ -156,6 +168,11 @@ export function NotificationCenter() {
                     className={`flex w-full items-start gap-3 border-b border-white/5 px-4 py-3 text-start transition-colors last:border-0 hover:bg-white/[0.03] ${
                       item.isRead ? "" : "bg-gold/[0.04]"
                     }`}
+                    aria-label={
+                      item.isRead
+                        ? `${item.title}: ${item.body}`
+                        : `Unread: ${item.title}: ${item.body}`
+                    }
                   >
                     <span
                       className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${

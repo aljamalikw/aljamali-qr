@@ -18,16 +18,16 @@ export const whatsappPrefillMessage = DEFAULT_PLATFORM_WHATSAPP_MESSAGE;
 export const navLinks = [
   { label: "Home", href: "#hero" },
   { label: "Features", href: "#features" },
-  { label: "Why Us", href: "#why-us" },
   { label: "Pricing", href: "#pricing" },
+  { label: "Why Us", href: "#why-us" },
   { label: "Contact", href: "#contact" },
 ] as const;
 
 export const mobileNavLinks = [
   { label: "Home", href: "#hero" },
   { label: "Features", href: "#features" },
-  { label: "Why Us", href: "#why-us" },
   { label: "Pricing", href: "#pricing" },
+  { label: "Why Us", href: "#why-us" },
   { label: "Contact", href: "#contact" },
   { label: "Login", href: "/login" },
 ] as const;

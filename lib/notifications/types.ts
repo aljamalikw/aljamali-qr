@@ -80,3 +80,11 @@ const NOTIFICATION_ICONS: Record<string, string> = {
 export function getNotificationIconKey(type: string): string {
   return NOTIFICATION_ICONS[type] ?? "bell";
 }
+
+export function getAnnouncementIdFromNotification(
+  item: NotificationItem,
+): string | null {
+  if (item.type !== "new_announcement") return null;
+  const id = item.meta?.announcementId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
