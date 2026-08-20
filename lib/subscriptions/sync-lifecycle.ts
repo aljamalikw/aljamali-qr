@@ -1,8 +1,11 @@
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 import {
-  resolveEffectiveStatus,
-  type SubscriptionStatus,
-} from "@/lib/subscriptions/engine";
+  buildEffectiveOwnerSubscription,
+  resolveCanonicalEffectiveStatus,
+  type OwnerRestaurantRef,
+  type OwnerSubscriptionDbRow,
+} from "@/lib/subscriptions/owner-subscription";
+import type { SubscriptionStatus } from "@/lib/subscriptions/engine";
 
 export type LifecycleSyncResult = {
   scanned: number;
@@ -12,21 +15,24 @@ export type LifecycleSyncResult = {
   errors: string[];
 };
 
-type SubRow = {
-  id: string;
+type SubRow = OwnerSubscriptionDbRow & {
   restaurant_id: string;
-  plan: string | null;
-  status: string;
-  trial_started_at: string | null;
-  trial_ends_at: string | null;
-  grace_period_days: number | null;
-  renewal_date: string | null;
-  cancelled_at: string | null;
 };
 
+type RestaurantRow = OwnerRestaurantRef & {
+  is_active?: boolean | null;
+  is_archived?: boolean | null;
+};
+
+const SUB_SELECT =
+  "id, restaurant_id, plan, monthly_price, currency, status, renewal_date, started_at, cancelled_at, trial_started_at, trial_ends_at, grace_period_days, created_at, updated_at, is_covered";
+const SUB_SELECT_LEGACY =
+  "id, restaurant_id, plan, monthly_price, currency, status, renewal_date, started_at, cancelled_at, trial_started_at, trial_ends_at, grace_period_days, created_at, updated_at";
+
 /**
- * Persist effective subscription statuses and auto-suspend restaurants after grace.
- * Uses the service role so it can run from a cron/API without a user session.
+ * Persist effective owner-level subscription statuses and auto-suspend
+ * covered restaurants after grace. Restaurant-level trial_ends_at is never
+ * rewritten; covered locations follow the canonical owner row.
  */
 export async function syncAllSubscriptionLifecycles(): Promise<LifecycleSyncResult> {
   const result: LifecycleSyncResult = {
@@ -38,108 +44,124 @@ export async function syncAllSubscriptionLifecycles(): Promise<LifecycleSyncResu
   };
 
   const supabase = createServiceSupabaseClient();
-  const { data, error } = await supabase
-    .from("restaurant_subscriptions")
-    .select(
-      "id, restaurant_id, plan, status, trial_started_at, trial_ends_at, grace_period_days, renewal_date, cancelled_at",
-    );
+  const withCoverage = await supabase.from("restaurant_subscriptions").select(SUB_SELECT);
+  const subResult = withCoverage.error
+    ? await supabase.from("restaurant_subscriptions").select(SUB_SELECT_LEGACY)
+    : withCoverage;
 
-  if (error) {
-    result.errors.push(error.message);
+  if (subResult.error) {
+    result.errors.push(subResult.error.message);
     return result;
   }
 
-  const rows = (data ?? []) as SubRow[];
+  const rows = (subResult.data ?? []) as SubRow[];
   result.scanned = rows.length;
+
+  const { data: restaurantData, error: restaurantError } = await supabase
+    .from("restaurants")
+    .select("id, owner_id, created_at, restaurant_name, is_active, is_archived");
+
+  if (restaurantError) {
+    result.errors.push(restaurantError.message);
+    return result;
+  }
+
+  const restaurants = (restaurantData ?? []) as RestaurantRow[];
+  const restaurantsByOwner = new Map<string, RestaurantRow[]>();
+  for (const restaurant of restaurants) {
+    const list = restaurantsByOwner.get(restaurant.owner_id) ?? [];
+    list.push(restaurant);
+    restaurantsByOwner.set(restaurant.owner_id, list);
+  }
+
+  const subsByRestaurant = new Map(rows.map((row) => [row.restaurant_id, row]));
   const now = new Date();
 
-  for (const row of rows) {
+  for (const [ownerId, ownerRestaurants] of restaurantsByOwner) {
     try {
-      const effective = resolveEffectiveStatus(
-        {
-          plan: row.plan,
-          status: row.status as SubscriptionStatus,
-          trialStartedAt: row.trial_started_at,
-          trialEndsAt: row.trial_ends_at,
-          gracePeriodDays: row.grace_period_days,
-          renewalDate: row.renewal_date,
-          cancelledAt: row.cancelled_at,
-        },
+      const subscriptions = ownerRestaurants
+        .map((restaurant) => subsByRestaurant.get(restaurant.id))
+        .filter((row): row is SubRow => Boolean(row));
+
+      const effective = buildEffectiveOwnerSubscription(
+        ownerId,
+        ownerRestaurants,
+        subscriptions,
+      );
+      if (!effective) continue;
+
+      const canonicalStatus = resolveCanonicalEffectiveStatus(
+        effective.canonical,
         now,
       );
+      const covered = new Set(effective.coveredRestaurantIds);
 
-      if (effective !== row.status) {
-        const payload: Record<string, unknown> = { status: effective };
-        if (effective === "cancelled") {
-          payload.cancelled_at = row.cancelled_at ?? now.toISOString();
-        } else {
-          payload.cancelled_at = null;
+      for (const restaurant of ownerRestaurants) {
+        if (!covered.has(restaurant.id)) continue;
+        const row = subsByRestaurant.get(restaurant.id);
+        if (!row) continue;
+
+        if (canonicalStatus !== row.status) {
+          const payload: Record<string, unknown> = { status: canonicalStatus };
+          if (canonicalStatus === "cancelled") {
+            payload.cancelled_at = row.cancelled_at ?? now.toISOString();
+          } else {
+            payload.cancelled_at = null;
+          }
+
+          const { error: updateError } = await supabase
+            .from("restaurant_subscriptions")
+            .update(payload)
+            .eq("id", row.id);
+
+          if (updateError) {
+            result.errors.push(`${row.id}: ${updateError.message}`);
+            continue;
+          }
+          result.updated += 1;
         }
 
-        const { error: updateError } = await supabase
-          .from("restaurant_subscriptions")
-          .update(payload)
-          .eq("id", row.id);
+        const shouldSuspend =
+          canonicalStatus === "suspended" ||
+          canonicalStatus === "expired" ||
+          canonicalStatus === "cancelled";
 
-        if (updateError) {
-          result.errors.push(`${row.id}: ${updateError.message}`);
-          continue;
-        }
-        result.updated += 1;
-      }
-
-      const shouldSuspend =
-        effective === "suspended" ||
-        effective === "expired" ||
-        effective === "cancelled";
-
-      if (shouldSuspend) {
-        const { data: restaurant } = await supabase
-          .from("restaurants")
-          .select("id, is_active")
-          .eq("id", row.restaurant_id)
-          .maybeSingle();
-
-        if (restaurant && restaurant.is_active !== false) {
+        if (shouldSuspend && restaurant.is_active !== false) {
           const { error: suspendError } = await supabase
             .from("restaurants")
             .update({ is_active: false })
-            .eq("id", row.restaurant_id);
+            .eq("id", restaurant.id);
           if (suspendError) {
-            result.errors.push(
-              `suspend ${row.restaurant_id}: ${suspendError.message}`,
-            );
+            result.errors.push(`suspend ${restaurant.id}: ${suspendError.message}`);
           } else {
             result.suspendedRestaurants += 1;
           }
         }
-      }
 
-      if (effective === "active" || effective === "trial" || effective === "grace") {
-        const { data: restaurant } = await supabase
-          .from("restaurants")
-          .select("id, is_active, is_archived")
-          .eq("id", row.restaurant_id)
-          .maybeSingle();
+        const shouldKeepOnline =
+          canonicalStatus === "active" ||
+          canonicalStatus === "trial" ||
+          canonicalStatus === "grace";
 
-        // Only auto-reactivate non-archived restaurants that were soft-suspended by billing.
         if (
-          restaurant &&
+          shouldKeepOnline &&
           restaurant.is_active === false &&
           restaurant.is_archived !== true &&
           (row.status === "suspended" ||
             row.status === "expired" ||
-            effective === "active")
+            canonicalStatus === "active")
         ) {
-          // Do not auto-reactivate cancelled → leave admin/payment flows explicit.
-          if (effective === "active" || effective === "trial") {
+          if (
+            (canonicalStatus === "active" || canonicalStatus === "trial") &&
+            (row.status as SubscriptionStatus) !== "cancelled"
+          ) {
             const { error: reactivateError } = await supabase
               .from("restaurants")
               .update({ is_active: true })
-              .eq("id", row.restaurant_id);
+              .eq("id", restaurant.id);
             if (reactivateError) {
               result.errors.push(
-                `reactivate ${row.restaurant_id}: ${reactivateError.message}`,
+                `reactivate ${restaurant.id}: ${reactivateError.message}`,
               );
             } else {
               result.reactivatedRestaurants += 1;
@@ -149,7 +171,7 @@ export async function syncAllSubscriptionLifecycles(): Promise<LifecycleSyncResu
       }
     } catch (err) {
       result.errors.push(
-        `${row.id}: ${err instanceof Error ? err.message : "unknown error"}`,
+        `${ownerId}: ${err instanceof Error ? err.message : "unknown error"}`,
       );
     }
   }

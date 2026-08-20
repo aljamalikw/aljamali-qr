@@ -153,7 +153,9 @@ export async function fetchOwnerCrmProfile(
         a.createdAt.localeCompare(b.createdAt),
       )[0] ?? null;
 
-    const planSource = pickPrimaryByPlan(restaurants, (r) => r.createdAt);
+    const planSource =
+      restaurants.find((r) => r.isBillingPrimary) ??
+      pickPrimaryByPlan(restaurants, (r) => r.createdAt);
 
     const ownerTickets = ticketsResult.ok ? ticketsResult.data : [];
 
@@ -178,7 +180,7 @@ export async function fetchOwnerCrmProfile(
       reservations: restaurants.reduce((sum, r) => sum + r.reservationCount, 0),
       supportTickets: supportTickets.length,
       monthlyRevenue: restaurants
-        .filter((r) => r.isActive && !r.isArchived)
+        .filter((r) => r.isBillingPrimary && r.isActive && !r.isArchived)
         .reduce((sum, r) => sum + (r.monthlyPrice || 0), 0),
       currentPlan: planSource.plan,
     };

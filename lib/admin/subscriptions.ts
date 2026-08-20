@@ -12,7 +12,8 @@ import {
 import {
   assertRestaurantsOwnedByOwner,
   attachRestaurantToOwnerSubscription,
-  computeCoveredRestaurantIds,
+  buildEffectiveOwnerSubscription,
+  resolveCanonicalEffectiveStatus,
   resolveEffectiveOwnerSubscription,
 } from "@/lib/subscriptions/owner-subscription";
 import {
@@ -220,8 +221,10 @@ export async function fetchSubscriptions(): Promise<
     if (error) return { ok: false, message: error.message || ERROR };
 
     const rows = (data ?? []) as SubscriptionRow[];
-    const synced = await Promise.all(rows.map((row) => syncStoredStatus(row)));
-    return { ok: true, data: synced.map(mapRow).filter((row) => Boolean(row.ownerId)) };
+    return {
+      ok: true,
+      data: rows.map(mapRow).filter((row) => Boolean(row.ownerId)),
+    };
   } catch {
     return { ok: false, message: ERROR };
   }
@@ -278,8 +281,50 @@ export function groupSubscriptionsByOwner(
     const ownerSubs = subsByOwner.get(ownerId) ?? [];
     if (ownerSubs.length === 0) continue;
 
-    const primary = pickPrimarySubscription(ownerSubs);
     const ownedRestaurants = restaurantsByOwner.get(ownerId) ?? [];
+    const restaurantRefs =
+      ownedRestaurants.length > 0
+        ? ownedRestaurants.map((restaurant) => ({
+            id: restaurant.id,
+            owner_id: ownerId,
+            created_at: restaurant.created_at,
+            restaurant_name: restaurant.restaurant_name,
+          }))
+        : ownerSubs.map((sub) => ({
+            id: sub.restaurantId,
+            owner_id: ownerId,
+            created_at: sub.createdAt,
+            restaurant_name: sub.restaurantName,
+          }));
+    const subscriptionRows = ownerSubs.map((sub) => ({
+      id: sub.id,
+      restaurant_id: sub.restaurantId,
+      plan: sub.plan,
+      monthly_price: sub.monthlyPrice,
+      currency: sub.currency,
+      status: sub.status,
+      renewal_date: sub.renewalDate,
+      started_at: sub.startedAt,
+      cancelled_at: sub.cancelledAt,
+      trial_started_at: sub.trialStartedAt,
+      trial_ends_at: sub.trialEndsAt,
+      grace_period_days: sub.gracePeriodDays,
+      created_at: sub.createdAt,
+      updated_at: sub.updatedAt,
+      is_covered: sub.isCovered,
+    }));
+    const effective = buildEffectiveOwnerSubscription(
+      ownerId,
+      restaurantRefs,
+      subscriptionRows,
+    );
+    const primary =
+      ownerSubs.find((sub) => sub.id === effective?.canonical.id) ??
+      pickPrimarySubscription(ownerSubs);
+    const ownerStatus = effective
+      ? resolveCanonicalEffectiveStatus(effective.canonical)
+      : primary.status;
+    const coveredIds = new Set(effective?.coveredRestaurantIds ?? []);
 
     const restaurantMap = new Map<string, OwnerRestaurantSummary>();
     for (const restaurant of ownedRestaurants) {
@@ -287,7 +332,7 @@ export function groupSubscriptionsByOwner(
         restaurantId: restaurant.id,
         restaurantName: restaurant.restaurant_name,
         subscriptionId: null,
-        isCovered: false,
+        isCovered: coveredIds.has(restaurant.id),
       });
     }
     for (const sub of ownerSubs) {
@@ -295,41 +340,13 @@ export function groupSubscriptionsByOwner(
         restaurantId: sub.restaurantId,
         restaurantName: sub.restaurantName,
         subscriptionId: sub.id,
-        isCovered: sub.isCovered,
+        isCovered: coveredIds.has(sub.restaurantId),
       });
     }
 
     const restaurantSummaries = [...restaurantMap.values()].sort((a, b) =>
       (a.restaurantName ?? "").localeCompare(b.restaurantName ?? ""),
     );
-
-    const coveredIds = new Set(
-      computeCoveredRestaurantIds(
-        ownedRestaurants.map((restaurant) => ({
-          id: restaurant.id,
-          owner_id: ownerId,
-          created_at: restaurant.created_at,
-          restaurant_name: restaurant.restaurant_name,
-        })),
-        ownerSubs.map((sub) => ({
-          id: sub.id,
-          restaurant_id: sub.restaurantId,
-          plan: sub.plan,
-          status: sub.status,
-          renewal_date: sub.renewalDate,
-          cancelled_at: sub.cancelledAt,
-          trial_started_at: sub.trialStartedAt,
-          trial_ends_at: sub.trialEndsAt,
-          grace_period_days: sub.gracePeriodDays,
-          is_covered: sub.isCovered,
-        })),
-        primary.plan,
-      ),
-    );
-
-    for (const summary of restaurantSummaries) {
-      summary.isCovered = coveredIds.has(summary.restaurantId);
-    }
 
     accounts.push({
       ownerId,
@@ -341,11 +358,13 @@ export function groupSubscriptionsByOwner(
         ...ownedRestaurants.map((r) => r.email),
         ...ownerSubs.map((s) => s.restaurantEmail),
       ),
-      plan: primary.plan,
-      monthlyPrice: primary.monthlyPrice,
-      currency: primary.currency,
-      status: primary.status,
-      renewalDate: primary.renewalDate,
+      plan: effective?.ownerPlan ?? primary.plan,
+      monthlyPrice: Number(
+        effective?.canonical.monthly_price ?? primary.monthlyPrice,
+      ),
+      currency: effective?.canonical.currency || primary.currency,
+      status: ownerStatus,
+      renewalDate: effective?.canonical.renewal_date ?? primary.renewalDate,
       restaurantCount: restaurantSummaries.length,
       coveredCount: coveredIds.size,
       restaurants: restaurantSummaries,
@@ -414,8 +433,7 @@ export async function fetchOwnerSubscription(
     if (error) return { ok: false, message: error.message || ERROR };
     if (!data) return { ok: true, data: null };
 
-    const synced = await syncStoredStatus(data as SubscriptionRow);
-    const mapped = mapRow(synced);
+    const mapped = mapRow(data as SubscriptionRow);
     const effective = await resolveEffectiveOwnerSubscription(
       supabase,
       restaurantId,
@@ -424,6 +442,8 @@ export async function fetchOwnerSubscription(
       return { ok: true, data: mapped };
     }
 
+    const canonicalStatus = resolveCanonicalEffectiveStatus(effective.canonical);
+
     return {
       ok: true,
       data: {
@@ -431,7 +451,7 @@ export async function fetchOwnerSubscription(
         plan: effective.ownerPlan,
         monthlyPrice: Number(effective.canonical.monthly_price ?? mapped.monthlyPrice),
         currency: effective.canonical.currency || mapped.currency,
-        status: (effective.canonical.status as SubscriptionStatus) || mapped.status,
+        status: canonicalStatus,
         renewalDate: effective.canonical.renewal_date,
         cancelledAt: effective.canonical.cancelled_at,
         trialStartedAt: effective.canonical.trial_started_at,

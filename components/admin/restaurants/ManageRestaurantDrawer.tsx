@@ -107,15 +107,17 @@ export function ManageRestaurantDrawer({
     "Unnamed restaurant";
 
   const trial = formatTrialCountdown(
-    details?.subscription?.trialEndsAt ?? restaurant.trialEndsAt,
+    details?.subscription?.renewalDate ??
+      details?.subscription?.trialEndsAt ??
+      restaurant.renewalDate ??
+      restaurant.trialEndsAt,
   );
 
-  const trialRemaining =
-    details?.subscription?.status === "trial" || restaurant.status === "trial"
+  const trialRemaining = details?.subscription
+    ? details.subscription.status === "trial"
       ? trial.remainingLabel
-      : details?.subscription
-        ? `${details.subscription.status}`
-        : "—";
+      : details.subscription.status
+    : restaurant.subscriptionStatus ?? "—";
 
   const runSubscriptionAction = async () => {
     if (!pendingSubAction) return;
@@ -258,10 +260,18 @@ export function ManageRestaurantDrawer({
                     />
                     <InfoRow
                       label="Current Plan"
-                      value={details.subscription?.plan ?? restaurant.plan}
+                      value={details.subscription?.plan ?? restaurant.ownerPlan ?? restaurant.plan}
                     />
                     <InfoRow
-                      label="Trial Ends"
+                      label="Coverage"
+                      value={
+                        (details.subscription?.isCovered ?? restaurant.isCovered)
+                          ? "Covered"
+                          : "Not covered — upgrade required"
+                      }
+                    />
+                    <InfoRow
+                      label="Renewal"
                       value={
                         <div>
                           <p>{trial.dateLabel}</p>
@@ -347,9 +357,31 @@ export function ManageRestaurantDrawer({
                   <div className="grid gap-3">
                     <InfoRow
                       label="Current Plan"
-                      value={details.subscription?.plan ?? restaurant.plan}
+                      value={details.subscription?.plan ?? restaurant.ownerPlan ?? restaurant.plan}
                     />
-                    <InfoRow label="Trial Remaining" value={trialRemaining} />
+                    <InfoRow
+                      label="Coverage"
+                      value={
+                        (details.subscription?.isCovered ?? restaurant.isCovered)
+                          ? "Covered"
+                          : "Not covered — upgrade required"
+                      }
+                    />
+                    <InfoRow
+                      label="Subscription"
+                      value={details.subscription?.status ?? restaurant.subscriptionStatus ?? "—"}
+                    />
+                    <InfoRow
+                      label="Renewal"
+                      value={formatDemoDate(
+                        details.subscription?.renewalDate ?? restaurant.renewalDate,
+                      )}
+                    />
+                    <InfoRow label="Period remaining" value={trialRemaining} />
+                    <InfoRow
+                      label="Historical trial"
+                      value={formatDemoDate(restaurant.historicalTrialEndsAt)}
+                    />
                     <div className="rounded-xl border border-white/5 bg-black/30 px-4 py-3">
                       <p className="text-[11px] uppercase tracking-wider text-white/40">
                         Upgrade Plan

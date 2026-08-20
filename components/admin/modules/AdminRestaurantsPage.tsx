@@ -35,6 +35,11 @@ import {
   type SubscriptionPlan,
 } from "@/lib/admin/subscriptions";
 import {
+  formatCoveredRestaurantUsage,
+  formatPlanPriceLabel,
+  normalizePlanId,
+} from "@/lib/subscriptions/plans";
+import {
   formatDemoDate,
   paginateDemoRequests,
 } from "@/lib/demo-requests/utils";
@@ -69,20 +74,39 @@ function StatusBadge({ status }: { status: RestaurantStatusFilter }) {
   );
 }
 
-function TrialCell({ trialEndsAt }: { trialEndsAt: string | null }) {
-  const trial = formatTrialCountdown(trialEndsAt);
+function CoverageBadge({ covered }: { covered: boolean }) {
+  return covered ? (
+    <span className="inline-flex rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
+      Covered
+    </span>
+  ) : (
+    <span className="inline-flex rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200">
+      Not covered
+    </span>
+  );
+}
+
+function RenewalCell({
+  renewalDate,
+  historicalTrialEndsAt,
+}: {
+  renewalDate: string | null;
+  historicalTrialEndsAt: string | null;
+}) {
+  const renewal = formatTrialCountdown(renewalDate);
+  const historical =
+    historicalTrialEndsAt && historicalTrialEndsAt !== renewalDate
+      ? formatTrialCountdown(historicalTrialEndsAt)
+      : null;
   return (
     <div>
-      <p className="text-sm text-white/70">{trial.dateLabel}</p>
-      {trial.remainingLabel ? (
-        <p
-          className={`mt-0.5 text-xs ${
-            trial.remainingLabel.startsWith("Expired")
-              ? "text-orange-300/80"
-              : "text-white/40"
-          }`}
-        >
-          {trial.remainingLabel}
+      <p className="text-sm text-white/70">{renewal.dateLabel}</p>
+      {renewal.remainingLabel ? (
+        <p className="mt-0.5 text-xs text-white/40">{renewal.remainingLabel}</p>
+      ) : null}
+      {historical ? (
+        <p className="mt-1 text-[11px] text-white/30">
+          Historical trial: {historical.dateLabel}
         </p>
       ) : null}
     </div>
@@ -163,24 +187,37 @@ export function AdminRestaurantsPage() {
     return () => window.removeEventListener("click", close);
   }, [menuOpenId]);
 
-  const filteredRestaurants = useMemo(() => {
+  const ownerGroupsAll = useMemo(
+    () => groupRestaurantManagementByOwner(restaurants),
+    [restaurants],
+  );
+
+  const ownerGroups = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return restaurants.filter((restaurant) => {
-      if (status !== "all" && restaurant.status !== status) return false;
-      if (plan !== "all" && restaurant.plan !== plan) return false;
+    return ownerGroupsAll.filter((group) => {
+      if (plan !== "all" && group.plan !== plan) return false;
+      if (
+        status !== "all" &&
+        !group.restaurants.some((restaurant) => restaurant.status === status)
+      ) {
+        return false;
+      }
       if (!query) return true;
       return (
-        (restaurant.restaurantName?.toLowerCase().includes(query) ?? false) ||
-        (restaurant.ownerName?.toLowerCase().includes(query) ?? false) ||
-        (restaurant.email?.toLowerCase().includes(query) ?? false) ||
-        restaurant.plan.toLowerCase().includes(query)
+        (group.ownerName?.toLowerCase().includes(query) ?? false) ||
+        (group.email?.toLowerCase().includes(query) ?? false) ||
+        group.plan.toLowerCase().includes(query) ||
+        group.restaurants.some(
+          (restaurant) =>
+            restaurant.restaurantName?.toLowerCase().includes(query) ?? false,
+        )
       );
     });
-  }, [restaurants, search, status, plan]);
+  }, [ownerGroupsAll, search, status, plan]);
 
-  const ownerGroups = useMemo(
-    () => groupRestaurantManagementByOwner(filteredRestaurants),
-    [filteredRestaurants],
+  const filteredRestaurants = useMemo(
+    () => ownerGroups.flatMap((group) => group.restaurants),
+    [ownerGroups],
   );
 
   const kpis = useMemo(
@@ -549,8 +586,64 @@ export function AdminRestaurantsPage() {
                         {expanded ? (
                           <tr className="border-b border-white/5 bg-black/30">
                             <td colSpan={5} className="px-4 py-3">
+                              <div className="mb-4 grid gap-3 rounded-xl border border-gold/15 bg-black/40 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-wider text-white/35">
+                                    Owner
+                                  </p>
+                                  <p className="mt-1 text-sm text-white">
+                                    {ownerLabel}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-wider text-white/35">
+                                    Plan
+                                  </p>
+                                  <p className="mt-1 text-sm text-gold">
+                                    {group.plan}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-wider text-white/35">
+                                    Price
+                                  </p>
+                                  <p className="mt-1 text-sm text-white/80">
+                                    {formatPlanPriceLabel(
+                                      normalizePlanId(group.plan),
+                                    )}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-wider text-white/35">
+                                    Subscription
+                                  </p>
+                                  <p className="mt-1 text-sm capitalize text-white/80">
+                                    {group.subscriptionStatus ?? "—"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-wider text-white/35">
+                                    Renewal
+                                  </p>
+                                  <p className="mt-1 text-sm text-white/80">
+                                    {formatDemoDate(group.renewalDate)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-wider text-white/35">
+                                    Covered
+                                  </p>
+                                  <p className="mt-1 text-sm text-white/80">
+                                    {formatCoveredRestaurantUsage(
+                                      group.plan,
+                                      group.coveredCount,
+                                      group.restaurantCount,
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
                               <p className="mb-3 text-[11px] uppercase tracking-wider text-white/35">
-                                Restaurants under this account
+                                Restaurants
                               </p>
                               <div className="overflow-x-auto rounded-xl border border-white/5">
                                 <table className="w-full min-w-[1100px] text-left">
@@ -559,9 +652,10 @@ export function AdminRestaurantsPage() {
                                       {[
                                         "Restaurant Name",
                                         "Slug",
+                                        "Coverage",
                                         "Status",
                                         "Created Date",
-                                        "Trial Ends",
+                                        "Renewal",
                                         "Active QR Codes",
                                         "Actions",
                                       ].map((heading) => (
@@ -598,6 +692,16 @@ export function AdminRestaurantsPage() {
                                               : "—"}
                                           </td>
                                           <td className="px-3 py-3">
+                                            <CoverageBadge
+                                              covered={restaurant.isCovered}
+                                            />
+                                            {!restaurant.isCovered ? (
+                                              <p className="mt-1 text-[11px] text-white/35">
+                                                Upgrade required
+                                              </p>
+                                            ) : null}
+                                          </td>
+                                          <td className="px-3 py-3">
                                             <StatusBadge
                                               status={restaurant.status}
                                             />
@@ -606,8 +710,11 @@ export function AdminRestaurantsPage() {
                                             {formatDemoDate(restaurant.createdAt)}
                                           </td>
                                           <td className="px-3 py-3">
-                                            <TrialCell
-                                              trialEndsAt={restaurant.trialEndsAt}
+                                            <RenewalCell
+                                              renewalDate={restaurant.renewalDate}
+                                              historicalTrialEndsAt={
+                                                restaurant.historicalTrialEndsAt
+                                              }
                                             />
                                           </td>
                                           <td className="px-3 py-3 font-serif text-gold">
@@ -764,10 +871,18 @@ export function AdminRestaurantsPage() {
                 ["Owner", viewTarget.ownerName || "—"],
                 ["Email", viewTarget.email || "—"],
                 ["Phone", viewTarget.phone || "—"],
-                ["Plan", viewTarget.plan],
+                ["Plan", viewTarget.ownerPlan || viewTarget.plan],
+                [
+                  "Coverage",
+                  viewTarget.isCovered ? "Covered" : "Not covered",
+                ],
                 ["Status", STATUS_LABELS[viewTarget.status]],
                 ["Created", formatDemoDate(viewTarget.createdAt)],
-                ["Trial Ends", formatDemoDate(viewTarget.trialEndsAt)],
+                ["Renewal", formatDemoDate(viewTarget.renewalDate)],
+                [
+                  "Historical trial",
+                  formatDemoDate(viewTarget.historicalTrialEndsAt),
+                ],
                 ["Active QR Codes", String(viewTarget.activeQrCodes)],
                 ["City", viewTarget.city || "—"],
                 ["Slug", viewTarget.slug ? `/${viewTarget.slug}` : "—"],
@@ -859,7 +974,7 @@ export function AdminRestaurantsPage() {
               </p>
               <p className="flex justify-between gap-3">
                 <span className="text-white/45">Current Plan</span>
-                <span className="text-gold">{deleteTarget.plan}</span>
+                <span className="text-gold">{deleteTarget.ownerPlan || deleteTarget.plan}</span>
               </p>
               <p className="flex justify-between gap-3">
                 <span className="text-white/45">Created</span>
@@ -868,9 +983,9 @@ export function AdminRestaurantsPage() {
                 </span>
               </p>
               <p className="flex justify-between gap-3">
-                <span className="text-white/45">Trial Ends</span>
+                <span className="text-white/45">Renewal</span>
                 <span className="text-white">
-                  {formatDemoDate(deleteTarget.trialEndsAt)}
+                  {formatDemoDate(deleteTarget.renewalDate)}
                 </span>
               </p>
             </div>

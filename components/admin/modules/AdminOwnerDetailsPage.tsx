@@ -451,7 +451,16 @@ export function AdminOwnerDetailsPage({ ownerId }: AdminOwnerDetailsPageProps) {
                             </h3>
                             <StatusBadge status={restaurant.status} />
                             <span className="rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-xs text-gold">
-                              {restaurant.plan}
+                              {restaurant.ownerPlan || restaurant.plan}
+                            </span>
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-xs ${
+                                restaurant.isCovered
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                  : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                              }`}
+                            >
+                              {restaurant.isCovered ? "Covered" : "Not covered"}
                             </span>
                             {restaurant.isActive && !restaurant.isArchived ? (
                               <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">

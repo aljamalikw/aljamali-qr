@@ -128,6 +128,7 @@ export function computeRestaurantManagementKpis(
     activeQrCodes: number;
     monthlyPrice?: number;
     subscriptionStatus?: string | null;
+    isBillingPrimary?: boolean;
   }>,
 ): RestaurantManagementKpis {
   const kpis: RestaurantManagementKpis = {
@@ -149,8 +150,9 @@ export function computeRestaurantManagementKpis(
     if (row.status === "archived") kpis.archived += 1;
     if (row.status === "expired") kpis.expired += 1;
     if (
-      row.subscriptionStatus === "active" ||
-      row.subscriptionStatus === "grace"
+      row.isBillingPrimary &&
+      (row.subscriptionStatus === "active" ||
+        row.subscriptionStatus === "grace")
     ) {
       kpis.mrr += row.monthlyPrice ?? 0;
     }

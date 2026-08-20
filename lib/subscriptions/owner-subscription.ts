@@ -5,7 +5,10 @@ import {
   normalizePlanId,
   type SubscriptionPlanId,
 } from "@/lib/subscriptions/plans";
-import type { SubscriptionStatus } from "@/lib/subscriptions/engine";
+import {
+  resolveEffectiveStatus,
+  type SubscriptionStatus,
+} from "@/lib/subscriptions/engine";
 
 export type OwnerSubscriptionDbRow = {
   id: string;
@@ -78,14 +81,59 @@ async function loadSubscriptionRows(
   return (legacy.data ?? []) as OwnerSubscriptionDbRow[];
 }
 
+function canonicalTieBreaker(row: OwnerSubscriptionDbRow): string {
+  return (
+    row.renewal_date ||
+    row.trial_ends_at ||
+    row.updated_at ||
+    row.created_at ||
+    ""
+  );
+}
+
 export function pickCanonicalSubscription(
   rows: OwnerSubscriptionDbRow[],
 ): OwnerSubscriptionDbRow | null {
   if (rows.length === 0) return null;
   return pickPrimaryByPlan(
     rows.map((row) => ({ ...row, plan: normalizePlanId(row.plan) })),
-    (item) => item.updated_at ?? item.created_at ?? "",
+    canonicalTieBreaker,
   );
+}
+
+/** In-memory owner resolver. Prefer this over re-implementing coverage/canonical pick. */
+export function buildEffectiveOwnerSubscription(
+  ownerId: string,
+  restaurants: OwnerRestaurantRef[],
+  subscriptions: OwnerSubscriptionDbRow[],
+  restaurantId?: string,
+): EffectiveOwnerSubscription | null {
+  const canonical = pickCanonicalSubscription(subscriptions);
+  if (!canonical) return null;
+
+  const ownerPlan = normalizePlanId(canonical.plan);
+  const coveredRestaurantIds = computeCoveredRestaurantIds(
+    restaurants,
+    subscriptions,
+    ownerPlan,
+  );
+  const id = restaurantId?.trim() ?? "";
+  const locationCovered = id ? coveredRestaurantIds.includes(id) : true;
+
+  return {
+    ownerId,
+    canonical,
+    ownerPlan,
+    locationPlan: locationCovered ? ownerPlan : "Starter",
+    locationCovered,
+    restaurantCount: restaurants.length,
+    coveredCount: coveredRestaurantIds.length,
+    maxRestaurants: getMaxRestaurants(ownerPlan),
+    coveredRestaurantIds,
+    restaurantIds: restaurants.map((item) => item.id),
+    restaurants,
+    subscriptions,
+  };
 }
 
 export function computeCoveredRestaurantIds(
@@ -175,30 +223,14 @@ export async function resolveEffectiveOwnerSubscription(
     client,
     restaurant.owner_id as string,
   );
-  if (!context?.canonical) return null;
+  if (!context) return null;
 
-  const ownerPlan = normalizePlanId(context.canonical.plan);
-  const coveredRestaurantIds = computeCoveredRestaurantIds(
+  return buildEffectiveOwnerSubscription(
+    restaurant.owner_id as string,
     context.restaurants,
     context.subscriptions,
-    ownerPlan,
+    id,
   );
-  const locationCovered = coveredRestaurantIds.includes(id);
-
-  return {
-    ownerId: restaurant.owner_id as string,
-    canonical: context.canonical,
-    ownerPlan,
-    locationPlan: locationCovered ? ownerPlan : "Starter",
-    locationCovered,
-    restaurantCount: context.restaurants.length,
-    coveredCount: coveredRestaurantIds.length,
-    maxRestaurants: getMaxRestaurants(ownerPlan),
-    coveredRestaurantIds,
-    restaurantIds: context.restaurants.map((item) => item.id),
-    restaurants: context.restaurants,
-    subscriptions: context.subscriptions,
-  };
 }
 
 export function canonicalToEngineFields(row: OwnerSubscriptionDbRow): {
@@ -219,6 +251,13 @@ export function canonicalToEngineFields(row: OwnerSubscriptionDbRow): {
     renewalDate: row.renewal_date,
     cancelledAt: row.cancelled_at,
   };
+}
+
+export function resolveCanonicalEffectiveStatus(
+  row: OwnerSubscriptionDbRow,
+  now: Date = new Date(),
+): SubscriptionStatus {
+  return resolveEffectiveStatus(canonicalToEngineFields(row), now);
 }
 
 export function assertRestaurantsOwnedByOwner(
