@@ -8,8 +8,10 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -67,7 +69,12 @@ export function ConfirmModal({
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const onCancelRef = useRef(onCancel);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   onCancelRef.current = onCancel;
+
+  useEffect(() => {
+    setPortalRoot(document.body);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -150,7 +157,9 @@ export function ConfirmModal({
   const panelBorderClass =
     variant === "danger" ? "border-red-500/20" : "border-gold/15";
 
-  return (
+  if (!portalRoot) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -252,5 +261,5 @@ export function ConfirmModal({
         </>
       )}
     </AnimatePresence>
-  );
+  , portalRoot);
 }
