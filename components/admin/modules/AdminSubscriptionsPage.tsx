@@ -523,19 +523,30 @@ export function AdminSubscriptionsPage() {
 
       <ConfirmModal
         open={Boolean(editing)}
-        title="Manage Owner Subscription"
+        title="Manage Subscription"
+        scrollable
+        size="lg"
+        showCloseButton
+        headerSubtitle={
+          editing ? (
+            <p>
+              Owner:{" "}
+              <span className="text-white/80">
+                {editing.ownerName?.trim() || "Unnamed owner"}
+              </span>
+            </p>
+          ) : null
+        }
         description={
           editing ? (
-            <div className="space-y-3 text-left">
+            <div className="space-y-4 text-left">
               <div>
-                <p className="text-sm text-white/80">
-                  Owner: {editing.ownerName?.trim() || "Unnamed owner"}
-                </p>
-                <p className="mt-0.5 text-xs text-white/45">
+                <p className="text-xs text-white/45">
                   Email: {editing.ownerEmail ?? "—"}
                 </p>
-                <p className="mt-2 text-xs text-white/50">
-                  Current plan: {editing.plan} · {formatPlanPriceLabel(editing.plan)}
+                <p className="mt-2 text-sm text-white/70">
+                  Current plan: {editing.plan} ·{" "}
+                  {formatPlanPriceLabel(editing.plan)}
                 </p>
               </div>
               <label className="block text-xs uppercase tracking-wider text-white/40">
@@ -598,7 +609,7 @@ export function AdminSubscriptionsPage() {
                     editing.restaurantCount,
                   )}
                 </p>
-                <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
+                <ul className="mt-2 space-y-1.5">
                   {editing.restaurants.map((restaurant) => {
                     const checked = coveredIds.includes(restaurant.restaurantId);
                     const max = getMaxRestaurants(nextPlan);
@@ -633,7 +644,9 @@ export function AdminSubscriptionsPage() {
                 </ul>
               </div>
               {editError ? (
-                <p className="text-sm text-red-300">{editError}</p>
+                <p className="text-sm text-red-300" role="alert">
+                  {editError}
+                </p>
               ) : null}
             </div>
           ) : null
