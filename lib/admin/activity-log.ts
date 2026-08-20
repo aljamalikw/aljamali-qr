@@ -59,6 +59,10 @@ export const ACTIVITY_ACTIONS = [
   "backup_exported",
   "email_template_updated",
   "test_email_queued",
+  "payment_created_manually",
+  "payment_status_changed",
+  "payment_refunded",
+  "payment_updated",
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number] | string;

@@ -234,13 +234,29 @@ export async function exportDataset(
           restaurantIds!.includes(item.restaurantId),
         );
       }
-      const headers = ["Restaurant", "Amount", "Status", "Method", "Paid At"];
+      const headers = [
+        "Invoice",
+        "Owner",
+        "Email",
+        "Plan",
+        "Covered Restaurants",
+        "Amount",
+        "Method",
+        "Status",
+        "Paid At",
+        "Reference",
+      ];
       const rows = items.map((item) => [
-        item.restaurantName ?? "",
+        item.invoiceNumber ?? "",
+        item.ownerName ?? "",
+        item.ownerEmail ?? "",
+        item.plan ?? "",
+        item.coveredRestaurantNames.join(", "),
         String(item.amount),
-        item.status,
         item.paymentMethod ?? "",
+        item.status,
         item.paidAt ?? item.createdAt,
+        item.reference ?? "",
       ]);
       downloadExport(`payments-${stamp}`, format, headers, rows, items);
       return { ok: true };

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
+import { isAdminRole, type AppRole } from "@/lib/auth/roles";
 
 export const IMPERSONATION_COOKIE = "aj_impersonation";
 export const IMPERSONATION_MAX_AGE_SECONDS = 60 * 60 * 8; // 8 hours
@@ -93,6 +94,66 @@ export async function requireSuperAdmin(request: NextRequest): Promise<
     ok: true,
     userId: user.id,
     email: user.email ?? null,
+  };
+}
+
+export async function requirePlatformAdmin(request: NextRequest): Promise<
+  | { ok: true; userId: string; email: string | null; role: AppRole }
+  | { ok: false; response: NextResponse }
+> {
+  const header = request.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+
+  if (!token) {
+    return { ok: false, response: unauthorized("Missing access token.") };
+  }
+
+  let supabase;
+  try {
+    supabase = createServiceSupabaseClient();
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Service client unavailable.";
+    return { ok: false, response: serverError(message) };
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    return { ok: false, response: unauthorized("Invalid session.") };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const metaRole =
+    typeof user.app_metadata?.role === "string"
+      ? user.app_metadata.role
+      : typeof user.user_metadata?.role === "string"
+        ? user.user_metadata.role
+        : null;
+
+  const role = ((profile as { role?: AppRole } | null)?.role ??
+    metaRole) as AppRole | null;
+
+  if (!role || !isAdminRole(role)) {
+    return {
+      ok: false,
+      response: forbidden("Platform admin access required."),
+    };
+  }
+
+  return {
+    ok: true,
+    userId: user.id,
+    email: user.email ?? null,
+    role,
   };
 }
 
