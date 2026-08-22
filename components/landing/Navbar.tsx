@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { mobileNavLinks, navLinks } from "@/lib/landing-data";
 import { Button } from "./Button";
@@ -41,22 +42,19 @@ export function Navbar() {
       >
         <Link
           href="/"
-          className="group flex items-center gap-2 justify-self-start rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          className="group justify-self-start rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          aria-label="Aljamali QR home"
         >
-          <span
-            className={`flex items-center justify-center rounded-lg bg-gold/10 text-gold transition-all duration-300 group-hover:bg-gold/20 ${
-              scrolled ? "h-8 w-8" : "h-9 w-9"
+          <Image
+            src="/images/aljamali-qr-logo.png"
+            alt="Aljamali QR"
+            width={160}
+            height={160}
+            priority
+            className={`h-auto w-auto object-contain transition-all duration-300 ${
+              scrolled ? "max-h-10" : "max-h-12"
             }`}
-          >
-            <Icon name="qr" className={scrolled ? "h-4 w-4" : "h-5 w-5"} />
-          </span>
-          <span
-            className={`font-serif font-bold text-white transition-all duration-300 ${
-              scrolled ? "text-lg" : "text-xl"
-            }`}
-          >
-            Aljamali <span className="text-gold">QR</span>
-          </span>
+          />
         </Link>
 
         <ul className="hidden items-center gap-8 justify-self-center lg:flex">
