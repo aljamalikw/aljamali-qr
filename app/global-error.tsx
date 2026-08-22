@@ -36,8 +36,8 @@ export default function GlobalError({ reset }: GlobalErrorProps) {
           <div
             style={{
               margin: "0 auto 20px",
-              width: "260px",
-              maxWidth: "80%",
+              width: "360px",
+              maxWidth: "88%",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

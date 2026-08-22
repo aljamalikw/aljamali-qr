@@ -29,7 +29,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
-            <AljamaliLogo variant="full" className="!h-16 !max-w-[300px]" />
+            <AljamaliLogo variant="full" className="!h-24 !max-w-[440px]" />
             <p className="mt-4 max-w-md text-sm leading-relaxed text-white/50">
               Premium digital QR menus and restaurant growth tools — bilingual,
               instant, and built for modern hospitality.

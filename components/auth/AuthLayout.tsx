@@ -34,7 +34,7 @@ export function AuthLayout({
         <AljamaliLogo
           variant="full"
           priority
-          className="!h-16 !max-w-[320px] -my-1 sm:!h-[4.5rem] sm:!max-w-[360px]"
+          className="!h-[5.75rem] !max-w-[460px] -my-3 sm:!h-[6.5rem] sm:!max-w-[520px]"
         />
       </motion.div>
 
