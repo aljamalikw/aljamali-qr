@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RESTAURANT } from "@/lib/saffron-garden/menu-data";
 import { Button } from "./Button";
 
 export function Demo() {
@@ -46,8 +47,7 @@ export function Demo() {
                   <div
                     className="mb-4 h-32 w-48 overflow-hidden rounded-xl bg-cover bg-center"
                     style={{
-                      backgroundImage:
-                        "url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80')",
+                      backgroundImage: `url('${RESTAURANT.coverImage}')`,
                     }}
                   />
                   <p className="text-center font-serif text-sm font-semibold text-white">
