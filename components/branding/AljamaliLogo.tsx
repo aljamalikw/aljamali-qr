@@ -27,18 +27,18 @@ const FULL_SIZE: Record<
   full: {
     width: 360,
     height: 120,
-    className: "h-12 w-auto max-w-[240px] sm:h-14 sm:max-w-[280px]",
+    className: "h-14 w-auto max-w-[280px] sm:h-16 sm:max-w-[320px]",
   },
   navbar: {
     width: 320,
     height: 108,
     className:
-      "h-8 w-auto max-w-[168px] sm:h-10 sm:max-w-[200px] lg:h-12 lg:max-w-[240px]",
+      "h-10 w-auto max-w-[200px] -my-1 sm:h-12 sm:max-w-[240px] lg:h-14 lg:max-w-[280px]",
   },
   sidebar: {
     width: 280,
     height: 94,
-    className: "h-9 w-auto max-w-[180px]",
+    className: "h-11 w-auto max-w-[216px] -my-1",
   },
 };
 
@@ -63,7 +63,7 @@ export function AljamaliLogo({
 
   const mark = useCompact ? (
     <span
-      className={`relative inline-block h-9 w-9 shrink-0 overflow-hidden rounded-lg sm:h-10 sm:w-10 ${className}`}
+      className={`relative inline-block h-11 w-11 shrink-0 overflow-hidden rounded-lg sm:h-12 sm:w-12 ${className}`}
     >
       <Image
         src={ALJAMALI_LOGO_SRC}
@@ -71,7 +71,7 @@ export function AljamaliLogo({
         fill
         priority={priority}
         className="object-cover object-left"
-        sizes="40px"
+        sizes="48px"
       />
     </span>
   ) : (
@@ -82,7 +82,7 @@ export function AljamaliLogo({
       height={size.height}
       priority={priority}
       className={`object-contain ${size.className} ${className}`}
-      sizes="(max-width: 640px) 168px, 240px"
+      sizes="(max-width: 640px) 200px, 280px"
     />
   );
 

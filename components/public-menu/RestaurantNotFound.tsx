@@ -8,7 +8,7 @@ export function RestaurantNotFound() {
 
       <div className="relative max-w-md animate-fade-in-up opacity-0">
         <div className="mb-8 flex justify-center">
-          <AljamaliLogo variant="compact" href={null} />
+          <AljamaliLogo variant="compact" href={null} className="!h-12 !w-12 sm:!h-14 sm:!w-14" />
         </div>
 
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">

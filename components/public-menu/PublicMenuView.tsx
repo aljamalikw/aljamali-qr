@@ -396,7 +396,7 @@ export function PublicMenuView({ menu }: PublicMenuViewProps) {
       <header className="sticky top-0 z-40 border-b border-gold/10 bg-black/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
-            <AljamaliLogo variant="compact" href="/" className="!h-8 !w-8 sm:!h-9 sm:!w-9" />
+            <AljamaliLogo variant="compact" href="/" className="!h-10 !w-10 -my-1 sm:!h-11 sm:!w-11" />
             <p className="truncate text-xs font-semibold uppercase tracking-[0.2em] text-gold/80">
               {t("poweredBy", lang)}
             </p>
@@ -656,7 +656,7 @@ export function PublicMenuView({ menu }: PublicMenuViewProps) {
       <footer className="border-t border-gold/10 bg-black/40 py-8">
         <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
           <div className="mb-4 flex flex-col items-center gap-3">
-            <AljamaliLogo variant="full" href="/" className="!h-10 !max-w-[200px]" />
+            <AljamaliLogo variant="full" href="/" className="!h-14 !max-w-[260px]" />
             <ShareMenuButtons lang={lang} restaurantName={restaurant.name} />
           </div>
           <p className="text-xs uppercase tracking-[0.2em] text-white/30">
