@@ -20,7 +20,7 @@ const selectClass = "auth-input w-full appearance-none cursor-pointer";
 
 function buildInitialForm(restaurant: Restaurant | null): BrandingFormData {
   return {
-    logoUrl: restaurant?.logo_url?.trim() ?? "",
+    logoUrl: restaurant?.logo_url?.trim() ?? "", 
     coverUrl: restaurant?.cover_url?.trim() ?? "",
     faviconUrl: restaurant?.favicon_url?.trim() ?? "",
     themePrimaryColor: restaurant?.theme_primary_color?.trim() || "#d4af37",

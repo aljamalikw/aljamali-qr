@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { AljamaliLogo } from "@/components/branding/AljamaliLogo";
 import { mobileNavLinks, navLinks } from "@/lib/landing-data";
 import { Button } from "./Button";
 import { Icon } from "./Icons";
@@ -40,22 +40,9 @@ export function Navbar() {
         }`}
         aria-label="Main navigation"
       >
-        <Link
-          href="/"
-          className="group justify-self-start rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-          aria-label="Aljamali QR home"
-        >
-          <Image
-            src="/images/aljamali-qr-logo.png"
-            alt="Aljamali QR"
-            width={160}
-            height={160}
-            priority
-            className={`h-auto w-auto object-contain transition-all duration-300 ${
-              scrolled ? "max-h-10" : "max-h-12"
-            }`}
-          />
-        </Link>
+        <div className="justify-self-start">
+          <AljamaliLogo variant="navbar" priority />
+        </div>
 
         <ul className="hidden items-center gap-8 justify-self-center lg:flex">
           {navLinks.map((link) => (

@@ -3,6 +3,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
+/** Compact AJ mark for browser favicon. */
 export default function Icon() {
   return new ImageResponse(
     (
@@ -15,13 +16,14 @@ export default function Icon() {
           justifyContent: "center",
           background: "#050505",
           borderRadius: 6,
-          fontSize: 20,
+          fontSize: 14,
           fontWeight: 700,
           color: "#d4af37",
           fontFamily: "Georgia, serif",
+          letterSpacing: "-0.04em",
         }}
       >
-        A
+        AJ
       </div>
     ),
     { ...size },

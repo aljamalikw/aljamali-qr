@@ -1,4 +1,4 @@
-/** Shared black/gold branded HTML email layout builder for Aljamali QR. */
+/** Shared black/gold branded HTML email layout builder for Al Jamali QR. */
 
 export function escapeHtml(value: string): string {
   return value
@@ -18,7 +18,9 @@ export type EmailLayoutData = {
   footerNote?: string;
 };
 
-const GOLD_GRADIENT = "linear-gradient(135deg, #e8c547 0%, #d4af37 50%, #b8942e 100%)";
+const GOLD_GRADIENT =
+  "linear-gradient(135deg, #e8c547 0%, #d4af37 50%, #b8942e 100%)";
+const LOGO_URL = "https://aljamaliqr.com/images/aljamali-qr-logo.png";
 
 export function renderEmailLayout({
   previewText = "",
@@ -31,7 +33,7 @@ export function renderEmailLayout({
   const year = new Date().getFullYear();
   const footer =
     footerNote ??
-    `You are receiving this email because you have an account with Aljamali QR.`;
+    `You are receiving this email because you have an account with Al Jamali QR.`;
 
   return `<!doctype html>
 <html lang="en">
@@ -47,10 +49,8 @@ export function renderEmailLayout({
       <td align="center">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:linear-gradient(145deg, rgba(26,26,26,0.97) 0%, rgba(17,17,17,0.98) 100%);border:1px solid rgba(212,175,55,0.15);border-radius:16px;overflow:hidden;">
           <tr>
-            <td style="background:${GOLD_GRADIENT};padding:28px 32px;text-align:center;">
-              <span style="font-family:Georgia,'Playfair Display',serif;font-size:24px;font-weight:700;color:#050505;letter-spacing:0.01em;">
-                Aljamali&nbsp;QR
-              </span>
+            <td style="background:#050505;padding:24px 32px;text-align:center;border-bottom:1px solid rgba(212,175,55,0.2);">
+              <img src="${LOGO_URL}" alt="Al Jamali QR" width="220" height="74" style="display:inline-block;max-width:220px;width:100%;height:auto;object-fit:contain;" />
             </td>
           </tr>
           <tr>
@@ -82,7 +82,7 @@ export function renderEmailLayout({
                 ${footer}
               </p>
               <p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:rgba(245,245,245,0.25);text-align:center;">
-                &copy; ${year} Aljamali QR. Premium digital menus.
+                &copy; ${year} Al Jamali QR. Premium digital menus.
               </p>
             </td>
           </tr>

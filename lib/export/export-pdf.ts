@@ -71,7 +71,7 @@ export function exportDatasetPdf(dataset: ExportDataset): boolean {
     .note { margin-top: 12px; font-size: 11px; color: #777; }
     @media print { thead { display: table-header-group; } tr { page-break-inside: avoid; } }
   </style></head><body>
-  <div class="brand">Aljamali QR</div>
+  <div class="brand">Al Jamali QR</div>
   <h1>${escapeHtml(dataset.meta.title)}</h1>
   ${buildMetaBlock(dataset)}
   ${buildSummaryBlock(dataset)}

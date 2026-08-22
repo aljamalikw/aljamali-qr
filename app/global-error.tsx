@@ -33,6 +33,25 @@ export default function GlobalError({ reset }: GlobalErrorProps) {
               "linear-gradient(145deg, rgba(22,22,22,0.92) 0%, rgba(14,14,14,0.96) 100%)",
           }}
         >
+          <div
+            style={{
+              margin: "0 auto 20px",
+              width: "200px",
+              maxWidth: "70%",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/aljamali-qr-logo.png"
+              alt="Al Jamali QR"
+              style={{
+                display: "block",
+                width: "100%",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
+          </div>
           <p
             style={{
               margin: 0,
@@ -43,7 +62,7 @@ export default function GlobalError({ reset }: GlobalErrorProps) {
               color: "#d4af37",
             }}
           >
-            Aljamali QR
+            Al Jamali QR
           </p>
           <h1
             style={{

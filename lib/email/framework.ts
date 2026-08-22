@@ -136,7 +136,9 @@ function wrapBrandedHtml(subject: string, bodyHtml: string): string {
 <body style="margin:0;background:#0a0a0a;color:#f5f5f5;font-family:Georgia,serif;">
   <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
     <div style="border:1px solid rgba(212,175,55,0.35);border-radius:16px;background:#111;padding:28px;">
-      <p style="margin:0 0 8px;color:#d4af37;letter-spacing:0.16em;text-transform:uppercase;font-size:11px;">Aljamali QR</p>
+      <div style="text-align:center;margin:0 0 16px;">
+        <img src="https://aljamaliqr.com/images/aljamali-qr-logo.png" alt="Al Jamali QR" width="200" style="max-width:200px;width:100%;height:auto;object-fit:contain;" />
+      </div>
       <h1 style="margin:0 0 16px;font-size:24px;color:#fff;">${subject}</h1>
       <div style="color:rgba(255,255,255,0.75);font-size:15px;line-height:1.6;">${bodyHtml}</div>
     </div>

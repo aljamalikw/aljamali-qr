@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+import { AljamaliLogo } from "@/components/branding/AljamaliLogo";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -31,19 +31,11 @@ export function AuthLayout({
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="relative mb-8 text-center"
       >
-        <Link href="/" className="group inline-flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-gold/20 bg-gold/10 text-gold transition-colors group-hover:border-gold/40 group-hover:bg-gold/15">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-6 w-6">
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <path d="M14 14h3v3h-3zM17 17h3v3h-3zM14 20h3" />
-            </svg>
-          </span>
-          <span className="font-serif text-2xl font-bold text-white">
-            Aljamali <span className="text-gold">QR</span>
-          </span>
-        </Link>
+        <AljamaliLogo
+          variant="full"
+          priority
+          className="!h-14 !max-w-[280px] sm:!h-16 sm:!max-w-[320px]"
+        />
       </motion.div>
 
       <div className={`relative w-full ${widthClass}`}>
@@ -51,7 +43,7 @@ export function AuthLayout({
       </div>
 
       <p className="relative mt-10 text-center text-xs text-white/30">
-        © {new Date().getFullYear()} Aljamali QR. Premium digital menus.
+        © {new Date().getFullYear()} Al Jamali QR. Premium digital menus.
       </p>
     </div>
   );

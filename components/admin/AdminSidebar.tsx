@@ -8,6 +8,7 @@ import { adminNavItems } from "@/lib/admin/nav-items";
 import { fetchIsSuperAdmin } from "@/lib/auth/get-user-role";
 import { signOut } from "@/lib/auth/sign-out";
 import { supabase } from "@/lib/supabase";
+import { AljamaliLogo } from "@/components/branding/AljamaliLogo";
 import { DashboardIcon, getNavIcon } from "@/components/dashboard/icons/DashboardIcons";
 
 interface AdminSidebarProps {
@@ -68,26 +69,23 @@ export function AdminSidebar({
   const sidebarContent = (
     <div className="flex h-full flex-col">
       <div
-        className={`flex items-center border-b border-gold/10 px-4 py-5 ${
-          collapsed ? "justify-center" : "gap-3"
+        className={`flex flex-col border-b border-gold/10 px-3 py-4 ${
+          collapsed ? "items-center" : "items-stretch gap-2"
         }`}
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/10 text-gold">
-          <DashboardIcon name="logo" className="h-5 w-5" />
-        </span>
+        <AljamaliLogo
+          variant="sidebar"
+          collapsed={collapsed}
+          href="/admin/dashboard"
+        />
         {!collapsed && (
-          <motion.div
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="min-w-0"
+            className="truncate px-1 text-[11px] text-white/40"
           >
-            <p className="truncate font-serif text-base font-bold text-white">
-              Aljamali <span className="text-gold">Admin</span>
-            </p>
-            <p className="truncate text-[11px] text-white/40">
-              Platform Control
-            </p>
-          </motion.div>
+            Platform Control
+          </motion.p>
         )}
       </div>
 

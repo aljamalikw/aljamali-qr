@@ -392,7 +392,7 @@ export const uiStrings = {
   chefSpecial: { en: "Chef's Special", ar: "طبق الشيف" },
   vegetarian: { en: "Vegetarian", ar: "نباتي" },
   spicy: { en: "Spicy", ar: "حار" },
-  poweredBy: { en: "Powered by Aljamali QR", ar: "مدعوم من Aljamali QR" },
+  poweredBy: { en: "Powered by Al Jamali QR", ar: "مدعوم من Al Jamali QR" },
   orderVia: { en: "Order via WhatsApp", ar: "اطلب عبر واتساب" },
   backToHome: { en: "Back to Home", ar: "العودة للرئيسية" },
   items: { en: "items", ar: "طبق" },

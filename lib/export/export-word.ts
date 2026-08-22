@@ -99,7 +99,7 @@ export async function exportDatasetDocx(dataset: ExportDataset): Promise<void> {
 
   const children: (Paragraph | Table)[] = [
     new Paragraph({
-      text: "Aljamali QR",
+      text: "Al Jamali QR",
       heading: HeadingLevel.HEADING_3,
     }),
     new Paragraph({

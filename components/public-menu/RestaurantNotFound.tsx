@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AljamaliLogo } from "@/components/branding/AljamaliLogo";
 
 export function RestaurantNotFound() {
   return (
@@ -6,12 +7,12 @@ export function RestaurantNotFound() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.06)_0%,transparent_65%)]" />
 
       <div className="relative max-w-md animate-fade-in-up opacity-0">
-        <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-gold/20 bg-surface-elevated">
-          <span className="font-serif text-3xl text-gold/70">✦</span>
+        <div className="mb-8 flex justify-center">
+          <AljamaliLogo variant="compact" href={null} />
         </div>
 
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
-          Aljamali QR
+          Al Jamali QR
         </p>
         <h1 className="mt-4 font-serif text-3xl font-bold text-white sm:text-4xl">
           Restaurant not found

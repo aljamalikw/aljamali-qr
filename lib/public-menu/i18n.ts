@@ -1,7 +1,7 @@
 import type { PublicLanguage } from "./types";
 
 const copy = {
-  poweredBy: { en: "Powered by Aljamali QR", ar: "مدعوم من Aljamali QR" },
+  poweredBy: { en: "Powered by Al Jamali QR", ar: "مدعوم من Al Jamali QR" },
   viewMenu: { en: "View Menu", ar: "عرض القائمة" },
   dishesCount: { en: "dishes", ar: "طبق" },
   items: { en: "items", ar: "عنصر" },

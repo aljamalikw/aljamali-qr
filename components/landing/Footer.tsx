@@ -1,11 +1,11 @@
 import Link from "next/link";
+import { AljamaliLogo } from "@/components/branding/AljamaliLogo";
 import { getWhatsAppUrl } from "@/lib/company/whatsapp";
 import {
   PLATFORM_EMAIL,
   PLATFORM_PHONE,
   whatsappPrefillMessage,
 } from "@/lib/landing-data";
-import { Icon } from "./Icons";
 
 const quickLinks = [
   { label: "Features", href: "#features" },
@@ -29,14 +29,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold/10 text-gold">
-                <Icon name="qr" className="h-5 w-5" />
-              </span>
-              <span className="font-serif text-xl font-bold text-white">
-                Aljamali <span className="text-gold">QR</span>
-              </span>
-            </Link>
+            <AljamaliLogo variant="full" className="!h-14 !max-w-[260px]" />
             <p className="mt-4 max-w-md text-sm leading-relaxed text-white/50">
               Premium digital QR menus and restaurant growth tools — bilingual,
               instant, and built for modern hospitality.
@@ -107,7 +100,7 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row">
           <p className="text-sm text-white/40">
-            &copy; {currentYear} Aljamali QR. All rights reserved.
+            &copy; {currentYear} Al Jamali QR. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-white/40">
             <a href="#" className="hover:text-gold">
