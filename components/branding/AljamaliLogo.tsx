@@ -30,10 +30,10 @@ const FULL_SIZE: Record<
     className: "h-20 w-auto max-w-[400px] sm:h-24 sm:max-w-[480px]",
   },
   navbar: {
-    width: 400,
-    height: 134,
+    width: 360,
+    height: 120,
     className:
-      "h-[3.75rem] w-auto max-w-[280px] -my-3.5 sm:h-[4.375rem] sm:max-w-[348px] sm:-my-[15px] lg:h-20 lg:max-w-[400px] lg:-my-4",
+      "h-12 w-auto max-w-[240px] sm:h-16 sm:max-w-[300px] lg:absolute lg:left-0 lg:top-1/2 lg:h-[7.5rem] lg:w-[360px] lg:max-w-[360px] lg:-translate-y-1/2",
   },
   sidebar: {
     width: 320,
@@ -61,6 +61,22 @@ export function AljamaliLogo({
     variant === "navbar" || variant === "sidebar" ? variant : "full";
   const size = FULL_SIZE[sizeKey];
 
+  const image = (
+    <Image
+      src={ALJAMALI_LOGO_SRC}
+      alt={alt}
+      width={size.width}
+      height={size.height}
+      priority={priority}
+      className={`object-contain ${size.className} ${className}`}
+      sizes={
+        variant === "navbar"
+          ? "(max-width: 640px) 240px, (max-width: 1024px) 300px, 360px"
+          : "(max-width: 640px) 280px, 400px"
+      }
+    />
+  );
+
   const mark = useCompact ? (
     <span
       className={`relative inline-block h-16 w-16 shrink-0 overflow-hidden rounded-lg -mx-1 -my-2.5 sm:h-16 sm:w-16 ${className}`}
@@ -74,16 +90,12 @@ export function AljamaliLogo({
         sizes="64px"
       />
     </span>
+  ) : variant === "navbar" ? (
+    <span className="relative inline-flex h-12 -my-4 items-center overflow-visible sm:h-16 lg:h-20 lg:w-[360px]">
+      {image}
+    </span>
   ) : (
-    <Image
-      src={ALJAMALI_LOGO_SRC}
-      alt={alt}
-      width={size.width}
-      height={size.height}
-      priority={priority}
-      className={`object-contain ${size.className} ${className}`}
-      sizes="(max-width: 640px) 280px, 400px"
-    />
+    image
   );
 
   if (href === null) {
