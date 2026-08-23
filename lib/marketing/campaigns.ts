@@ -114,7 +114,7 @@ async function requireMarketingAccess(restaurantId: string) {
 
 export async function fetchMarketingCampaigns(
   restaurantId: string,
-  options?: { page?: number; pageSize?: number },
+  options?: { page?: number; pageSize?: number; all?: boolean },
 ): Promise<
   | { ok: true; data: MarketingCampaign[]; page: PaginatedCampaigns }
   | { ok: false; message: string }
@@ -123,20 +123,30 @@ export async function fetchMarketingCampaigns(
     const { access } = await requireMarketingAccess(restaurantId);
     if (!access.ok) return { ok: false, message: access.message };
 
-    const pageSize = Math.min(50, Math.max(1, options?.pageSize ?? 10));
+    const fetchAll = options?.all === true;
+    const pageSize = fetchAll
+      ? 500
+      : Math.min(50, Math.max(1, options?.pageSize ?? 10));
     const page = Math.max(1, options?.page ?? 1);
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("marketing_campaigns")
       .select("*", { count: "exact" })
       .eq("restaurant_id", restaurantId)
-      .order("created_at", { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+      .order("created_at", { ascending: false });
+
+    if (!fetchAll) {
+      query = query.range((page - 1) * pageSize, page * pageSize - 1);
+    } else {
+      query = query.limit(pageSize);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) return { ok: false, message: error.message || ERROR };
 
     const items = ((data ?? []) as MarketingCampaignRecord[]).map(mapCampaign);
-    const total = count ?? items.length;
+    const total = fetchAll ? items.length : (count ?? items.length);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
     return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MarketingFeatureGate } from "@/components/dashboard/MarketingFeatureGate";
 import { WhatsAppCampaignBuilder } from "@/components/dashboard/marketing/WhatsAppCampaignBuilder";
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
@@ -40,7 +40,7 @@ import {
 import { customerHasMarketingOptIn } from "@/lib/customers/whatsapp-chat";
 import type { Customer } from "@/lib/customers/sync-customer";
 import { openWhatsAppShare } from "@/lib/marketing/whatsapp/share";
-import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
+import { formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
@@ -87,11 +87,9 @@ function MarketingManagementContent() {
 
   const [tab, setTab] = useState<Tab>("overview");
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
-  const [summaryCampaigns, setSummaryCampaigns] = useState<MarketingCampaign[]>(
-    [],
-  );
-  const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [page, setPage] = useState(1);
+  const [selectedCampaign, setSelectedCampaign] =
+    useState<MarketingCampaign | null>(null);
   const [templates, setTemplates] = useState<MarketingTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -117,16 +115,27 @@ function MarketingManagementContent() {
   const [recipientsMessage, setRecipientsMessage] = useState("");
   const [recipients, setRecipients] = useState<CampaignRecipientListItem[]>([]);
   const [chatCustomer, setChatCustomer] = useState<Customer | null>(null);
+  const loadedRestaurantId = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!restaurant?.id) {
       setLoading(false);
+      setCampaigns([]);
       return;
     }
+    if (loadedRestaurantId.current !== restaurant.id) {
+      loadedRestaurantId.current = restaurant.id;
+      setPage(1);
+      setSelectedCampaign(null);
+      setAnalyticsCampaignId("");
+      setRecipientsOpen(false);
+      setDeleteTarget(null);
+      setScheduleDraft({ campaignId: "", date: "", time: "10:00" });
+      setChatCustomer(null);
+    }
     setLoading(true);
-    const [campaignsResult, summarySource, templatesResult] = await Promise.all([
-      fetchMarketingCampaigns(restaurant.id, { page, pageSize: PAGE_SIZE }),
-      fetchMarketingCampaigns(restaurant.id, { page: 1, pageSize: 100 }),
+    const [campaignsResult, templatesResult] = await Promise.all([
+      fetchMarketingCampaigns(restaurant.id, { all: true }),
       fetchMarketingTemplates(restaurant.id),
     ]);
     setLoading(false);
@@ -134,18 +143,12 @@ function MarketingManagementContent() {
     if (!campaignsResult.ok) {
       showToast(campaignsResult.message, "error");
       setCampaigns([]);
-      setTotalCampaigns(0);
     } else {
       setCampaigns(campaignsResult.data);
-      setTotalCampaigns(campaignsResult.page.total);
-    }
-
-    if (summarySource.ok) {
-      setSummaryCampaigns(summarySource.data);
     }
 
     if (templatesResult.ok) setTemplates(templatesResult.data);
-  }, [restaurant?.id, page, showToast]);
+  }, [restaurant?.id, showToast]);
 
   useEffect(() => {
     void load();
@@ -157,11 +160,13 @@ function MarketingManagementContent() {
     }
   }, [templatesAllowed, analyticsAllowed, tab]);
 
-  const summary = useMemo(
-    () => getMarketingSummary(summaryCampaigns),
-    [summaryCampaigns],
-  );
+  const summary = useMemo(() => getMarketingSummary(campaigns), [campaigns]);
+  const totalCampaigns = campaigns.length;
   const totalPages = Math.max(1, Math.ceil(totalCampaigns / PAGE_SIZE));
+  const pageCampaigns = useMemo(
+    () => campaigns.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [campaigns, page],
+  );
 
   const upcomingCampaigns = useMemo(
     () =>
@@ -218,10 +223,10 @@ function MarketingManagementContent() {
   const getCampaignsExportDataset = useCallback(
     () =>
       buildMarketingCampaignsExportDataset({
-        campaigns: summaryCampaigns,
+        campaigns,
         restaurantName,
       }),
-    [summaryCampaigns, restaurantName],
+    [campaigns, restaurantName],
   );
 
   const getRecipientsExportDataset = useCallback(
@@ -305,8 +310,16 @@ function MarketingManagementContent() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {[
-              { label: "Campaigns", value: String(totalCampaigns) },
-              { label: "Recipients", value: String(summary.recipients) },
+              {
+                label: "Campaigns",
+                value: String(totalCampaigns),
+                opensHistory: true,
+              },
+              {
+                label: "Recipients",
+                value: String(summary.recipients),
+                opensHistory: true,
+              },
               { label: "Messages Shared", value: String(summary.messagesSent) },
               {
                 label: "Estimated Revenue",
@@ -321,31 +334,66 @@ function MarketingManagementContent() {
                 <p className="mt-2 font-serif text-2xl font-bold text-white">
                   {card.value}
                 </p>
+                {card.opensHistory && totalCampaigns > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setTab("campaigns")}
+                    className="mt-3 text-xs text-gold hover:underline"
+                  >
+                    View campaign history
+                  </button>
+                ) : null}
               </DashboardCard>
             ))}
           </div>
 
           <DashboardCard className="p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">
-              Upcoming campaigns
-            </h2>
-            {upcomingCampaigns.length === 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">
+                {upcomingCampaigns.length > 0
+                  ? "Upcoming campaigns"
+                  : "Recent campaigns"}
+              </h2>
+              {totalCampaigns > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setTab("campaigns")}
+                  className="text-xs text-gold hover:underline"
+                >
+                  View all
+                </button>
+              ) : null}
+            </div>
+            {(upcomingCampaigns.length > 0
+              ? upcomingCampaigns
+              : campaigns
+            ).length === 0 ? (
               <p className="mt-4 text-sm text-white/45">
-                No upcoming campaigns. Create a WhatsApp campaign to get started.
+                {restaurant
+                  ? `No campaigns for ${restaurantName} yet.`
+                  : "No campaigns created yet."}
               </p>
             ) : (
               <ul className="mt-4 space-y-2">
-                {upcomingCampaigns.slice(0, 5).map((campaign) => (
-                  <li
-                    key={campaign.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/5 bg-black/25 px-4 py-3 text-sm"
-                  >
-                    <span className="text-white/85">{campaign.name}</span>
-                    <span className="text-white/45">
-                      {campaign.scheduledAt
-                        ? formatDemoDateTime(campaign.scheduledAt)
-                        : campaign.status}
-                    </span>
+                {(upcomingCampaigns.length > 0
+                  ? upcomingCampaigns
+                  : campaigns
+                )
+                  .slice(0, 5)
+                  .map((campaign) => (
+                  <li key={campaign.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCampaign(campaign)}
+                      className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-white/5 bg-black/25 px-4 py-3 text-start text-sm transition hover:border-gold/25"
+                    >
+                      <span className="text-white/85">{campaign.name}</span>
+                      <span className="text-white/45">
+                        {campaign.scheduledAt
+                          ? formatDemoDateTime(campaign.scheduledAt)
+                          : `${campaignStatusLabel(campaign.status)} · ${formatDemoDateTime(campaign.createdAt)}`}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -358,20 +406,24 @@ function MarketingManagementContent() {
         <DashboardCard className="p-5">
           {campaigns.length === 0 ? (
             <p className="py-10 text-center text-sm text-white/45">
-              No campaigns yet.
+              {restaurant
+                ? `No campaigns for ${restaurantName} yet.`
+                : "No campaigns created yet."}
             </p>
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[960px] text-left">
+                <table className="w-full min-w-[1100px] text-left">
                   <thead>
                     <tr className="border-b border-gold/10">
                       {[
                         "Campaign Name",
+                        "Type",
                         "Created",
                         "Audience",
                         "Recipients",
                         "Status",
+                        "Message",
                         "Actions",
                       ].map((heading) => (
                         <th
@@ -384,25 +436,23 @@ function MarketingManagementContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {campaigns.map((campaign) => (
+                    {pageCampaigns.map((campaign) => (
                       <tr
                         key={campaign.id}
-                        className="border-b border-white/5 last:border-0"
+                        className="cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/[0.03]"
+                        onClick={() => setSelectedCampaign(campaign)}
                       >
                         <td className="px-3 py-3">
                           <p className="text-sm text-white/85">{campaign.name}</p>
-                          <p className="text-xs text-white/40">
-                            {campaign.campaignType} · WhatsApp
-                          </p>
+                        </td>
+                        <td className="px-3 py-3 text-sm text-white/55">
+                          {campaign.campaignType}
                         </td>
                         <td className="px-3 py-3 text-sm text-white/50">
-                          {formatDemoDate(campaign.createdAt)}
+                          {formatDemoDateTime(campaign.createdAt)}
                         </td>
                         <td className="px-3 py-3 text-sm text-white/65">
-                          {String(
-                            campaign.metadata.audienceLabel ??
-                              describeAudienceFilters(campaign.audienceFilters),
-                          )}
+                          {audienceLabel(campaign)}
                         </td>
                         <td className="px-3 py-3 text-sm text-white/65">
                           {campaign.recipientCount}
@@ -410,8 +460,23 @@ function MarketingManagementContent() {
                         <td className="px-3 py-3">
                           <StatusPill status={campaign.status} />
                         </td>
+                        <td className="max-w-[220px] px-3 py-3 text-xs text-white/45">
+                          <p className="line-clamp-2 whitespace-pre-wrap">
+                            {campaign.message || "—"}
+                          </p>
+                        </td>
                         <td className="px-3 py-3">
-                          <div className="flex flex-wrap gap-1.5">
+                          <div
+                            className="flex flex-wrap gap-1.5"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              className="menu-btn-secondary !px-2 !py-1 text-[11px]"
+                              onClick={() => setSelectedCampaign(campaign)}
+                            >
+                              View
+                            </button>
                             <button
                               type="button"
                               disabled={busy || recipientsLoading}
@@ -624,6 +689,33 @@ function MarketingManagementContent() {
             ))}
           </div>
         </div>
+      ) : null}
+
+      {selectedCampaign ? (
+        <CampaignDetailsModal
+          campaign={selectedCampaign}
+          onClose={() => setSelectedCampaign(null)}
+          onViewRecipients={async () => {
+            if (!restaurant?.id) return;
+            setRecipientsLoading(true);
+            const result = await fetchCampaignRecipients(
+              restaurant.id,
+              selectedCampaign.id,
+            );
+            setRecipientsLoading(false);
+            if (!result.ok) {
+              showToast(result.message, "error");
+              return;
+            }
+            setRecipientsCampaignId(result.data.campaignId);
+            setRecipientsCampaignName(result.data.campaignName);
+            setRecipientsMessage(result.data.campaignMessage);
+            setRecipients(result.data.recipients);
+            setSelectedCampaign(null);
+            setRecipientsOpen(true);
+          }}
+          recipientsLoading={recipientsLoading}
+        />
       ) : null}
 
       <WhatsAppCampaignBuilder
@@ -906,6 +998,123 @@ function MarketingManagementContent() {
           onClose={() => setChatCustomer(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+function audienceLabel(campaign: MarketingCampaign): string {
+  const stored = campaign.metadata.audienceLabel;
+  if (typeof stored === "string" && stored.trim()) return stored;
+  return describeAudienceFilters(campaign.audienceFilters);
+}
+
+function CampaignDetailsModal({
+  campaign,
+  onClose,
+  onViewRecipients,
+  recipientsLoading,
+}: {
+  campaign: MarketingCampaign;
+  onClose: () => void;
+  onViewRecipients: () => void;
+  recipientsLoading: boolean;
+}) {
+  const details = [
+    { label: "Type", value: campaign.campaignType },
+    { label: "Status", value: campaignStatusLabel(campaign.status) },
+    { label: "Created", value: formatDemoDateTime(campaign.createdAt) },
+    {
+      label: "Scheduled",
+      value: campaign.scheduledAt
+        ? formatDemoDateTime(campaign.scheduledAt)
+        : "—",
+    },
+    {
+      label: "Shared",
+      value: campaign.sentAt ? formatDemoDateTime(campaign.sentAt) : "—",
+    },
+    { label: "Audience", value: audienceLabel(campaign) },
+    { label: "Recipients", value: String(campaign.recipientCount) },
+    { label: "Channel", value: campaign.channels.join(", ") || "whatsapp" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        aria-label="Close campaign details"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="campaign-details-title"
+        className="dashboard-card relative z-10 max-h-[90vh] w-full max-w-lg overflow-hidden rounded-t-2xl border border-gold/15 sm:rounded-2xl"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-white/5 px-5 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+              Campaign details
+            </p>
+            <h3
+              id="campaign-details-title"
+              className="mt-1 font-serif text-xl font-bold text-white"
+            >
+              {campaign.name}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-white"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {details.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border border-white/5 bg-black/25 px-3 py-2.5"
+              >
+                <p className="text-[11px] uppercase tracking-wider text-white/40">
+                  {item.label}
+                </p>
+                <p className="mt-1 text-sm text-white/80">{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-white/5 bg-black/25 px-3 py-3">
+            <p className="text-[11px] uppercase tracking-wider text-white/40">
+              Message
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/80">
+              {campaign.message || "—"}
+            </p>
+          </div>
+          {campaign.notes ? (
+            <div className="rounded-xl border border-white/5 bg-black/25 px-3 py-3">
+              <p className="text-[11px] uppercase tracking-wider text-white/40">
+                Notes
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-white/70">
+                {campaign.notes}
+              </p>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            disabled={recipientsLoading}
+            onClick={onViewRecipients}
+            className="menu-btn-secondary w-full"
+          >
+            {recipientsLoading ? "Loading…" : "View Recipients"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
