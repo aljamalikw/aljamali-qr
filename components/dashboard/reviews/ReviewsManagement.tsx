@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
+import { PlanRequiredCard } from "@/components/dashboard/PlanRequiredCard";
 import { FormSkeleton, StatCardSkeleton } from "@/components/ui/Skeleton";
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
@@ -214,26 +214,11 @@ export function ReviewsManagement() {
 
   if (!allowed) {
     return (
-      <div className="mx-auto max-w-3xl">
-        <DashboardCard className="p-6 sm:p-8" hover={false}>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold">
-            Feedback & Complaints
-          </p>
-          <h1 className="mt-2 font-serif text-2xl font-bold text-white">
-            Guest feedback on Professional+
-          </h1>
-          <p className="mt-2 text-sm text-white/55">
-            Collect star ratings and feedback after customers place an order.
-            Available on Professional and Enterprise plans.
-          </p>
-          <Link
-            href="/dashboard/subscription"
-            className="menu-btn-primary mt-5 inline-flex"
-          >
-            View plans
-          </Link>
-        </DashboardCard>
-      </div>
+      <PlanRequiredCard
+        title="Guest feedback"
+        description="Collect star ratings and feedback after customers place an order. Available on Professional and Enterprise plans."
+        includedIn={["Professional", "Enterprise"]}
+      />
     );
   }
 

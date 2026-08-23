@@ -1,5 +1,6 @@
 import {
   getSubscriptionAccess,
+  isNavAllowed,
   resolveEffectiveStatus,
   resolveFeaturePlan,
 } from "../lib/subscriptions/engine";
@@ -58,10 +59,13 @@ assert(
 );
 
 const expiredAccess = getSubscriptionAccess(expiredTrial, now);
-assert(expiredAccess.dashboardLocked === true, "expired trial locks dashboard");
 assert(
-  expiredAccess.publicMenuOnline === false,
-  "expired trial takes public Pro access offline",
+  expiredAccess.dashboardLocked === false,
+  "expired trial keeps Starter-level dashboard open",
+);
+assert(
+  expiredAccess.publicMenuOnline === true,
+  "expired trial keeps Starter public menu online",
 );
 assert(
   expiredAccess.locationPlan === "Starter",
@@ -70,6 +74,26 @@ assert(
 assert(
   expiredAccess.plan === "Professional",
   "billing plan remains Professional",
+);
+assert(
+  isNavAllowed(expiredAccess, "settings") &&
+    isNavAllowed(expiredAccess, "support") &&
+    isNavAllowed(expiredAccess, "subscription") &&
+    isNavAllowed(expiredAccess, "orders"),
+  "expired trial can open essential pages and Pro routes (upgrade state)",
+);
+
+const paidLapsed = getSubscriptionAccess(
+  { plan: "Professional", status: "expired" },
+  now,
+);
+assert(paidLapsed.dashboardLocked === true, "paid lapse still locks management");
+assert(isNavAllowed(paidLapsed, "subscription"), "billing stays reachable");
+assert(isNavAllowed(paidLapsed, "settings"), "settings stay reachable");
+assert(isNavAllowed(paidLapsed, "support"), "support stays reachable");
+assert(
+  !isNavAllowed(paidLapsed, "orders"),
+  "paid lapse does not open Professional pages",
 );
 
 const paidPro = getSubscriptionAccess(paidProfessional, now);

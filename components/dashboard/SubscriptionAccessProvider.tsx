@@ -10,6 +10,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchOwnerSubscription } from "@/lib/admin/subscriptions";
+import { getNavIdFromPath } from "@/lib/dashboard/nav-items";
 import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 import { supabase } from "@/lib/supabase";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
@@ -125,10 +126,11 @@ export function SubscriptionAccessProvider({
   useEffect(() => {
     if (loading || restaurantLoading) return;
     if (!access.dashboardLocked) return;
-    if (pathname.startsWith("/dashboard/subscription")) return;
+    if (pathname.startsWith("/restaurant/setup")) return;
+    if (isNavAllowed(access, getNavIdFromPath(pathname))) return;
     router.replace("/dashboard/subscription");
   }, [
-    access.dashboardLocked,
+    access,
     loading,
     pathname,
     restaurantLoading,

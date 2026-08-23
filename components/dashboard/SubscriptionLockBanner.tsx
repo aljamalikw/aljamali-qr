@@ -43,7 +43,11 @@ export function SubscriptionLockBanner() {
           {access.message}
         </p>
         <Link href="/dashboard/subscription" className="menu-btn-secondary text-xs">
-          Billing
+          {access.effectiveStatus === "suspended" ||
+          access.effectiveStatus === "expired" ||
+          access.effectiveStatus === "cancelled"
+            ? "Choose a plan"
+            : "Billing"}
         </Link>
       </div>
     </div>

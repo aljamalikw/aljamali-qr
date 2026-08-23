@@ -362,11 +362,28 @@ export function OwnerSubscriptionPage() {
               : "Your subscription has ended. Choose a plan to continue."}
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-white/55">
-            Professional features are no longer available. Select Starter or
-            Professional below to restore access after successful payment.
-            Enterprise is contact-sales only. You will not be charged
-            automatically.
+            Professional features are paused until you choose a paid plan. You
+            will not be charged automatically.
           </p>
+          <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-start">
+              <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40">
+                Starter · {formatPlanPriceLabel("Starter")}
+              </dt>
+              <dd className="mt-1 text-sm text-white/70">
+                QR menus, categories, and restaurant settings for one location.
+              </dd>
+            </div>
+            <div className="rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-start">
+              <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-gold">
+                Professional · {formatPlanPriceLabel("Professional")}
+              </dt>
+              <dd className="mt-1 text-sm text-white/70">
+                Online ordering, kitchen display, loyalty, marketing, and
+                reviews.
+              </dd>
+            </div>
+          </dl>
           <button
             type="button"
             onClick={scrollToPlans}

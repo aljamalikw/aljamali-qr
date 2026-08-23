@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
+import { PlanRequiredCard } from "@/components/dashboard/PlanRequiredCard";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/ExportMenu";
@@ -206,21 +206,11 @@ export function BusinessIntelligenceDashboard() {
 
   if (!allowsBi) {
     return (
-      <DashboardCard className="p-6 sm:p-8" hover={false}>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold">
-          Business Intelligence
-        </p>
-        <h2 className="mt-2 font-serif text-2xl font-bold text-white">
-          Upgrade to unlock BI
-        </h2>
-        <p className="mt-2 max-w-xl text-sm text-white/55">
-          Business Intelligence dashboards, charts, and performance insights are
-          available on Professional and Enterprise plans.
-        </p>
-        <Link href="/dashboard/subscription" className="menu-btn-primary mt-5 inline-flex">
-          View plans
-        </Link>
-      </DashboardCard>
+      <PlanRequiredCard
+        title="Business Intelligence"
+        description="Business Intelligence dashboards, charts, and performance insights are available on Professional and Enterprise plans."
+        includedIn={["Professional", "Enterprise"]}
+      />
     );
   }
 

@@ -42,7 +42,14 @@ export type SubscriptionEngineInput = {
   cancelledAt?: string | null;
 };
 
-const BILLING_ONLY_NAV: DashboardNavId[] = ["subscription"];
+/** Pages that stay reachable after a paid subscription lapses. */
+const ESSENTIAL_NAV: DashboardNavId[] = [
+  "dashboard",
+  "settings",
+  "subscription",
+  "support",
+  "setup-wizard",
+];
 
 function asPlan(value: string | null | undefined): SubscriptionPlan {
   if (value === "Professional" || value === "Enterprise" || value === "Starter") {
@@ -150,6 +157,11 @@ export function isEntitledSubscriptionStatus(
   return status === "trial" || status === "active" || status === "grace";
 }
 
+/** Computed status after a Professional (or any) trial + grace ends unpaid. */
+export function isExpiredTrialStatus(status: SubscriptionStatus): boolean {
+  return status === "suspended";
+}
+
 /**
  * Plan used for feature gates and public Pro capabilities.
  * After trial/subscription lapse, leftover Professional/Enterprise names
@@ -205,39 +217,42 @@ export function getSubscriptionAccess(
 
   if (effectiveStatus === "suspended") {
     message =
-      "Your trial has ended. Choose a plan to restore dashboard access and Professional features.";
+      "Your Professional trial has ended. Choose Starter or Professional to continue — you will not be charged automatically.";
   }
 
   if (effectiveStatus === "expired") {
     message =
       plan === "Starter"
-        ? "Your subscription has expired. QR menus are offline and the dashboard is limited to Billing."
-        : "Your subscription has expired. Management features are locked; public QR menus remain online.";
+        ? "Your subscription has expired. Choose a plan to restore full access."
+        : "Your subscription has expired. Professional features are locked until you renew.";
   }
 
   if (effectiveStatus === "cancelled") {
     message =
       plan === "Starter"
-        ? "Your subscription is cancelled. QR menus are offline and the dashboard is limited to Billing."
-        : "Your subscription is cancelled. Management features are locked; public QR menus remain online.";
+        ? "Your subscription is cancelled. Choose a plan to restore full access."
+        : "Your subscription is cancelled. Professional features are locked until you renew.";
   }
 
   const inGoodStanding =
     effectiveStatus === "trial" || effectiveStatus === "active";
   const inGrace = effectiveStatus === "grace";
 
-  // During trial/active/grace: full dashboard + public menu.
-  // After grace (expired/cancelled): plan rules apply.
+  // Trial/active/grace: full entitled dashboard.
+  // Expired trial (`suspended`): keep Starter-level dashboard + public menu;
+  // Professional features stay gated by locationPlan = Starter.
+  // Paid lapse (`expired`/`cancelled`): essential pages only.
   let publicMenuOnline = true;
   let dashboardLocked = false;
 
   if (!inGoodStanding && !inGrace) {
-    dashboardLocked = true;
-    // Paid Professional/Enterprise that lapsed (`expired`) keep QR menus
-    // online. Expired trials resolve to `suspended` and must not keep
-    // unrestricted Professional public access.
-    publicMenuOnline =
-      effectiveStatus === "suspended" ? false : plan !== "Starter";
+    if (effectiveStatus === "suspended") {
+      dashboardLocked = false;
+      publicMenuOnline = true;
+    } else {
+      dashboardLocked = true;
+      publicMenuOnline = plan !== "Starter";
+    }
   }
 
   return {
@@ -247,7 +262,7 @@ export function getSubscriptionAccess(
     locationCovered: true,
     publicMenuOnline,
     dashboardLocked,
-    allowedNavIds: dashboardLocked ? BILLING_ONLY_NAV : [],
+    allowedNavIds: dashboardLocked ? ESSENTIAL_NAV : [],
     inGrace,
     trialDaysLeft,
     graceDaysLeft,
