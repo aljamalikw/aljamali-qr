@@ -18,6 +18,7 @@ import {
   isNavAllowed,
   type SubscriptionAccess,
 } from "@/lib/subscriptions/engine";
+import { DEFAULT_TRIAL_PLAN } from "@/lib/subscriptions/plans";
 import type { DashboardNavId } from "@/lib/dashboard/types";
 
 const FULL_ACCESS: SubscriptionAccess = {
@@ -71,7 +72,7 @@ export function SubscriptionAccessProvider({
       // Missing row: ensure path may create later; allow access meanwhile.
       setAccess(
         getSubscriptionAccess({
-          plan: restaurant.subscription_plan ?? "Starter",
+          plan: restaurant.subscription_plan ?? DEFAULT_TRIAL_PLAN,
           status: "trial",
           trialEndsAt: new Date(Date.now() + 7 * 86400000).toISOString(),
           gracePeriodDays: 3,

@@ -21,7 +21,10 @@ import type { AnnouncementItem } from "@/lib/announcements/types";
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { isAdminRole } from "@/lib/auth/roles";
-import { planAllowsBusinessIntelligence } from "@/lib/subscriptions/plans";
+import {
+  DEFAULT_TRIAL_PLAN,
+  planAllowsBusinessIntelligence,
+} from "@/lib/subscriptions/plans";
 import { BusinessIntelligenceDashboard } from "@/components/dashboard/intelligence/BusinessIntelligenceDashboard";
 
 type Announcement = Pick<
@@ -264,7 +267,8 @@ export function DashboardHome() {
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
           <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-gold">
-            {access.plan || "Starter"}
+            {access.plan || restaurant?.subscription_plan || DEFAULT_TRIAL_PLAN}
+            {access.effectiveStatus === "trial" ? " · Trial" : ""}
           </span>
           <span
             className={`rounded-full border px-3 py-1 ${

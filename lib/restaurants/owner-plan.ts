@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  DEFAULT_TRIAL_PLAN,
   normalizePlanId,
   type SubscriptionPlanId,
 } from "@/lib/subscriptions/plans";
@@ -28,7 +29,7 @@ export async function resolveOwnerSubscriptionPlan(
     .order("created_at", { ascending: true });
 
   if (error || !restaurants?.length) {
-    return "Starter";
+    return DEFAULT_TRIAL_PLAN;
   }
 
   const ids = restaurants.map((r) => r.id as string);

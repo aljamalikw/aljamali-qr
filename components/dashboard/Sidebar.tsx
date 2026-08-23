@@ -9,6 +9,7 @@ import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { useSubscriptionAccess } from "./SubscriptionAccessProvider";
 import { AljamaliLogo } from "@/components/branding/AljamaliLogo";
 import { DashboardIcon, getNavIcon } from "./icons/DashboardIcons";
+import { DEFAULT_TRIAL_PLAN } from "@/lib/subscriptions/plans";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -28,7 +29,7 @@ export function Sidebar({
   const { restaurant, displayName, loading: restaurantLoading } = useRestaurant();
   const { access, canAccessNav } = useSubscriptionAccess();
 
-  const planLabel = access.plan || restaurant?.subscription_plan || "Starter";
+  const planLabel = access.plan || restaurant?.subscription_plan || DEFAULT_TRIAL_PLAN;
   const restaurantLabel = restaurantLoading ? "" : displayName;
   const visibleNav = dashboardNavItems.filter((item) => canAccessNav(item.id));
 

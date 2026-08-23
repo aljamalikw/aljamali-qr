@@ -121,8 +121,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Inherit plan onto the new row so the default subscription trigger
-  // provisions the same plan (not a fresh Starter trial for Pro/Enterprise).
+  // Inherit the owner's plan so the default subscription trigger provisions
+  // the same entitlement. A first restaurant uses the Professional trial
+  // default from resolveOwnerSubscriptionPlan.
   const { data, error } = await admin
     .from("restaurants")
     .insert({

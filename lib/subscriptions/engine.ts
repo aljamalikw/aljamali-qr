@@ -11,6 +11,7 @@ export type SubscriptionStatus =
 
 export const DEFAULT_TRIAL_DAYS = 7;
 export const DEFAULT_GRACE_PERIOD_DAYS = 3;
+export { DEFAULT_TRIAL_PLAN } from "@/lib/subscriptions/plans";
 
 export type SubscriptionAccess = {
   effectiveStatus: SubscriptionStatus;
@@ -165,8 +166,8 @@ export function getSubscriptionAccess(
     trialDaysLeft = daysRemaining(trialEnd, now);
     message =
       trialDaysLeft === 0
-        ? "Your trial ends today."
-        : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left in your free trial.`;
+        ? `Your ${plan} trial ends today.`
+        : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left in your ${plan} free trial.`;
   }
 
   if (effectiveStatus === "grace") {

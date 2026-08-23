@@ -20,12 +20,14 @@ import { pricingPlans } from "@/lib/landing-data";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
 import {
+  DEFAULT_TRIAL_PLAN,
   SUBSCRIPTION_PLANS,
   formatPlanAmountKd,
   formatPlanPriceLabel,
   formatRestaurantUsage,
   getPlanMonthlyAmount,
   isPayablePlan,
+  isSubscriptionPlanId,
   type SubscriptionPlanId,
 } from "@/lib/subscriptions/plans";
 
@@ -137,7 +139,13 @@ export function OwnerSubscriptionPage() {
 
     let subData = subResult.ok ? subResult.data : null;
     if (subResult.ok && !subResult.data) {
-      const ensured = await ensureRestaurantSubscription(restaurant.id);
+      const storedPlan = restaurant.subscription_plan;
+      const ensured = await ensureRestaurantSubscription(
+        restaurant.id,
+        isSubscriptionPlanId(typeof storedPlan === "string" ? storedPlan : "")
+          ? (storedPlan as SubscriptionPlan)
+          : DEFAULT_TRIAL_PLAN,
+      );
       if (ensured.ok) subData = ensured.data;
     }
 
@@ -285,7 +293,11 @@ export function OwnerSubscriptionPage() {
   }
 
   // Canonical plan from restaurant_subscriptions (Billing source of truth).
-  const currentPlan: SubscriptionPlan = subscription?.plan ?? "Starter";
+  const currentPlan: SubscriptionPlan = isSubscriptionPlanId(
+    subscription?.plan ?? restaurant.subscription_plan ?? "",
+  )
+    ? ((subscription?.plan ?? restaurant.subscription_plan) as SubscriptionPlan)
+    : DEFAULT_TRIAL_PLAN;
   const effectiveStatus = access?.effectiveStatus ?? subscription?.status ?? "trial";
   const daysRemaining =
     access?.trialDaysLeft ?? access?.graceDaysLeft ?? null;
@@ -372,6 +384,12 @@ export function OwnerSubscriptionPage() {
               <h2 className="mt-2 font-serif text-3xl font-bold text-white">
                 {currentPlan}
               </h2>
+              {isTrial ? (
+                <p className="mt-2 max-w-xl text-sm text-white/55">
+                  You are on a {currentPlan} trial with full {currentPlan}{" "}
+                  features. You will not be charged until you choose a paid plan.
+                </p>
+              ) : null}
             </div>
             <span
               className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${statusTone(effectiveStatus)}`}
@@ -402,8 +420,13 @@ export function OwnerSubscriptionPage() {
                 Monthly price
               </dt>
               <dd className="mt-1 text-sm font-medium text-gold">
-                {monthlyPriceLabel}
+                {isTrial ? "No charge during trial" : monthlyPriceLabel}
               </dd>
+              {isTrial ? (
+                <p className="mt-1 text-xs text-white/40">
+                  {monthlyPriceLabel} after you subscribe
+                </p>
+              ) : null}
             </div>
             <div className="rounded-xl border border-white/5 bg-black/25 px-4 py-3">
               <dt className="text-[11px] uppercase tracking-wider text-white/40">
@@ -448,7 +471,7 @@ export function OwnerSubscriptionPage() {
                     onClick={scrollToPlans}
                     className="menu-btn-primary text-xs sm:text-sm"
                   >
-                    Upgrade Plan
+                    Choose a Plan
                   </button>
                   {isPayablePlan(currentPlan) ? (
                     <button

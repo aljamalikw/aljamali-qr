@@ -1,7 +1,7 @@
 import { Button } from "./Button";
 
 const trialIncludes = [
-  "Full dashboard access",
+  "Professional features included",
   "Create QR codes & digital menus",
   "English & Arabic menu support",
   "No credit card required to start",
@@ -27,9 +27,9 @@ export function FreeTrial() {
           Start Your Free Trial Today
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base text-white/60 sm:text-lg">
-          Explore Aljamali QR with a free trial built for real restaurant
-          workflows. Build your menu, generate QR codes, and experience the
-          premium guest journey before you commit.
+          Explore Aljamali QR with a 7-day Professional trial built for real
+          restaurant workflows. Build your menu, generate QR codes, and try
+          Professional features before you choose a paid plan.
         </p>
 
         <ul className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">

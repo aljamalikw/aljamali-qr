@@ -1,6 +1,7 @@
 import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
 import { queueEmailNotification } from "@/lib/email/framework";
+import { DEFAULT_TRIAL_PLAN } from "@/lib/subscriptions/plans";
 
 const RESTAURANT_SETUP_ERROR =
   "Your account was created, but we couldn't finish setting up your restaurant profile. Please try signing in or contact support.";
@@ -39,16 +40,26 @@ export async function createRestaurantForOwner(
     const country = profile?.country?.trim() || null;
     const createdId = (created as { id?: string } | null)?.id;
 
-    if (createdId && (restaurantName || ownerName || phone || country)) {
-      await supabase
-        .from("restaurants")
-        .update({
-          restaurant_name: restaurantName,
-          owner_name: ownerName,
-          phone,
-          country,
-        })
-        .eq("id", createdId);
+    if (createdId) {
+      const profilePatch: Record<string, unknown> = {
+        subscription_plan: DEFAULT_TRIAL_PLAN,
+      };
+      if (restaurantName) profilePatch.restaurant_name = restaurantName;
+      if (ownerName) profilePatch.owner_name = ownerName;
+      if (phone) profilePatch.phone = phone;
+      if (country) profilePatch.country = country;
+
+      await supabase.from("restaurants").update(profilePatch).eq("id", createdId);
+
+      try {
+        await fetch("/api/restaurants/finalize-trial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ restaurantId: createdId, ownerId }),
+        });
+      } catch {
+        // Signup must still succeed if the trial mirror cannot be rewritten.
+      }
     }
 
     void logActivity({

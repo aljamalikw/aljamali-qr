@@ -7,7 +7,9 @@ import {
 } from "@/lib/subscriptions/engine";
 import { getPlanMonthlyPrices, PLAN_PRICES } from "@/lib/subscriptions/pricing";
 import {
+  DEFAULT_TRIAL_PLAN,
   getMaxRestaurants,
+  isSubscriptionPlanId,
 } from "@/lib/subscriptions/plans";
 import {
   assertRestaurantsOwnedByOwner,
@@ -728,7 +730,7 @@ export async function updateOwnerSubscription(params: {
 
 export async function ensureRestaurantSubscription(
   restaurantId: string,
-  plan: SubscriptionPlan = "Starter",
+  plan?: SubscriptionPlan,
 ): Promise<
   { ok: true; data: RestaurantSubscription } | { ok: false; message: string }
 > {
@@ -737,6 +739,20 @@ export async function ensureRestaurantSubscription(
     if (!existing.ok) return existing;
     if (existing.data) return { ok: true, data: existing.data };
 
+    let resolvedPlan = plan;
+    if (!resolvedPlan) {
+      const { data: restaurant } = await supabase
+        .from("restaurants")
+        .select("subscription_plan")
+        .eq("id", restaurantId)
+        .maybeSingle();
+      const stored = restaurant?.subscription_plan;
+      resolvedPlan = isSubscriptionPlanId(typeof stored === "string" ? stored : "")
+        ? (stored as SubscriptionPlan)
+        : DEFAULT_TRIAL_PLAN;
+    }
+
+    const insertPlan = resolvedPlan ?? DEFAULT_TRIAL_PLAN;
     const prices = await getPlanMonthlyPrices();
     const window = trialWindowIso();
 
@@ -744,8 +760,8 @@ export async function ensureRestaurantSubscription(
       .from("restaurant_subscriptions")
       .insert({
         restaurant_id: restaurantId,
-        plan,
-        monthly_price: prices[plan],
+        plan: insertPlan,
+        monthly_price: prices[insertPlan],
         currency: "KWD",
         status: "trial",
         trial_started_at: window.trialStartedAt,
@@ -762,7 +778,7 @@ export async function ensureRestaurantSubscription(
 
     await supabase
       .from("restaurants")
-      .update({ subscription_plan: plan })
+      .update({ subscription_plan: insertPlan })
       .eq("id", restaurantId);
 
     const { data: restaurant } = await supabase

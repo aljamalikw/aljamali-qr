@@ -126,7 +126,7 @@ export function Pricing() {
           <SectionHeader
             label="Pricing"
             title="Plans That Scale With You"
-            description="Start with a 7-day free trial — every plan includes bilingual menus and instant updates."
+            description="Start with a 7-day Professional trial — no charge until you choose a paid plan. Every plan includes bilingual menus and instant updates."
           />
 
           <motion.div

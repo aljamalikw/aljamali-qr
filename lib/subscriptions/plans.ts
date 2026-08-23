@@ -38,6 +38,13 @@ export const PAYABLE_PLANS: Array<"Starter" | "Professional"> = [
   "Professional",
 ];
 
+/**
+ * Plan assigned to newly created restaurants during the free trial.
+ * Feature gates use this plan name, so a Starter trial would lock
+ * Professional features. Existing paid rows are never rewritten.
+ */
+export const DEFAULT_TRIAL_PLAN: SubscriptionPlanId = "Professional";
+
 export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, PlanCatalogEntry> = {
   Starter: {
     id: "starter",
