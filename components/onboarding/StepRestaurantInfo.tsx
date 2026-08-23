@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthInput } from "@/components/auth/AuthInput";
 import {
   CUISINE_OPTIONS,
-  PREFERRED_LANGUAGE_OPTIONS,
   RESTAURANT_TYPE_OPTIONS,
 } from "@/lib/onboarding/constants";
 import type { RestaurantInfoFormData } from "@/lib/onboarding/types";
-import { TIMEZONE_OPTIONS } from "@/lib/restaurants/constants";
+import { uploadBrandingAsset } from "@/lib/onboarding/uploadBrandingAsset";
 import type { Restaurant } from "@/lib/restaurants/types";
 
 interface StepRestaurantInfoProps {
@@ -24,6 +23,7 @@ function buildInitialForm(restaurant: Restaurant | null): RestaurantInfoFormData
     restaurantName: restaurant?.restaurant_name?.trim() ?? "",
     restaurantType: restaurant?.restaurant_type?.trim() ?? "",
     cuisineType: restaurant?.cuisine_type?.trim() ?? "",
+    aboutUs: restaurant?.about_us?.trim() ?? "",
     ownerName: restaurant?.owner_name?.trim() ?? "",
     phone: restaurant?.phone?.trim() ?? "",
     whatsapp: restaurant?.whatsapp_number?.trim() ?? "",
@@ -34,8 +34,7 @@ function buildInitialForm(restaurant: Restaurant | null): RestaurantInfoFormData
     country: restaurant?.country?.trim() ?? "",
     googleMapsUrl: restaurant?.google_maps_url?.trim() ?? "",
     openingHours: restaurant?.opening_hours?.trim() ?? "",
-    timezone: restaurant?.timezone || "Asia/Kuwait",
-    preferredLanguage: restaurant?.preferred_language?.trim() || "en",
+    logoUrl: restaurant?.logo_url?.trim() ?? "",
   };
 }
 
@@ -49,6 +48,8 @@ export function StepRestaurantInfo({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const update = <K extends keyof RestaurantInfoFormData>(
     key: K,
@@ -118,6 +119,66 @@ export function StepRestaurantInfo({
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-white/45">
+            Description
+          </label>
+          <textarea
+            value={form.aboutUs}
+            onChange={(event) => update("aboutUs", event.target.value)}
+            rows={3}
+            placeholder="Optional — tell guests about your restaurant"
+            className="auth-input w-full resize-none"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-white/45">
+            Logo
+          </label>
+          <div className="flex items-center gap-3">
+            {form.logoUrl.trim() ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={form.logoUrl}
+                alt=""
+                className="h-14 w-14 shrink-0 rounded-xl border border-gold/15 object-cover"
+              />
+            ) : (
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-dashed border-gold/20 bg-black/20 text-[9px] uppercase tracking-wider text-white/30">
+                None
+              </div>
+            )}
+            <div className="min-w-0 flex-1 space-y-2">
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setUploadingLogo(true);
+                  const result = await uploadBrandingAsset(file);
+                  setUploadingLogo(false);
+                  if (result.ok) update("logoUrl", result.url);
+                  else setFormError(result.message);
+                  if (logoInputRef.current) logoInputRef.current.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={uploadingLogo}
+                className="menu-btn-secondary text-xs disabled:opacity-50"
+              >
+                {uploadingLogo ? "Uploading…" : "Upload logo"}
+              </button>
+              <p className="text-[11px] text-white/35">Optional — you can add this later.</p>
+            </div>
           </div>
         </div>
 
@@ -223,41 +284,6 @@ export function StepRestaurantInfo({
             placeholder={"Sat–Thu: 12:00–23:00\nFri: 13:00–23:30"}
             className="auth-input w-full resize-none"
           />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium uppercase tracking-wider text-white/45">
-              Timezone
-            </label>
-            <select
-              value={form.timezone}
-              onChange={(event) => update("timezone", event.target.value)}
-              className={selectClass}
-            >
-              {TIMEZONE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium uppercase tracking-wider text-white/45">
-              Preferred Language
-            </label>
-            <select
-              value={form.preferredLanguage}
-              onChange={(event) => update("preferredLanguage", event.target.value)}
-              className={selectClass}
-            >
-              {PREFERRED_LANGUAGE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {formError && (

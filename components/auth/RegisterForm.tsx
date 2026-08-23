@@ -94,6 +94,12 @@ export function RegisterForm() {
     const restaurantResult = await createRestaurantForOwner(
       data.user.id,
       form.email.trim(),
+      {
+        restaurantName: form.restaurantName.trim(),
+        ownerName: form.ownerName.trim(),
+        phone: form.phone.trim(),
+        country: form.country.trim(),
+      },
     );
 
     if (!restaurantResult.ok) {

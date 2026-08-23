@@ -58,7 +58,7 @@ export function WizardProgress({
         />
       </div>
 
-      <div className="mt-3 hidden gap-1 xl:flex">
+      <div className="mt-3 flex gap-1">
         {labels.map((stepLabel, index) => {
           const stepNumber = index + 1;
           const isComplete =

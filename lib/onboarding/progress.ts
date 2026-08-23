@@ -14,15 +14,49 @@ export type OnboardingProgress = {
   percent: number;
 };
 
-export function parseCompletedSteps(value: unknown): number[] {
+export function isLegacyOnboardingProgress(
+  step: number | null | undefined,
+  completedSteps: number[],
+): boolean {
+  return (step ?? 1) > TOTAL_ONBOARDING_STEPS || completedSteps.some((s) => s > TOTAL_ONBOARDING_STEPS);
+}
+
+/** Map a stored 11-step number onto the current 5-step wizard. */
+export function remapLegacyOnboardingStep(step: number | null | undefined): number {
+  const raw = Number.isFinite(step) ? Math.trunc(step as number) : 1;
+  if (raw <= TOTAL_ONBOARDING_STEPS) {
+    return clampOnboardingStep(raw);
+  }
+  if (raw <= 2) return 1;
+  if (raw <= 4) return 2;
+  if (raw <= 6) return 4;
+  if (raw <= 10) return 3;
+  return 5;
+}
+
+export function remapLegacyCompletedSteps(value: unknown): number[] {
   if (!Array.isArray(value)) return [];
-  const allowed = new Set<number>(ONBOARDING_STEP_IDS);
   const unique = new Set<number>();
   for (const entry of value) {
     const n = typeof entry === "number" ? entry : Number(entry);
-    if (Number.isInteger(n) && allowed.has(n)) unique.add(n);
+    if (!Number.isInteger(n)) continue;
+    if (n >= 1 && n <= TOTAL_ONBOARDING_STEPS) {
+      unique.add(n);
+      continue;
+    }
+    if (n <= 2) unique.add(1);
+    else if (n <= 4) unique.add(2);
+    else if (n <= 6) unique.add(4);
+    else if (n <= 10) unique.add(3);
+    else if (n === 11) unique.add(5);
   }
   return Array.from(unique).sort((a, b) => a - b);
+}
+
+export function parseCompletedSteps(value: unknown): number[] {
+  return remapLegacyCompletedSteps(value).filter((n) =>
+    (ONBOARDING_STEP_IDS as readonly number[]).includes(n),
+  );
 }
 
 export function clampOnboardingStep(step: number | null | undefined): number {
@@ -52,12 +86,15 @@ export function getOnboardingProgress(
   }
 
   const completed = Boolean(restaurant.onboarding_completed);
-  const completedSteps = parseCompletedSteps(
-    restaurant.onboarding_completed_steps,
-  );
+  const rawSteps = Array.isArray(restaurant.onboarding_completed_steps)
+    ? restaurant.onboarding_completed_steps
+    : [];
+  const completedSteps = parseCompletedSteps(rawSteps);
   const currentStep = completed
     ? TOTAL_ONBOARDING_STEPS
-    : clampOnboardingStep(restaurant.onboarding_step);
+    : isLegacyOnboardingProgress(restaurant.onboarding_step, rawSteps as number[])
+      ? remapLegacyOnboardingStep(restaurant.onboarding_step)
+      : clampOnboardingStep(restaurant.onboarding_step);
 
   const percent = completed
     ? 100
@@ -87,4 +124,16 @@ export function mergeCompletedSteps(
   const next = new Set(parseCompletedSteps(existing));
   next.add(clampOnboardingStep(step));
   return Array.from(next).sort((a, b) => a - b);
+}
+
+export function resolveResumeStep(
+  storedStep: number,
+  completedSteps: number[],
+): number {
+  let step = clampOnboardingStep(storedStep);
+  const done = new Set(completedSteps);
+  while (done.has(step) && step < TOTAL_ONBOARDING_STEPS) {
+    step += 1;
+  }
+  return step;
 }

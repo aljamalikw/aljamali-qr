@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import {
   mergeCompletedSteps,
   parseCompletedSteps,
+  remapLegacyOnboardingStep,
 } from "@/lib/onboarding/progress";
 import type { RestaurantInfoFormData } from "./types";
 
@@ -44,6 +45,7 @@ export async function saveRestaurantInfo(
       restaurant_name: input.restaurantName.trim(),
       restaurant_type: input.restaurantType.trim() || null,
       cuisine_type: input.cuisineType.trim() || null,
+      about_us: input.aboutUs.trim() || null,
       owner_name: input.ownerName.trim() || null,
       phone: input.phone.trim() || null,
       whatsapp_number: input.whatsapp.trim() || null,
@@ -54,10 +56,12 @@ export async function saveRestaurantInfo(
       country: input.country.trim() || null,
       google_maps_url: input.googleMapsUrl.trim() || null,
       opening_hours: input.openingHours.trim() || null,
-      timezone: input.timezone,
-      preferred_language: input.preferredLanguage,
+      logo_url: input.logoUrl.trim() || existing?.logo_url || null,
       slug,
-      onboarding_step: Math.max(existing?.onboarding_step ?? 1, 2),
+      onboarding_step: Math.max(
+        remapLegacyOnboardingStep(existing?.onboarding_step),
+        2,
+      ),
       onboarding_completed_steps: completedSteps,
       onboarding_last_updated: now,
     };

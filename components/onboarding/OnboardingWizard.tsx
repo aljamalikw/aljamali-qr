@@ -6,46 +6,41 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { useToast } from "@/components/ui/ToastProvider";
-import { fetchOwnerSubscription } from "@/lib/admin/subscriptions";
+import { fetchCategories } from "@/lib/categories/fetchCategories";
 import {
   ONBOARDING_STEP_LABELS,
   TOTAL_ONBOARDING_STEPS,
 } from "@/lib/onboarding/constants";
+import {
+  detectCompletedSetupSteps,
+  mergeDetectedSteps,
+  resolveSetupResumeStep,
+} from "@/lib/onboarding/detect-progress";
 import {
   completeOnboarding,
   logOnboardingStarted,
   restartOnboarding,
 } from "@/lib/onboarding/progress-actions";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
-import { saveBranding } from "@/lib/onboarding/saveBranding";
-import {
-  saveOnboardingFeatureSkip,
-  saveOnboardingOnlineOrdering,
-  saveOnboardingReservations,
-} from "@/lib/onboarding/saveFeatureSteps";
+import { saveOnboardingPreferences } from "@/lib/onboarding/savePreferences";
 import { saveRestaurantInfo } from "@/lib/onboarding/saveRestaurantInfo";
 import type {
-  BrandingFormData,
   OnboardingQrResult,
+  PreferencesFormData,
   RestaurantInfoFormData,
 } from "@/lib/onboarding/types";
 import { updateOnboardingStep } from "@/lib/onboarding/updateOnboardingStep";
+import { fetchQrCodes } from "@/lib/qr-codes/fetchQrCodes";
 import {
   fetchUserRestaurant,
   isRestaurantSetupComplete,
 } from "@/lib/restaurants/setup";
 import type { Restaurant } from "@/lib/restaurants/types";
 import { OnboardingSuccess } from "./OnboardingSuccess";
-import { StepBranding } from "./StepBranding";
-import { StepCategories } from "./StepCategories";
 import { StepFinish } from "./StepFinish";
 import { StepFirstQr } from "./StepFirstQr";
-import { StepLoyalty } from "./StepLoyalty";
-import { StepMarketing } from "./StepMarketing";
-import { StepMenuItems } from "./StepMenuItems";
-import { StepMenuPreview } from "./StepMenuPreview";
-import { StepOnlineOrdering } from "./StepOnlineOrdering";
-import { StepReservations } from "./StepReservations";
+import { StepMenuStructure } from "./StepMenuStructure";
+import { StepPreferences } from "./StepPreferences";
 import { StepRestaurantInfo } from "./StepRestaurantInfo";
 import { WizardProgress } from "./WizardProgress";
 
@@ -56,7 +51,6 @@ export function OnboardingWizard() {
   const { showToast } = useToast();
   const [phase, setPhase] = useState<WizardPhase>("loading");
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [plan, setPlan] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [qrResult, setQrResult] = useState<OnboardingQrResult | null>(null);
 
@@ -70,12 +64,6 @@ export function OnboardingWizard() {
       setRestaurant(data);
 
       if (data?.id) {
-        const sub = await fetchOwnerSubscription(data.id);
-        if (mounted && sub.ok && sub.data?.plan) {
-          setPlan(sub.data.plan);
-        } else if (mounted) {
-          setPlan(data.subscription_plan ?? "Starter");
-        }
         void logOnboardingStarted(data);
       }
 
@@ -84,8 +72,38 @@ export function OnboardingWizard() {
         return;
       }
 
+      const [categoriesResult, qrResultData] = await Promise.all([
+        fetchCategories(),
+        fetchQrCodes(data),
+      ]);
+      if (!mounted) return;
+
       const progress = getOnboardingProgress(data);
-      setStep(progress.currentStep);
+      const detected = detectCompletedSetupSteps({
+        restaurant: data,
+        categoryCount: categoriesResult.ok ? categoriesResult.data.length : 0,
+        qrCount: qrResultData.ok ? qrResultData.data.length : 0,
+      });
+      const completedSteps = mergeDetectedSteps(
+        progress.completedSteps,
+        detected,
+      );
+      const resume = resolveSetupResumeStep({
+        storedStep: progress.currentStep,
+        completedSteps,
+        hasName: Boolean(data?.restaurant_name?.trim()),
+        categoryCount: categoriesResult.ok ? categoriesResult.data.length : 0,
+        qrCount: qrResultData.ok ? qrResultData.data.length : 0,
+      });
+
+      if (qrResultData.ok && qrResultData.data[0]) {
+        setQrResult({
+          name: qrResultData.data[0].name,
+          url: qrResultData.data[0].url,
+        });
+      }
+
+      setStep(resume);
       setPhase("wizard");
     })();
 
@@ -110,85 +128,48 @@ export function OnboardingWizard() {
     [],
   );
 
-  const handleBranding = useCallback(
-    async (values: BrandingFormData, skipped = false) => {
-      const result = await saveBranding(values, { skipped });
-      if (!result.ok) return result.message;
-      setRestaurant(result.restaurant);
-      setStep(3);
-      return null;
-    },
-    [],
-  );
-
-  const handleCategoriesContinue = useCallback(async () => {
-    const result = await updateOnboardingStep(4, 3);
+  const handleMenuContinue = useCallback(async () => {
+    const result = await updateOnboardingStep(3, 2);
     if (!result.ok) showToast(result.message, "error");
+    setStep(3);
+  }, [showToast]);
+
+  const handlePreferences = useCallback(async (values: PreferencesFormData) => {
+    const result = await saveOnboardingPreferences(values);
+    if (!result.ok) return result.message;
+    setRestaurant(result.restaurant);
     setStep(4);
-  }, [showToast]);
+    return null;
+  }, []);
 
-  const handleMenuItemsContinue = useCallback(async () => {
-    const result = await updateOnboardingStep(5, 4);
-    if (!result.ok) showToast(result.message, "error");
-    setStep(5);
-  }, [showToast]);
+  const handlePreferencesSkip = useCallback(async () => {
+    const result = await saveOnboardingPreferences(
+      {
+        currency: restaurant?.currency || "KWD",
+        timezone: restaurant?.timezone || "Asia/Kuwait",
+        preferredLanguage: restaurant?.preferred_language || "en",
+        bilingualMenu: restaurant?.bilingual_menu ?? true,
+        reservationsEnabled: restaurant?.reservations_enabled ?? true,
+      },
+      { skipped: true },
+    );
+    if (!result.ok) {
+      showToast(result.message, "error");
+      return;
+    }
+    setRestaurant(result.restaurant);
+    setStep(4);
+  }, [restaurant, showToast]);
 
   const handleQrContinue = useCallback(
     async (qr: OnboardingQrResult | null) => {
       setQrResult(qr);
-      const result = await updateOnboardingStep(6, 5);
+      const result = await updateOnboardingStep(5, 4, !qr);
       if (!result.ok) showToast(result.message, "error");
-      setStep(6);
+      setStep(5);
     },
     [showToast],
   );
-
-  const handlePreviewContinue = useCallback(async () => {
-    const result = await updateOnboardingStep(7, 6);
-    if (!result.ok) showToast(result.message, "error");
-    setStep(7);
-  }, [showToast]);
-
-  const handleReservations = useCallback(async (enabled: boolean) => {
-    const result = await saveOnboardingReservations({ enabled });
-    if (!result.ok) return result.message;
-    setRestaurant(result.restaurant);
-    setStep(8);
-    return null;
-  }, []);
-
-  const handleOrdering = useCallback(async (enabled: boolean) => {
-    const result = await saveOnboardingOnlineOrdering({ enabled });
-    if (!result.ok) return result.message;
-    setRestaurant(result.restaurant);
-    setStep(9);
-    return null;
-  }, []);
-
-  const skipTo = useCallback(
-    async (fromStep: number, toStep: number) => {
-      const result = await saveOnboardingFeatureSkip(fromStep, toStep);
-      if (!result.ok) {
-        showToast(result.message, "error");
-        return;
-      }
-      setRestaurant(result.restaurant);
-      setStep(toStep);
-    },
-    [showToast],
-  );
-
-  const handleLoyaltyContinue = useCallback(async () => {
-    const result = await updateOnboardingStep(10, 9);
-    if (!result.ok) showToast(result.message, "error");
-    setStep(10);
-  }, [showToast]);
-
-  const handleMarketingContinue = useCallback(async () => {
-    const result = await updateOnboardingStep(11, 10);
-    if (!result.ok) showToast(result.message, "error");
-    setStep(11);
-  }, [showToast]);
 
   const handleFinish = useCallback(async () => {
     const result = await completeOnboarding(restaurant?.id);
@@ -298,89 +279,27 @@ export function OnboardingWizard() {
             />
           )}
           {step === 2 && (
-            <StepBranding
-              restaurant={restaurant}
+            <StepMenuStructure
               onBack={handleBack}
-              onContinue={(values) => handleBranding(values, false)}
-              onSkip={() =>
-                handleBranding(
-                  {
-                    logoUrl: restaurant?.logo_url ?? "",
-                    coverUrl: restaurant?.cover_url ?? "",
-                    faviconUrl: restaurant?.favicon_url ?? "",
-                    themePrimaryColor:
-                      restaurant?.theme_primary_color ?? "#d4af37",
-                    menuAccentColor:
-                      restaurant?.menu_accent_color ?? "#d4af37",
-                    fontStyle: restaurant?.font_style ?? "serif",
-                    darkModeDefault: restaurant?.dark_mode_default ?? true,
-                  },
-                  true,
-                )
-              }
+              onContinue={handleMenuContinue}
             />
           )}
           {step === 3 && (
-            <StepCategories
+            <StepPreferences
+              restaurant={restaurant}
               onBack={handleBack}
-              onContinue={handleCategoriesContinue}
+              onContinue={handlePreferences}
+              onSkip={handlePreferencesSkip}
             />
           )}
           {step === 4 && (
-            <StepMenuItems
-              onBack={handleBack}
-              onContinue={handleMenuItemsContinue}
-            />
-          )}
-          {step === 5 && (
             <StepFirstQr
               restaurant={restaurant}
               onBack={handleBack}
               onFinish={handleQrContinue}
             />
           )}
-          {step === 6 && (
-            <StepMenuPreview
-              restaurant={restaurant}
-              onBack={handleBack}
-              onContinue={handlePreviewContinue}
-            />
-          )}
-          {step === 7 && (
-            <StepReservations
-              restaurant={restaurant}
-              onBack={handleBack}
-              onContinue={handleReservations}
-              onSkip={() => skipTo(7, 8)}
-            />
-          )}
-          {step === 8 && (
-            <StepOnlineOrdering
-              restaurant={restaurant}
-              plan={plan}
-              onBack={handleBack}
-              onContinue={handleOrdering}
-              onSkip={() => skipTo(8, 9)}
-            />
-          )}
-          {step === 9 && (
-            <StepLoyalty
-              plan={plan}
-              onBack={handleBack}
-              onContinue={handleLoyaltyContinue}
-              onSkip={() => skipTo(9, 10)}
-            />
-          )}
-          {step === 10 && (
-            <StepMarketing
-              restaurant={restaurant}
-              plan={plan}
-              onBack={handleBack}
-              onContinue={handleMarketingContinue}
-              onSkip={() => skipTo(10, 11)}
-            />
-          )}
-          {step === 11 && (
+          {step === 5 && (
             <StepFinish
               restaurant={restaurant}
               onBack={handleBack}

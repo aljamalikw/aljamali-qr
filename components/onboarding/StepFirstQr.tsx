@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { AuthButton } from "@/components/auth/AuthButton";
@@ -12,6 +12,7 @@ import { createEmptyQrForm } from "@/lib/dashboard/qr/utils";
 import { QR_PRESET_OPTIONS } from "@/lib/onboarding/constants";
 import type { OnboardingQrResult } from "@/lib/onboarding/types";
 import { createQrCode } from "@/lib/qr-codes/createQrCode";
+import { fetchQrCodes } from "@/lib/qr-codes/fetchQrCodes";
 import type { Restaurant } from "@/lib/restaurants/types";
 
 interface StepFirstQrProps {
@@ -35,8 +36,25 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
   );
   const [finishing, setFinishing] = useState(false);
   const [skipOpen, setSkipOpen] = useState(false);
+  const [existingLoaded, setExistingLoaded] = useState(false);
 
   const hasSlug = Boolean(restaurant?.slug?.trim());
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const result = await fetchQrCodes(restaurant);
+      if (!mounted) return;
+      if (result.ok && result.data.length > 0) {
+        const first = result.data[0];
+        setGenerated({ name: first.name, url: first.url });
+      }
+      setExistingLoaded(true);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [restaurant]);
 
   const handleGenerate = async () => {
     if (!name.trim()) {
@@ -89,14 +107,17 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
     <div>
       <div className="mb-6 text-center">
         <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">
-          Generate your first QR code
+          {generated ? "Your menu QR code" : "Set up your menu QR code"}
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-white/50">
-          Guests scan this to open your live digital menu instantly.
+          Guests scan this to open your live digital menu. Skip if you want to
+          create codes later.
         </p>
       </div>
 
-      {!generated ? (
+      {!existingLoaded ? (
+        <div className="h-40 animate-pulse rounded-2xl bg-white/5" />
+      ) : !generated ? (
         <div className="space-y-4">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/45">
@@ -211,9 +232,14 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
             </button>
           </div>
 
-          <AuthButton type="button" onClick={handleFinish} loading={finishing} className="mt-6">
-            Finish Setup
-          </AuthButton>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+            <AuthButton type="button" variant="secondary" onClick={onBack} className="flex-1">
+              Back
+            </AuthButton>
+            <AuthButton type="button" onClick={handleFinish} loading={finishing} className="flex-1">
+              Continue
+            </AuthButton>
+          </div>
         </motion.div>
       )}
 
@@ -221,7 +247,7 @@ export function StepFirstQr({ restaurant, onBack, onFinish }: StepFirstQrProps) 
         open={skipOpen}
         title="Skip QR code generation?"
         description="You can always create QR codes for tables, delivery, and pickup from your dashboard later."
-        confirmLabel="Skip & Finish"
+        confirmLabel="Skip for now"
         loading={finishing}
         onConfirm={handleSkip}
         onCancel={() => setSkipOpen(false)}

@@ -11,7 +11,7 @@ import { supabase } from "@/lib/supabase";
 const ERROR = "We couldn't save your progress. Please try again.";
 
 export type AdvanceOnboardingInput = {
-  /** Step the user is moving to (1–11). */
+  /** Step the user is moving to (1–5). */
   nextStep: number;
   /** Step just finished or skipped. */
   completedStep?: number;

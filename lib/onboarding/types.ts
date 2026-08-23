@@ -2,6 +2,7 @@ export type RestaurantInfoFormData = {
   restaurantName: string;
   restaurantType: string;
   cuisineType: string;
+  aboutUs: string;
   ownerName: string;
   phone: string;
   whatsapp: string;
@@ -12,8 +13,15 @@ export type RestaurantInfoFormData = {
   country: string;
   googleMapsUrl: string;
   openingHours: string;
+  logoUrl: string;
+};
+
+export type PreferencesFormData = {
+  currency: string;
   timezone: string;
   preferredLanguage: string;
+  bilingualMenu: boolean;
+  reservationsEnabled: boolean;
 };
 
 export type BrandingFormData = {

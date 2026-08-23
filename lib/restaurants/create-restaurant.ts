@@ -8,6 +8,12 @@ const RESTAURANT_SETUP_ERROR =
 export async function createRestaurantForOwner(
   ownerId: string,
   email: string,
+  profile?: {
+    restaurantName?: string;
+    ownerName?: string;
+    phone?: string;
+    country?: string;
+  },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const { error } = await supabase.rpc("create_restaurant_for_owner", {
@@ -27,6 +33,24 @@ export async function createRestaurantForOwner(
       .limit(1)
       .maybeSingle();
 
+    const restaurantName = profile?.restaurantName?.trim() || null;
+    const ownerName = profile?.ownerName?.trim() || null;
+    const phone = profile?.phone?.trim() || null;
+    const country = profile?.country?.trim() || null;
+    const createdId = (created as { id?: string } | null)?.id;
+
+    if (createdId && (restaurantName || ownerName || phone || country)) {
+      await supabase
+        .from("restaurants")
+        .update({
+          restaurant_name: restaurantName,
+          owner_name: ownerName,
+          phone,
+          country,
+        })
+        .eq("id", createdId);
+    }
+
     void logActivity({
       action: "restaurant_created",
       ownerId,
@@ -35,8 +59,10 @@ export async function createRestaurantForOwner(
       actorRole: "restaurant_owner",
       restaurantId: (created as { id?: string } | null)?.id ?? null,
       restaurantName:
+        restaurantName ??
         (created as { restaurant_name?: string | null } | null)
-          ?.restaurant_name ?? null,
+          ?.restaurant_name ??
+        null,
       entityType: "restaurant",
       entityId: (created as { id?: string } | null)?.id ?? null,
       newValues: { email: email.trim() },

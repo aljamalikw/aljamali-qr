@@ -18,6 +18,7 @@ import { updateMenuItem } from "@/lib/menu-items/updateMenuItem";
 interface StepMenuItemsProps {
   onBack: () => void;
   onContinue: () => Promise<void>;
+  onSkip?: () => Promise<void>;
 }
 
 const inputClass =
@@ -94,7 +95,7 @@ function itemToForm(item: DashboardMenuItem): MenuFormData {
   };
 }
 
-export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
+export function StepMenuItems({ onBack, onContinue, onSkip }: StepMenuItemsProps) {
   const { showToast } = useToast();
   const { categories, loading: categoriesLoading } = useMenuCategoryOptions();
   const [items, setItems] = useState<DashboardMenuItem[]>([]);
@@ -213,8 +214,8 @@ export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
           Add your first dishes
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-white/50">
-          Add at least one menu item. Images are optional and can be uploaded
-          later.
+          Add your first dishes now, or skip and do this later from the
+          dashboard. Images are optional.
         </p>
       </div>
 
@@ -307,6 +308,16 @@ export function StepMenuItems({ onBack, onContinue }: StepMenuItemsProps) {
           Continue
         </AuthButton>
       </div>
+      {onSkip ? (
+        <button
+          type="button"
+          disabled={continuing}
+          onClick={() => void onSkip()}
+          className="mt-3 w-full text-center text-xs text-white/35 underline-offset-2 transition-colors hover:text-white/60 hover:underline disabled:opacity-50"
+        >
+          Skip menu items for now
+        </button>
+      ) : null}
 
       <AnimatePresence>
         {modalOpen && (

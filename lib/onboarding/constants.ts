@@ -1,23 +1,15 @@
-export const TOTAL_ONBOARDING_STEPS = 11;
+export const TOTAL_ONBOARDING_STEPS = 5;
 
-export const ONBOARDING_STEP_IDS = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-] as const;
+export const ONBOARDING_STEP_IDS = [1, 2, 3, 4, 5] as const;
 
 export type OnboardingStepId = (typeof ONBOARDING_STEP_IDS)[number];
 
 export const ONBOARDING_STEP_LABELS = [
-  "Restaurant",
-  "Logo",
-  "Categories",
+  "Details",
   "Menu",
-  "QR Code",
-  "Preview",
-  "Reservations",
-  "Ordering",
-  "Loyalty",
-  "Marketing",
-  "Finish",
+  "Preferences",
+  "QR Setup",
+  "Ready",
 ] as const;
 
 export const RESTAURANT_TYPE_OPTIONS = [

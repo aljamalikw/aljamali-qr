@@ -74,7 +74,7 @@ export function RestaurantSwitcher() {
       return;
     }
 
-    showToast("Restaurant created.");
+    showToast("Restaurant created. Continue setup from the dashboard banner.");
     setName("");
     setShowCreateForm(false);
     setCreating(false);
