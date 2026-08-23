@@ -29,6 +29,7 @@ import {
   buildOrdersExportDataset,
   buildOrdersFilterSummary,
 } from "@/lib/export/datasets/orders";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { supabase } from "@/lib/supabase";
 import { OrderAnalyticsSection } from "./OrderAnalyticsSection";
@@ -434,8 +435,7 @@ function OrdersManagementContent() {
     [replaceOrder, showToast],
   );
 
-  const restaurantName =
-    restaurant?.restaurant_name?.trim() || "Restaurant";
+  const restaurantName = getSafeRestaurantName(restaurant);
 
   const getExportDataset = useCallback(
     () =>
@@ -480,7 +480,8 @@ function OrdersManagementContent() {
         <div>
           <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">Orders</h1>
           <p className="mt-1 text-sm text-white/45">
-            Manage online orders submitted from your public menu.
+            {restaurantName} · Manage online orders submitted from your public
+            menu.
           </p>
         </div>
         <ExportMenu

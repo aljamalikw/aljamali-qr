@@ -25,10 +25,11 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { restaurant } = useRestaurant();
+  const { restaurant, displayName, loading: restaurantLoading } = useRestaurant();
   const { access, canAccessNav } = useSubscriptionAccess();
 
   const planLabel = access.plan || restaurant?.subscription_plan || "Starter";
+  const restaurantLabel = restaurantLoading ? "" : displayName;
   const visibleNav = dashboardNavItems.filter((item) => canAccessNav(item.id));
 
   const isActive = (href: string) =>
@@ -49,13 +50,25 @@ export function Sidebar({
           href="/dashboard"
         />
         {!collapsed && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="truncate px-1 text-[11px] text-white/40"
-          >
-            {planLabel} Plan
-          </motion.p>
+          <div className="min-w-0 px-1">
+            {restaurantLabel ? (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="truncate text-xs font-medium text-white/80"
+                title={restaurantLabel}
+              >
+                {restaurantLabel}
+              </motion.p>
+            ) : null}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="truncate text-[11px] text-white/40"
+            >
+              {planLabel} Plan
+            </motion.p>
+          </div>
         )}
       </div>
 

@@ -6,6 +6,7 @@ import { DashboardPrimaryButton } from "@/components/dashboard/ui/DashboardPrima
 import { QrIcon } from "./icons/QrIcons";
 
 interface QrToolbarProps {
+  restaurantName?: string;
   search: string;
   status: QrStatusFilter;
   type: QrTypeFilter;
@@ -26,6 +27,7 @@ const selectClass =
   "rounded-xl border border-gold/15 bg-surface px-3 py-2.5 text-sm text-white transition-colors focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/15";
 
 export function QrToolbar({
+  restaurantName,
   search,
   status,
   type,
@@ -49,6 +51,7 @@ export function QrToolbar({
             QR Code Management
           </h1>
           <p className="mt-1 text-sm text-white/45">
+            {restaurantName ? `${restaurantName} · ` : ""}
             {filteredCount} of {totalCount} QR codes
           </p>
         </div>

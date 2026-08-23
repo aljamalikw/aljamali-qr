@@ -1,4 +1,5 @@
 import type { Customer } from "@/lib/customers/sync-customer";
+import { FALLBACK_RESTAURANT_NAME } from "@/lib/restaurants/display";
 import type { MarketingTemplate } from "./types";
 
 /** System defaults — restaurants can override via marketing_templates (Enterprise). */
@@ -132,7 +133,7 @@ export function buildPreviewVars(
 ): CampaignPlaceholderVars {
   return {
     customerName: sample?.fullName?.trim() || "Ahmed Ali",
-    restaurantName: restaurantName || "Crafting Hands",
+    restaurantName: restaurantName || FALLBACK_RESTAURANT_NAME,
     loyaltyPoints: sample?.loyaltyPoints ?? 120,
     lastOrderDate: sample?.lastVisit
       ? new Date(sample.lastVisit).toLocaleDateString()

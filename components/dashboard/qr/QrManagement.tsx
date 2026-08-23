@@ -21,6 +21,7 @@ import { duplicateQrCode } from "@/lib/qr-codes/duplicateQrCode";
 import { fetchQrCodes } from "@/lib/qr-codes/fetchQrCodes";
 import { softDeleteQrCode } from "@/lib/qr-codes/softDeleteQrCode";
 import { renameQrCode, updateQrCodeStatus } from "@/lib/qr-codes/updateQrCode";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -399,6 +400,7 @@ export function QrManagement() {
 
       {!showEmpty && (
         <QrToolbar
+          restaurantName={getSafeRestaurantName(restaurant)}
           search={search}
           status={status}
           type={type}

@@ -23,6 +23,7 @@ import {
 import { customerHasMarketingOptIn } from "@/lib/customers/whatsapp-chat";
 import { formatDemoDate } from "@/lib/demo-requests/utils";
 import { buildTelHref } from "@/lib/marketing/whatsapp/phone";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsMarketing } from "@/lib/subscriptions/plans";
 import { supabase } from "@/lib/supabase";
@@ -152,8 +153,7 @@ export function CustomersManagement() {
     [filtered, page],
   );
 
-  const restaurantName =
-    restaurant?.restaurant_name?.trim() || "Restaurant";
+  const restaurantName = getSafeRestaurantName(restaurant);
 
   const getExportDataset = useCallback(
     () =>
@@ -193,7 +193,8 @@ export function CustomersManagement() {
             Customers
           </h1>
           <p className="mt-1 text-sm text-white/45">
-            Restaurant-scoped CRM — each restaurant owns its own customers.
+            {restaurantName} · Restaurant-scoped CRM — each restaurant owns its
+            own customers.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -501,7 +502,7 @@ export function CustomersManagement() {
         <WhatsAppCampaignBuilder
           open={campaignBuilderOpen}
           restaurantId={restaurant.id}
-          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          restaurantName={restaurantName}
           plan={access.locationPlan}
           bypassAdmin={isAdminRole(role)}
           onClose={() => setCampaignBuilderOpen(false)}
@@ -515,7 +516,7 @@ export function CustomersManagement() {
         <WhatsAppChatModal
           open={Boolean(whatsAppCustomer)}
           restaurantId={restaurant.id}
-          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          restaurantName={restaurantName}
           customer={whatsAppCustomer}
           onClose={() => setWhatsAppCustomer(null)}
         />

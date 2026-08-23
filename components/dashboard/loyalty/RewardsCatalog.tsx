@@ -29,6 +29,7 @@ import {
   type RewardType,
 } from "@/lib/loyalty/rewards";
 import type { RewardTemplate } from "@/lib/loyalty/reward-templates";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsRewardAnalytics } from "@/lib/subscriptions/plans";
 
@@ -231,7 +232,7 @@ export function RewardsCatalog() {
   }
 
   const restaurantName =
-    restaurant.restaurant_name?.trim() || "Restaurant";
+    getSafeRestaurantName(restaurant);
 
   const enrolledCustomers = customers.filter(
     (customer) => customer.metadata.loyalty?.enrolled === true,

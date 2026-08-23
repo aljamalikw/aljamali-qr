@@ -5,6 +5,8 @@ import { DashboardCard } from "@/components/dashboard/ui/DashboardCard";
 import { LoyaltyFeatureGate } from "@/components/dashboard/LoyaltyFeatureGate";
 import { LoyaltyEarningSettings } from "@/components/dashboard/loyalty/LoyaltyEarningSettings";
 import { RewardsCatalog } from "@/components/dashboard/loyalty/RewardsCatalog";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
+import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 
 /** Public entry — Starter sees upgrade card; Pro/Enterprise/Admin see loyalty UI. */
 export function LoyaltyManagement() {
@@ -16,6 +18,9 @@ export function LoyaltyManagement() {
 }
 
 function LoyaltyManagementContent() {
+  const { restaurant } = useRestaurant();
+  const restaurantName = getSafeRestaurantName(restaurant);
+
   return (
     <div className="space-y-6">
       <header>
@@ -23,7 +28,8 @@ function LoyaltyManagementContent() {
           Loyalty & Rewards
         </h1>
         <p className="mt-1 text-sm text-white/45">
-          Reward repeat customers with points, discounts, and exclusive rewards.
+          {restaurantName} · Reward repeat customers with points, discounts, and
+          exclusive rewards.
         </p>
       </header>
 

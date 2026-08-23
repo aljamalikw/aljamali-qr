@@ -6,16 +6,15 @@ import Link from "next/link";
 import { DashboardCard } from "./ui/DashboardCard";
 import { ActivityFeed } from "./ActivityFeed";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
-import { fetchUserRestaurant } from "@/lib/restaurants/setup";
 import { fetchQrCodes } from "@/lib/qr-codes/fetchQrCodes";
 import { fetchMenuItems } from "@/lib/menu-items/fetchMenuItems";
 import { fetchCategories } from "@/lib/categories/fetchCategories";
 import { fetchAnalyticsDashboard } from "@/lib/qr-analytics";
 import type { AnalyticsDashboardData } from "@/lib/qr-analytics";
-import type { Restaurant } from "@/lib/restaurants/types";
 import type { ActivityItem } from "@/lib/dashboard/types";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { isRestaurantSetupComplete } from "@/lib/restaurants/setup";
+import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { fetchPublishedAnnouncementsForOwner } from "@/lib/announcements/owner-queries";
 import type { AnnouncementItem } from "@/lib/announcements/types";
@@ -31,7 +30,6 @@ type Announcement = Pick<
 >;
 
 type DashboardData = {
-  restaurant: Restaurant | null;
   qrCount: number;
   menuCount: number;
   categoryCount: number;
@@ -40,7 +38,6 @@ type DashboardData = {
 };
 
 const EMPTY_DATA: DashboardData = {
-  restaurant: null,
   qrCount: 0,
   menuCount: 0,
   categoryCount: 0,
@@ -116,6 +113,11 @@ function buildRecentActivity(
 export function DashboardHome() {
   const { access, loading: accessLoading } = useSubscriptionAccess();
   const { role, loading: authLoading } = useAuthUser();
+  const {
+    restaurant,
+    displayName,
+    loading: restaurantLoading,
+  } = useRestaurant();
   const [data, setData] = useState<DashboardData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
 
@@ -125,33 +127,31 @@ export function DashboardHome() {
     (isAdminRole(role) || planAllowsBusinessIntelligence(access.locationPlan));
 
   const loadDashboard = useCallback(async () => {
+    if (restaurantLoading) return;
+
     setLoading(true);
 
-    const restaurantPromise = fetchUserRestaurant();
-    const analyticsPromise = restaurantPromise.then((restaurant) =>
-      restaurant?.id
-        ? fetchAnalyticsDashboard(restaurant.id, restaurant.timezone)
-        : Promise.resolve({ ok: false as const, message: "" }),
-    );
+    if (!restaurant?.id) {
+      setData(EMPTY_DATA);
+      setLoading(false);
+      return;
+    }
 
     const [
-      restaurant,
       qrResult,
       menuResult,
       categoriesResult,
       analyticsResult,
       announcements,
     ] = await Promise.all([
-      restaurantPromise,
-      fetchQrCodes(),
+      fetchQrCodes(restaurant),
       fetchMenuItems(),
       fetchCategories(),
-      analyticsPromise,
+      fetchAnalyticsDashboard(restaurant.id, restaurant.timezone),
       fetchPublishedAnnouncements(),
     ]);
 
     setData({
-      restaurant,
       qrCount: qrResult.ok ? qrResult.data.length : 0,
       menuCount: menuResult.ok ? menuResult.data.length : 0,
       categoryCount: categoriesResult.ok ? categoriesResult.data.length : 0,
@@ -160,19 +160,19 @@ export function DashboardHome() {
     });
 
     setLoading(false);
-  }, []);
+  }, [restaurant, restaurantLoading]);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
 
-  const restaurantName =
-    data.restaurant?.restaurant_name?.trim() || "Your Restaurant";
-  const isActive = Boolean(data.restaurant?.restaurant_name?.trim());
+  const pageLoading = restaurantLoading || loading;
+  const restaurantName = displayName || "Your Restaurant";
+  const isActive = Boolean(restaurant?.restaurant_name?.trim());
   const analytics = data.analytics;
   const onboardingIncomplete =
-    Boolean(data.restaurant) && !isRestaurantSetupComplete(data.restaurant);
-  const onboardingPercent = getOnboardingProgress(data.restaurant).percent;
+    Boolean(restaurant) && !isRestaurantSetupComplete(restaurant);
+  const onboardingPercent = getOnboardingProgress(restaurant).percent;
 
   const kpis = useMemo(
     () => [
@@ -216,7 +216,7 @@ export function DashboardHome() {
   );
 
   const announcementsBlock =
-    !loading && data.announcements.length > 0 ? (
+    !pageLoading && data.announcements.length > 0 ? (
       <DashboardCard delay={0.2} className="p-5 sm:p-6">
         <h2 className="font-serif text-xl font-bold text-white">
           Announcements
@@ -260,7 +260,7 @@ export function DashboardHome() {
           Welcome back
         </p>
         <h1 className="mt-2 font-serif text-2xl font-bold text-white sm:text-3xl lg:text-4xl">
-          {loading ? "Dashboard Overview" : restaurantName}
+          {pageLoading ? "Dashboard Overview" : restaurantName}
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
           <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-gold">
@@ -283,7 +283,7 @@ export function DashboardHome() {
         </p>
       </motion.div>
 
-      {!loading && onboardingIncomplete ? (
+      {!pageLoading && onboardingIncomplete ? (
         <DashboardCard className="flex flex-col gap-4 border-gold/25 bg-gold/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold">
@@ -333,7 +333,7 @@ export function DashboardHome() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {loading
+            {pageLoading
               ? Array.from({ length: 7 }).map((_, i) => (
                   <StatCardSkeleton key={i} />
                 ))
@@ -361,7 +361,7 @@ export function DashboardHome() {
 
           <div className="grid gap-6 xl:grid-cols-3">
             <div className="space-y-6 xl:col-span-2">
-              {!loading && recentActivity.length > 0 ? (
+              {!pageLoading && recentActivity.length > 0 ? (
                 <ActivityFeed activities={recentActivity} />
               ) : (
                 <DashboardCard

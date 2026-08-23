@@ -3,6 +3,15 @@ import type { Restaurant } from "./types";
 
 export const RESTAURANT_SETUP_TITLE = "Complete Your Restaurant Setup";
 export const RESTAURANT_SUBTITLE = "Digital Menu";
+/** Generic fallback for previews/exports — never a real restaurant name. */
+export const FALLBACK_RESTAURANT_NAME = "Your Restaurant";
+
+export function getSafeRestaurantName(
+  restaurant: Restaurant | null | undefined,
+): string {
+  const name = restaurant?.restaurant_name?.trim();
+  return name || FALLBACK_RESTAURANT_NAME;
+}
 
 export function getRestaurantDisplayName(restaurant: Restaurant | null): string {
   if (!restaurant) return RESTAURANT_SETUP_TITLE;

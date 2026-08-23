@@ -7,6 +7,7 @@ import type { Order } from "@/lib/orders/types";
 import { updateOrderStatus } from "@/lib/orders/updateOrderStatus";
 import { getNextOrderStatus } from "@/lib/orders/utils";
 import { OnlineOrderingFeatureGate } from "@/components/dashboard/OnlineOrderingFeatureGate";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { supabase } from "@/lib/supabase";
 import { KitchenOrderCard } from "./KitchenOrderCard";
@@ -214,7 +215,7 @@ function KitchenDisplayContent() {
         <div>
           <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">Kitchen Display</h1>
           <p className="mt-1 text-sm text-white/45">
-            Live order queue for {restaurant.restaurant_name ?? "your kitchen"}.
+            Live order queue for {getSafeRestaurantName(restaurant)}.
           </p>
         </div>
         <button

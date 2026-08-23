@@ -13,6 +13,7 @@ import {
   mapRestaurantToSettings,
   updateRestaurantSettings,
 } from "@/lib/restaurants/settings";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { CURRENCY_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/restaurants/constants";
 import { restartOnboarding } from "@/lib/onboarding/progress-actions";
@@ -164,7 +165,8 @@ export function RestaurantSettings() {
             Restaurant Settings
           </h1>
           <p className="mt-1 text-sm text-white/45">
-            Configure your menu, hours, branding, and business details
+            {getSafeRestaurantName(restaurant)} · Configure your menu, hours,
+            branding, and business details
           </p>
         </div>
         {hasChanges && (

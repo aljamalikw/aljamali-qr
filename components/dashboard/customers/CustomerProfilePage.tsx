@@ -27,6 +27,7 @@ import {
 import { WhatsAppChatModal } from "@/components/dashboard/customers/WhatsAppChatModal";
 import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
 import { buildTelHref } from "@/lib/marketing/whatsapp/phone";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
   fetchCustomerMarketingHistory,
@@ -73,6 +74,7 @@ type CustomerProfilePageProps = {
 export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
+  const restaurantName = getSafeRestaurantName(restaurant);
   const { access, loading: accessLoading } = useSubscriptionAccess();
   const { role, loading: authLoading } = useAuthUser();
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -752,7 +754,7 @@ export function CustomerProfilePage({ customerId }: CustomerProfilePageProps) {
         <WhatsAppChatModal
           open={whatsAppOpen}
           restaurantId={restaurant.id}
-          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          restaurantName={restaurantName}
           customer={customer}
           onClose={() => setWhatsAppOpen(false)}
           onOpened={() => {

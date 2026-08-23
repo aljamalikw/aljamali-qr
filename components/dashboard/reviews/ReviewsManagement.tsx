@@ -15,6 +15,7 @@ import {
   type FeedbackKind,
   type RestaurantReview,
 } from "@/lib/reviews/reviews";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsReviews } from "@/lib/subscriptions/plans";
 import { buildReviewsExportDataset } from "@/lib/export/datasets/reviews";
@@ -191,8 +192,7 @@ export function ReviewsManagement() {
 
   const summary = useMemo(() => summarizeReviews(filtered), [filtered]);
 
-  const restaurantName =
-    restaurant?.restaurant_name?.trim() || "Restaurant";
+  const restaurantName = getSafeRestaurantName(restaurant);
 
   const getExportDataset = useCallback(
     () =>
@@ -255,7 +255,8 @@ export function ReviewsManagement() {
             Feedback & Complaints
           </h1>
           <p className="mt-1 text-sm text-white/45">
-            Customer ratings and comments from this restaurant&apos;s orders.
+            {restaurantName} · Customer ratings and comments from this
+            restaurant&apos;s orders.
           </p>
         </div>
         <ExportMenu

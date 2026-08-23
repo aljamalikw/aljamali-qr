@@ -6,6 +6,7 @@ import { fetchAnalyticsDashboard } from "@/lib/qr-analytics/queries";
 import { downloadCsv, exportAnalyticsToCsv } from "@/lib/qr-analytics/csv";
 import type { AnalyticsDashboardData, AnalyticsRange } from "@/lib/qr-analytics/types";
 import { getQrTypeLabel } from "@/lib/dashboard/qr/seed-data";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { useToast } from "@/components/ui/ToastProvider";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -128,8 +129,8 @@ export function AnalyticsDashboard() {
             QR Scan Analytics
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">
-            Track scan volume, top-performing QR codes, and table-level engagement across your
-            restaurant.
+            {getSafeRestaurantName(restaurant)} · Track scan volume,
+            top-performing QR codes, and table-level engagement.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">

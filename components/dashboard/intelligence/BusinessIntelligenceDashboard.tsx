@@ -9,6 +9,7 @@ import { ExportMenu, exportFormatSuccessLabel } from "@/components/dashboard/Exp
 import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccessProvider";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { isAdminRole } from "@/lib/auth/roles";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { fetchBusinessIntelligence } from "@/lib/intelligence/bi";
 import { generateRestaurantInsights } from "@/lib/intelligence/insights";
@@ -116,7 +117,7 @@ export function BusinessIntelligenceDashboard() {
     }
     return buildBiExportDataset({
       bi,
-      restaurantName: restaurant.restaurant_name?.trim() || "Restaurant",
+      restaurantName: getSafeRestaurantName(restaurant),
       dateRangeLabel,
       multiRestaurantRows: allowsMulti ? multiRows : [],
     });
@@ -152,7 +153,7 @@ export function BusinessIntelligenceDashboard() {
     setInsightsLoading(true);
     const result = await generateRestaurantInsights(
       restaurant.id,
-      restaurant.restaurant_name?.trim() || "your restaurant",
+      getSafeRestaurantName(restaurant),
     );
     setInsightsLoading(false);
     setInsights(result.ok ? result.data : []);
@@ -242,7 +243,7 @@ export function BusinessIntelligenceDashboard() {
           </h2>
           <p className="mt-1 text-sm text-white/45">
             Revenue, orders, guests, and performance for{" "}
-            {restaurant.restaurant_name?.trim() || "your restaurant"}.
+            {getSafeRestaurantName(restaurant)}.
           </p>
         </div>
         <ExportMenu

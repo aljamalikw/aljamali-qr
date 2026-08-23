@@ -20,6 +20,7 @@ import {
   validateMenuForm,
 } from "@/lib/dashboard/menu/utils";
 import { downloadCsv, exportMenuItemsToCsv, parseMenuItemsCsv } from "@/lib/dashboard/menu/csv";
+import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -31,6 +32,7 @@ const PAGE_SIZE = 10;
 
 export function MenuManagement() {
   const { showToast } = useToast();
+  const { restaurant, displayName, loading: restaurantLoading } = useRestaurant();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -71,8 +73,9 @@ export function MenuManagement() {
   }, [showToast]);
 
   useEffect(() => {
-    loadMenuItems();
-  }, [loadMenuItems]);
+    if (restaurantLoading) return;
+    void loadMenuItems();
+  }, [loadMenuItems, restaurantLoading, restaurant?.id]);
 
   const filtered = useMemo(
     () => filterAndSortMenuItems(items, { search, status, sort, showArchived }),
@@ -363,7 +366,10 @@ export function MenuManagement() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">Menu Items</h1>
-          <p className="mt-1 text-sm text-white/45">Manage your bilingual menu with photos and pricing</p>
+          <p className="mt-1 text-sm text-white/45">
+            {!restaurantLoading && displayName ? `${displayName} · ` : ""}
+            Manage your bilingual menu with photos and pricing
+          </p>
         </div>
         {!showEmpty && (
           <div className="flex flex-wrap gap-2">

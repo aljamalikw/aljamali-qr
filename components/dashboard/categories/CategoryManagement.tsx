@@ -10,6 +10,7 @@ import { duplicateCategory } from "@/lib/categories/duplicateCategory";
 import { fetchCategories } from "@/lib/categories/fetchCategories";
 import { reorderCategories } from "@/lib/categories/reorderCategories";
 import { updateCategory } from "@/lib/categories/updateCategory";
+import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -23,6 +24,7 @@ const inputClass =
 
 export function CategoryManagement() {
   const { showToast } = useToast();
+  const { restaurant, displayName, loading: restaurantLoading } = useRestaurant();
   const [items, setItems] = useState<DashboardCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -51,8 +53,9 @@ export function CategoryManagement() {
   }, [showToast]);
 
   useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+    if (restaurantLoading) return;
+    void loadCategories();
+  }, [loadCategories, restaurantLoading, restaurant?.id]);
 
   const openPicker = () => {
     setPickerOpen(true);
@@ -176,7 +179,10 @@ export function CategoryManagement() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-white sm:text-3xl">Categories</h1>
-          <p className="mt-1 text-sm text-white/45">Organize your menu into sections</p>
+          <p className="mt-1 text-sm text-white/45">
+            {!restaurantLoading && displayName ? `${displayName} · ` : ""}
+            Organize your menu into sections
+          </p>
         </div>
         {!showEmpty && (
           <DashboardPrimaryButton variant="cta" onClick={openPicker}>

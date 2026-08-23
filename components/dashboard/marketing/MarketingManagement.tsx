@@ -41,6 +41,7 @@ import { customerHasMarketingOptIn } from "@/lib/customers/whatsapp-chat";
 import type { Customer } from "@/lib/customers/sync-customer";
 import { openWhatsAppShare } from "@/lib/marketing/whatsapp/share";
 import { formatDemoDate, formatDemoDateTime } from "@/lib/demo-requests/utils";
+import { getSafeRestaurantName } from "@/lib/restaurants/display";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
   planAllowsMarketingAnalytics,
@@ -212,8 +213,7 @@ function MarketingManagementContent() {
     await load();
   };
 
-  const restaurantName =
-    restaurant?.restaurant_name?.trim() || "Restaurant";
+  const restaurantName = getSafeRestaurantName(restaurant);
 
   const getCampaignsExportDataset = useCallback(
     () =>
@@ -255,8 +255,8 @@ function MarketingManagementContent() {
             Marketing Center
           </h1>
           <p className="mt-1 text-sm text-white/45">
-            WhatsApp Share campaigns for opted-in CRM customers — free, no API
-            credentials required.
+            {restaurantName} · WhatsApp Share campaigns for opted-in CRM
+            customers — free, no API credentials required.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -629,7 +629,7 @@ function MarketingManagementContent() {
       <WhatsAppCampaignBuilder
         open={builderOpen}
         restaurantId={restaurant!.id}
-        restaurantName={restaurant?.restaurant_name ?? "Restaurant"}
+        restaurantName={restaurantName}
         plan={plan}
         bypassAdmin={bypassAdmin}
         onClose={() => setBuilderOpen(false)}
@@ -899,7 +899,7 @@ function MarketingManagementContent() {
         <WhatsAppChatModal
           open={Boolean(chatCustomer)}
           restaurantId={restaurant.id}
-          restaurantName={restaurant.restaurant_name ?? "Restaurant"}
+          restaurantName={restaurantName}
           customer={chatCustomer}
           campaignId={recipientsCampaignId}
           campaignMessage={recipientsMessage}
