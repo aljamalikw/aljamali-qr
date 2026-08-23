@@ -44,6 +44,7 @@ export async function createNotification(
 export async function createNotificationsForUsers(
   userIds: string[],
   base: Omit<CreateNotificationParams, "userId">,
+  client: SupabaseClient = supabase,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   if (userIds.length === 0) return { ok: true };
   try {
@@ -57,7 +58,7 @@ export async function createNotificationsForUsers(
       meta: base.meta ?? {},
     }));
 
-    const { error } = await supabase.from("notifications").insert(rows);
+    const { error } = await client.from("notifications").insert(rows);
     if (error) return { ok: false, message: error.message || ERROR };
     return { ok: true };
   } catch {
@@ -118,6 +119,33 @@ export async function notifyOwnersOfAnnouncement(params: {
       href: "/dashboard",
       meta: { announcementId: params.announcementId },
     });
+  } catch {
+    return { ok: false, message: ERROR };
+  }
+}
+
+/**
+ * Best-effort broadcast to platform admins (admin + super_admin).
+ * Pass a service-role client from server routes — owners cannot insert
+ * notification rows for other users.
+ */
+export async function notifyPlatformAdmins(
+  base: Omit<CreateNotificationParams, "userId">,
+  client: SupabaseClient = supabase,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const { data, error } = await client
+      .from("profiles")
+      .select("id")
+      .in("role", ["admin", "super_admin"]);
+
+    if (error) return { ok: false, message: error.message || ERROR };
+
+    const adminIds = [
+      ...new Set((data ?? []).map((row) => row.id as string).filter(Boolean)),
+    ];
+
+    return createNotificationsForUsers(adminIds, base, client);
   } catch {
     return { ok: false, message: ERROR };
   }

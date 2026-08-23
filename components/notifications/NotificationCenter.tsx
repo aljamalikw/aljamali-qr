@@ -100,7 +100,13 @@ export function NotificationCenter() {
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => {
+            const next = !value;
+            if (next) void load();
+            return next;
+          });
+        }}
         className="relative rounded-xl border border-gold/15 p-2.5 text-white/70 transition-all duration-300 hover:border-gold/30 hover:bg-gold/5 hover:text-gold"
         aria-label={
           unreadCount > 0

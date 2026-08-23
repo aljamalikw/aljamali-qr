@@ -328,6 +328,8 @@ export async function createSupportTicket(params: {
     const ticket = mapTicket(data as TicketRow);
     const details = params.body?.trim() ?? "";
 
+    await requestAdminNewTicketNotification(ticket.id);
+
     void logActivity({
       action: "support_ticket_created",
       restaurantId: params.restaurantId,
@@ -567,6 +569,26 @@ export async function updateSupportTicketStatus(
     return { ok: true, data: ticket };
   } catch {
     return { ok: false, message: ERROR };
+  }
+}
+
+async function requestAdminNewTicketNotification(ticketId: string) {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    await fetch("/api/support/tickets/notify-admins", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ticketId }),
+    });
+  } catch {
+    // Ticket create already succeeded; notification is best-effort.
   }
 }
 
