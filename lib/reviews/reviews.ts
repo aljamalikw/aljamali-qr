@@ -33,6 +33,13 @@ export function feedbackKindLabel(kind: FeedbackKind): string {
   return "Feedback / Compliment";
 }
 
+export const FEEDBACK_STATUSES = ["open", "closed"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+
+export function parseFeedbackStatus(value: unknown): FeedbackStatus {
+  return value === "closed" ? "closed" : "open";
+}
+
 export type RestaurantReview = {
   id: string;
   restaurantId: string;
@@ -46,6 +53,8 @@ export type RestaurantReview = {
   feedbackType: "public" | "private";
   feedbackKind: FeedbackKind;
   googleReviewClicked: boolean;
+  isRead: boolean;
+  status: FeedbackStatus;
   createdAt: string;
 };
 
@@ -69,6 +78,8 @@ type ReviewRecord = {
   feedback_kind?: string | null;
   google_review_clicked: boolean;
   metadata?: unknown;
+  is_read?: boolean | null;
+  status?: string | null;
   created_at: string;
 };
 
@@ -101,6 +112,8 @@ function mapReview(
     feedbackType: row.feedback_type === "private" ? "private" : "public",
     feedbackKind: readFeedbackKind(row),
     googleReviewClicked: Boolean(row.google_review_clicked),
+    isRead: Boolean(row.is_read),
+    status: parseFeedbackStatus(row.status),
     createdAt: row.created_at,
   };
 }
@@ -344,6 +357,53 @@ async function notifyFeedback(
     );
   } catch {
     // Non-blocking
+  }
+}
+
+export async function updateRestaurantReviewManagement(
+  restaurantId: string,
+  reviewId: string,
+  patch: { isRead?: boolean; status?: FeedbackStatus },
+): Promise<
+  { ok: true; data: RestaurantReview } | { ok: false; message: string }
+> {
+  if (!restaurantId || !reviewId) {
+    return { ok: false, message: "Unable to update feedback." };
+  }
+
+  const payload: { is_read?: boolean; status?: FeedbackStatus; updated_at: string } = {
+    updated_at: new Date().toISOString(),
+  };
+  if (typeof patch.isRead === "boolean") payload.is_read = patch.isRead;
+  if (patch.status) payload.status = patch.status;
+
+  if (payload.is_read === undefined && payload.status === undefined) {
+    return { ok: false, message: "Unable to update feedback." };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("restaurant_reviews")
+      .update(payload)
+      .eq("id", reviewId)
+      .eq("restaurant_id", restaurantId)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      return {
+        ok: false,
+        message: /schema cache|does not exist|column/i.test(error.message)
+          ? "Unable to update feedback."
+          : error.message,
+      };
+    }
+    if (!data) {
+      return { ok: false, message: "Feedback not found for this restaurant." };
+    }
+    return { ok: true, data: mapReview(data as ReviewRecord) };
+  } catch {
+    return { ok: false, message: "Unable to update feedback." };
   }
 }
 

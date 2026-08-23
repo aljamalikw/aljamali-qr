@@ -9,9 +9,9 @@ import { useSubscriptionAccess } from "@/components/dashboard/SubscriptionAccess
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { isAdminRole } from "@/lib/auth/roles";
 import {
-  feedbackKindLabel,
   fetchRestaurantReviews,
   summarizeReviews,
+  updateRestaurantReviewManagement,
   type FeedbackKind,
   type RestaurantReview,
 } from "@/lib/reviews/reviews";
@@ -19,6 +19,7 @@ import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import { planAllowsReviews } from "@/lib/subscriptions/plans";
 import { buildReviewsExportDataset } from "@/lib/export/datasets/reviews";
 import { useToast } from "@/components/ui/ToastProvider";
+import { FeedbackActionsMenu } from "./FeedbackActionsMenu";
 
 type KindFilter = "all" | FeedbackKind;
 type RatingFilter = "all" | 1 | 2 | 3 | 4 | 5;
@@ -59,6 +60,35 @@ function filterClass(active: boolean): string {
   }`;
 }
 
+function kindBadgeLabel(kind: FeedbackKind): string {
+  if (kind === "complaint") return "Complaint";
+  if (kind === "suggestion") return "Suggestion";
+  return "Compliment";
+}
+
+function Badge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "kind" | "unread" | "read" | "closed" | "complaint";
+}) {
+  const tones: Record<typeof tone, string> = {
+    kind: "border-white/10 bg-white/5 text-white/55",
+    complaint: "border-rose-400/25 bg-rose-500/10 text-rose-200/90",
+    unread: "border-gold/30 bg-gold/15 text-gold",
+    read: "border-white/10 bg-white/5 text-white/45",
+    closed: "border-white/15 bg-black/30 text-white/50",
+  };
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${tones[tone]}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function ReviewsManagement() {
   const { showToast } = useToast();
   const { restaurant, loading: restaurantLoading } = useRestaurant();
@@ -69,6 +99,7 @@ export function ReviewsManagement() {
   const [error, setError] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const allowed =
     isAdminRole(role) || planAllowsReviews(access.locationPlan);
@@ -111,6 +142,40 @@ export function ReviewsManagement() {
       cancelled = true;
     };
   }, [restaurantId, allowed, applyResult]);
+
+  const applyManagement = useCallback(
+    async (
+      review: RestaurantReview,
+      patch: { isRead?: boolean; status?: "open" | "closed" },
+    ) => {
+      if (!restaurantId) return;
+      setUpdatingId(review.id);
+      setReviews((current) =>
+        current.map((item) =>
+          item.id === review.id ? { ...item, ...patch } : item,
+        ),
+      );
+      const result = await updateRestaurantReviewManagement(
+        restaurantId,
+        review.id,
+        patch,
+      );
+      if (!result.ok) {
+        showToast(result.message, "error");
+        await load();
+      } else {
+        setReviews((current) =>
+          current.map((item) =>
+            item.id === result.data.id
+              ? { ...result.data, orderNumber: item.orderNumber }
+              : item,
+          ),
+        );
+      }
+      setUpdatingId(null);
+    },
+    [restaurantId, load, showToast],
+  );
 
   const filtered = useMemo(() => {
     return reviews.filter((review) => {
@@ -287,6 +352,8 @@ export function ReviewsManagement() {
           <ul className="mt-5 space-y-3">
             {filtered.map((review) => {
               const isComplaint = review.feedbackKind === "complaint";
+              const isClosed = review.status === "closed";
+              const isUnread = !review.isRead;
               return (
                 <li
                   key={review.id}
@@ -294,34 +361,69 @@ export function ReviewsManagement() {
                     isComplaint
                       ? "border-rose-400/25 bg-rose-500/5"
                       : "border-white/5 bg-black/20"
-                  }`}
+                  } ${isUnread && !isClosed ? "ring-1 ring-gold/20" : ""}`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isUnread) {
+                          void applyManagement(review, { isRead: true });
+                        }
+                      }}
+                      className="min-w-0 flex-1 text-start"
+                    >
                       <p className="font-medium text-white">
                         {review.rating}★
                         {review.customerName ? ` · ${review.customerName}` : ""}
                       </p>
-                      <p
-                        className={`mt-0.5 text-xs font-medium uppercase tracking-wider ${
-                          isComplaint ? "text-rose-300/80" : "text-white/40"
-                        }`}
-                      >
-                        {feedbackKindLabel(review.feedbackKind)}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <Badge
+                          label={kindBadgeLabel(review.feedbackKind)}
+                          tone={isComplaint ? "complaint" : "kind"}
+                        />
+                        {isClosed ? (
+                          <Badge label="Closed" tone="closed" />
+                        ) : isUnread ? (
+                          <Badge label="Unread" tone="unread" />
+                        ) : (
+                          <Badge label="Read" tone="read" />
+                        )}
+                      </div>
+                      <p className="mt-2 text-xs text-white/45">
+                        Order {review.orderNumber || review.orderId || "—"}
                       </p>
+                      {review.comment ? (
+                        <p className="mt-2 text-sm text-white/60">
+                          {review.comment}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm text-white/35">
+                          No written message
+                        </p>
+                      )}
+                    </button>
+                    <div className="flex shrink-0 items-start gap-1">
+                      <span className="pt-1 text-xs text-white/35">
+                        {formatSubmittedAt(review.createdAt)}
+                      </span>
+                      <FeedbackActionsMenu
+                        review={review}
+                        disabled={updatingId === review.id}
+                        onAction={(action) => {
+                          if (action === "mark-read") {
+                            void applyManagement(review, { isRead: true });
+                          } else if (action === "mark-unread") {
+                            void applyManagement(review, { isRead: false });
+                          } else if (action === "close") {
+                            void applyManagement(review, { status: "closed" });
+                          } else {
+                            void applyManagement(review, { status: "open" });
+                          }
+                        }}
+                      />
                     </div>
-                    <span className="text-xs text-white/35">
-                      {formatSubmittedAt(review.createdAt)}
-                    </span>
                   </div>
-                  <p className="mt-2 text-xs text-white/45">
-                    Order {review.orderNumber || review.orderId || "—"}
-                  </p>
-                  {review.comment ? (
-                    <p className="mt-2 text-sm text-white/60">{review.comment}</p>
-                  ) : (
-                    <p className="mt-2 text-sm text-white/35">No written message</p>
-                  )}
                 </li>
               );
             })}

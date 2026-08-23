@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.restaurant_reviews (
   customer_name text,
   customer_phone text,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
-  comment text,
+  comment text, -- written customer feedback message
   feedback_type text NOT NULL DEFAULT 'public'
     CHECK (feedback_type IN ('public', 'private')),
   google_review_clicked boolean NOT NULL DEFAULT false,
@@ -77,3 +77,10 @@ CREATE POLICY restaurant_reviews_owner_update
 -- the restaurant is derived from the placed order. Do not allow direct
 -- anon inserts of arbitrary restaurant_id values.
 DROP POLICY IF EXISTS restaurant_reviews_anon_insert ON public.restaurant_reviews;
+
+REVOKE ALL ON TABLE public.restaurant_reviews FROM PUBLIC;
+REVOKE ALL ON TABLE public.restaurant_reviews FROM anon;
+GRANT SELECT, UPDATE ON TABLE public.restaurant_reviews TO authenticated;
+GRANT ALL ON TABLE public.restaurant_reviews TO service_role;
+
+NOTIFY pgrst, 'reload schema';

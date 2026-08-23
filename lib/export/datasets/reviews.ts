@@ -14,6 +14,8 @@ export function buildReviewsExportDataset(input: {
   const rows = input.reviews.map((review) => ({
     rating: review.rating,
     type: feedbackKindLabel(review.feedbackKind),
+    status: review.status === "closed" ? "Closed" : "Open",
+    readState: review.isRead ? "Read" : "Unread",
     comment: review.comment ?? "",
     customerName: review.customerName ?? "",
     orderNumber:
@@ -39,6 +41,8 @@ export function buildReviewsExportDataset(input: {
     columns: [
       { key: "rating", header: "Rating", type: "number" },
       { key: "type", header: "Feedback Type" },
+      { key: "status", header: "Status" },
+      { key: "readState", header: "Read" },
       { key: "comment", header: "Comment" },
       { key: "customerName", header: "Customer Name" },
       { key: "orderNumber", header: "Order Number" },
