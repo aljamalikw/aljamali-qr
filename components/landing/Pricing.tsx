@@ -34,21 +34,30 @@ function CheckIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-function ComingSoonBadge() {
+function PlannedHint() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-gold">
-      Soon
+    <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/30">
+      Planned
     </span>
   );
 }
 
 function FeatureRow({ feature }: { feature: PricingFeature }) {
+  const planned = Boolean(feature.comingSoon);
   return (
-    <li className="flex items-start gap-2.5 text-sm text-white/70">
-      <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-      <span className="flex min-w-0 flex-wrap items-center gap-2">
+    <li
+      className={`flex items-start gap-2.5 text-sm ${
+        planned ? "text-white/38" : "text-white/70"
+      }`}
+    >
+      <CheckIcon
+        className={`mt-0.5 h-4 w-4 shrink-0 ${
+          planned ? "text-white/22" : "text-gold"
+        }`}
+      />
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
         <span>{feature.label}</span>
-        {feature.comingSoon ? <ComingSoonBadge /> : null}
+        {planned ? <PlannedHint /> : null}
       </span>
     </li>
   );
@@ -82,10 +91,10 @@ function ComparisonCell({
     );
   }
 
-  if (value === "Soon") {
+  if (value === "Soon" || value === "Planned") {
     return (
-      <span className="inline-flex justify-center">
-        <ComingSoonBadge />
+      <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/35">
+        Planned
       </span>
     );
   }
@@ -322,8 +331,8 @@ export function Pricing() {
               </h3>
               <p className="mx-auto mt-3 max-w-2xl text-sm text-white/55 sm:text-base">
                 Starter covers single-location essentials. Professional unlocks
-                multi-branch scale, unlimited menus &amp; QR codes, and upcoming
-                ordering tools.
+                multi-branch scale, unlimited menus &amp; QR codes, online
+                ordering, and kitchen tools.
               </p>
             </div>
 

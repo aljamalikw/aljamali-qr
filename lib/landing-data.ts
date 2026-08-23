@@ -348,20 +348,20 @@ export const pricingPlans = [
       { label: "Unlimited QR Codes" },
       { label: "Unlimited Menu Items" },
       { label: "Live Order Status", comingSoon: true },
-      { label: "Table Ordering", comingSoon: true },
+      { label: "Table Ordering" },
       { label: "Happy Hour Pricing", comingSoon: true },
-      { label: "Customer Reviews", comingSoon: true },
+      { label: "Customer Reviews" },
       { label: "Priority Support" },
     ] as PricingFeature[],
     premiumFeaturesTitle: "Premium Business Tools",
     premiumFeatures: [
-      { label: "Online Ordering", comingSoon: true },
+      { label: "Online Ordering" },
       { label: "Online Payments", comingSoon: true },
-      { label: "Kitchen Display", comingSoon: true },
+      { label: "Kitchen Display" },
       { label: "Waiter Call", comingSoon: true },
       { label: "Discount Coupons", comingSoon: true },
       { label: "Sales Analytics" },
-      { label: "Remove Aljamali Branding" },
+      { label: "Remove Aljamali Branding", comingSoon: true },
     ] as PricingFeature[],
     highlighted: SUBSCRIPTION_PLANS.Professional.highlighted,
     badge: SUBSCRIPTION_PLANS.Professional.badge,
@@ -477,8 +477,8 @@ export const pricingComparisonRows: ReadonlyArray<{
   {
     feature: "Remove Aljamali Branding",
     starter: false,
-    professional: true,
-    enterprise: true,
+    professional: "Planned",
+    enterprise: "Planned",
   },
   {
     feature: "Menu Images",
@@ -489,20 +489,26 @@ export const pricingComparisonRows: ReadonlyArray<{
   {
     feature: "Online Ordering",
     starter: false,
-    professional: "Soon",
-    enterprise: "Soon",
+    professional: true,
+    enterprise: true,
   },
   {
     feature: "Online Payments",
     starter: false,
-    professional: "Soon",
-    enterprise: "Soon",
+    professional: "Planned",
+    enterprise: "Planned",
   },
   {
     feature: "Kitchen / Table Ordering",
     starter: false,
-    professional: "Soon",
-    enterprise: "Soon",
+    professional: true,
+    enterprise: true,
+  },
+  {
+    feature: "Customer Reviews",
+    starter: false,
+    professional: true,
+    enterprise: true,
   },
   {
     feature: "Support",
@@ -554,7 +560,7 @@ export const faqs = [
   {
     question: "What is the difference between Starter and Professional?",
     answer:
-      "Starter is ideal for single-location restaurants with up to 5 QR codes and 25 menu items. Professional supports 2 restaurants/branches, unlimited QR codes and menu items, sales analytics, remove Aljamali branding, priority support, and upcoming ordering tools.",
+      "Starter is ideal for single-location restaurants with up to 5 QR codes and 25 menu items. Professional supports 2 restaurants/branches, unlimited QR codes and menu items, online ordering, kitchen display, table ordering, customer reviews, sales analytics, and priority support.",
   },
   {
     question: "How much does Professional cost?",
