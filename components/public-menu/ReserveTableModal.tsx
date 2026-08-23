@@ -1,11 +1,17 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { createReservation } from "@/lib/reservations/createReservation";
-import { RESERVATION_TYPES, type ReservationType } from "@/lib/reservations/types";
+import {
+  PUBLIC_RESERVATION_TYPES,
+  type PublicReservationType,
+} from "@/lib/reservations/types";
 import { t } from "@/lib/public-menu/i18n";
 import type { PublicLanguage } from "@/lib/public-menu/types";
+
+const MIN_GUESTS = 1;
+const MAX_GUESTS = 100;
 
 interface ReserveTableModalProps {
   open: boolean;
@@ -14,15 +20,13 @@ interface ReserveTableModalProps {
   lang: PublicLanguage;
 }
 
-const RESERVATION_TYPE_LABELS: Record<ReservationType, { en: string; ar: string }> = {
+const RESERVATION_TYPE_LABELS: Record<PublicReservationType, { en: string; ar: string }> = {
   Birthday: { en: "Birthday", ar: "عيد ميلاد" },
   Business: { en: "Business", ar: "عمل" },
   Family: { en: "Family", ar: "عائلي" },
   Anniversary: { en: "Anniversary", ar: "ذكرى سنوية" },
   Outdoor: { en: "Outdoor", ar: "خارجي" },
   Indoor: { en: "Indoor", ar: "داخلي" },
-  Smoking: { en: "Smoking", ar: "تدخين" },
-  "Non-Smoking": { en: "Non-Smoking", ar: "غير مدخنين" },
 };
 
 function emptyForm() {
@@ -32,9 +36,9 @@ function emptyForm() {
     email: "",
     reservationDate: "",
     reservationTime: "",
-    guests: 2,
+    guests: MIN_GUESTS,
     specialRequests: "",
-    reservationType: "Family" as ReservationType,
+    reservationType: "Family" as PublicReservationType,
   };
 }
 
@@ -50,6 +54,100 @@ const fieldLabelClass = "mb-1.5 block text-xs font-medium uppercase tracking-wid
 const fieldInputClass =
   "w-full rounded-xl border border-gold/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/15";
 
+function clampGuests(value: number): number {
+  if (!Number.isFinite(value)) return MIN_GUESTS;
+  return Math.min(MAX_GUESTS, Math.max(MIN_GUESTS, Math.trunc(value)));
+}
+
+function GuestStepper({
+  id,
+  value,
+  lang,
+  onChange,
+}: {
+  id: string;
+  value: number;
+  lang: PublicLanguage;
+  onChange: (guests: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectValue = () => {
+    requestAnimationFrame(() => {
+      inputRef.current?.select();
+    });
+  };
+
+  const applyGuests = (next: number) => {
+    const guests = clampGuests(next);
+    setDraft(String(guests));
+    onChange(guests);
+  };
+
+  return (
+    <div
+      dir="ltr"
+      className="flex min-h-[42px] items-stretch overflow-hidden rounded-xl border border-gold/15 bg-black/30 focus-within:border-gold/40 focus-within:outline-none focus-within:ring-2 focus-within:ring-gold/15"
+    >
+      <button
+        type="button"
+        disabled={value <= MIN_GUESTS}
+        onClick={() => applyGuests(value - 1)}
+        className="flex w-11 shrink-0 items-center justify-center text-lg leading-none text-gold transition-colors hover:bg-gold/10 disabled:cursor-not-allowed disabled:text-gold/30 disabled:hover:bg-transparent"
+        aria-label={t("decreaseGuests", lang)}
+      >
+        −
+      </button>
+      <input
+        ref={inputRef}
+        id={id}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        autoComplete="off"
+        aria-live="polite"
+        className="min-w-0 flex-1 bg-transparent text-center text-sm font-medium text-white outline-none"
+        value={editing ? draft : String(value)}
+        onFocus={() => {
+          setEditing(true);
+          setDraft(String(value));
+          selectValue();
+        }}
+        onClick={selectValue}
+        onMouseUp={(event) => {
+          event.preventDefault();
+          selectValue();
+        }}
+        onChange={(event) => {
+          const next = event.target.value.replace(/\D/g, "");
+          setDraft(next);
+          if (next === "") return;
+          const parsed = Number.parseInt(next, 10);
+          if (Number.isFinite(parsed) && parsed >= MIN_GUESTS) {
+            onChange(clampGuests(parsed));
+          }
+        }}
+        onBlur={() => {
+          setEditing(false);
+          applyGuests(Number.parseInt(draft, 10));
+        }}
+        required
+      />
+      <button
+        type="button"
+        disabled={value >= MAX_GUESTS}
+        onClick={() => applyGuests(value + 1)}
+        className="flex w-11 shrink-0 items-center justify-center text-lg leading-none text-gold transition-colors hover:bg-gold/10 disabled:cursor-not-allowed disabled:text-gold/30 disabled:hover:bg-transparent"
+        aria-label={t("increaseGuests", lang)}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 export function ReserveTableModal({
   open,
   onClose,
@@ -60,14 +158,16 @@ export function ReserveTableModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
 
-  useEffect(() => {
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setForm(emptyForm());
       setError(null);
       setSuccess(false);
     }
-  }, [open]);
+  }
 
   const handleClose = () => {
     if (submitting) return;
@@ -83,7 +183,7 @@ export function ReserveTableModal({
       !form.mobileNumber.trim() ||
       !form.reservationDate ||
       !form.reservationTime ||
-      form.guests < 1
+      form.guests < MIN_GUESTS
     ) {
       setError("Please fill in all required fields.");
       return;
@@ -227,7 +327,7 @@ export function ReserveTableModal({
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid items-end gap-4 sm:grid-cols-3">
                     <div>
                       <label htmlFor="reserve-date" className={fieldLabelClass}>
                         {t("reservationDate", lang)} *
@@ -236,7 +336,7 @@ export function ReserveTableModal({
                         id="reserve-date"
                         type="date"
                         min={todayIsoDate()}
-                        className={fieldInputClass}
+                        className={`${fieldInputClass} min-h-[42px]`}
                         value={form.reservationDate}
                         onChange={(e) =>
                           setForm((p) => ({ ...p, reservationDate: e.target.value }))
@@ -251,7 +351,7 @@ export function ReserveTableModal({
                       <input
                         id="reserve-time"
                         type="time"
-                        className={fieldInputClass}
+                        className={`${fieldInputClass} min-h-[42px]`}
                         value={form.reservationTime}
                         onChange={(e) =>
                           setForm((p) => ({ ...p, reservationTime: e.target.value }))
@@ -263,20 +363,11 @@ export function ReserveTableModal({
                       <label htmlFor="reserve-guests" className={fieldLabelClass}>
                         {t("guests", lang)} *
                       </label>
-                      <input
+                      <GuestStepper
                         id="reserve-guests"
-                        type="number"
-                        min={1}
-                        max={100}
-                        className={fieldInputClass}
                         value={form.guests}
-                        onChange={(e) =>
-                          setForm((p) => ({
-                            ...p,
-                            guests: Math.max(1, Number(e.target.value) || 1),
-                          }))
-                        }
-                        required
+                        lang={lang}
+                        onChange={(guests) => setForm((p) => ({ ...p, guests }))}
                       />
                     </div>
                   </div>
@@ -292,11 +383,11 @@ export function ReserveTableModal({
                       onChange={(e) =>
                         setForm((p) => ({
                           ...p,
-                          reservationType: e.target.value as ReservationType,
+                          reservationType: e.target.value as PublicReservationType,
                         }))
                       }
                     >
-                      {RESERVATION_TYPES.map((type) => (
+                      {PUBLIC_RESERVATION_TYPES.map((type) => (
                         <option key={type} value={type}>
                           {RESERVATION_TYPE_LABELS[type][lang]}
                         </option>

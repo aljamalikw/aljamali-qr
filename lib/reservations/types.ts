@@ -8,13 +8,19 @@ export const RESERVATION_STATUSES = [
 
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
-export const RESERVATION_TYPES = [
+export const PUBLIC_RESERVATION_TYPES = [
   "Birthday",
   "Business",
   "Family",
   "Anniversary",
   "Outdoor",
   "Indoor",
+] as const;
+
+export type PublicReservationType = (typeof PUBLIC_RESERVATION_TYPES)[number];
+
+export const RESERVATION_TYPES = [
+  ...PUBLIC_RESERVATION_TYPES,
   "Smoking",
   "Non-Smoking",
 ] as const;

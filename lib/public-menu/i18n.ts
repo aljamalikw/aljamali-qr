@@ -53,6 +53,8 @@ const copy = {
   reservationDate: { en: "Date", ar: "التاريخ" },
   reservationTime: { en: "Time", ar: "الوقت" },
   guests: { en: "Guests", ar: "عدد الضيوف" },
+  decreaseGuests: { en: "Decrease guests", ar: "إنقاص عدد الضيوف" },
+  increaseGuests: { en: "Increase guests", ar: "زيادة عدد الضيوف" },
   specialRequests: { en: "Special Requests", ar: "طلبات خاصة" },
   specialRequestsPlaceholder: {
     en: "Anything we should know? (optional)",
