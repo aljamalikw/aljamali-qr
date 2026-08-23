@@ -1,4 +1,8 @@
-import type { RestaurantReview, ReviewSummary } from "@/lib/reviews/reviews";
+import {
+  feedbackKindLabel,
+  type RestaurantReview,
+  type ReviewSummary,
+} from "@/lib/reviews/reviews";
 import type { ExportDataset } from "../types";
 
 export function buildReviewsExportDataset(input: {
@@ -9,11 +13,14 @@ export function buildReviewsExportDataset(input: {
 }): ExportDataset {
   const rows = input.reviews.map((review) => ({
     rating: review.rating,
+    type: feedbackKindLabel(review.feedbackKind),
     comment: review.comment ?? "",
     customerName: review.customerName ?? "",
-    orderNumber: review.orderId
-      ? (input.orderNumbers?.get(review.orderId) ?? review.orderId)
-      : "",
+    orderNumber:
+      review.orderNumber ||
+      (review.orderId
+        ? (input.orderNumbers?.get(review.orderId) ?? review.orderId)
+        : ""),
     date: review.createdAt,
     restaurant: input.restaurantName,
   }));
@@ -26,11 +33,12 @@ export function buildReviewsExportDataset(input: {
   return {
     filenamePrefix: "reviews",
     meta: {
-      title: "Reviews Export",
+      title: "Feedback & Complaints Export",
       restaurantName: input.restaurantName,
     },
     columns: [
       { key: "rating", header: "Rating", type: "number" },
+      { key: "type", header: "Feedback Type" },
       { key: "comment", header: "Comment" },
       { key: "customerName", header: "Customer Name" },
       { key: "orderNumber", header: "Order Number" },

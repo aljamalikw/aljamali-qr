@@ -155,6 +155,44 @@ const copy = {
   },
   orderNumberLabel: { en: "Order Number", ar: "رقم الطلب" },
   startNewOrder: { en: "Start a New Order", ar: "ابدأ طلباً جديداً" },
+  feedback: { en: "Feedback", ar: "ملاحظات" },
+  feedbackTitle: { en: "How was your order?", ar: "كيف كانت تجربتك؟" },
+  feedbackDesc: {
+    en: "Share a quick rating and optional note with the restaurant.",
+    ar: "شارك تقييماً سريعاً وملاحظة اختيارية مع المطعم.",
+  },
+  overallRating: { en: "Overall rating", ar: "التقييم العام" },
+  feedbackTypeLabel: { en: "Feedback type", ar: "نوع الملاحظة" },
+  feedbackKindCompliment: {
+    en: "Feedback / Compliment",
+    ar: "إشادة / ملاحظة إيجابية",
+  },
+  feedbackKindComplaint: { en: "Complaint", ar: "شكوى" },
+  feedbackKindSuggestion: { en: "Suggestion", ar: "اقتراح" },
+  feedbackMessageOptional: { en: "Message (optional)", ar: "الرسالة (اختياري)" },
+  feedbackMessagePlaceholder: {
+    en: "Tell us about your experience…",
+    ar: "أخبرنا عن تجربتك…",
+  },
+  submitFeedback: { en: "Submit Feedback", ar: "إرسال الملاحظات" },
+  submittingFeedback: { en: "Submitting…", ar: "جارٍ الإرسال…" },
+  feedbackThankYou: {
+    en: "Thank you for your feedback!",
+    ar: "شكراً لملاحظاتك!",
+  },
+  feedbackThankYouDesc: {
+    en: "We appreciate you taking the time to share your thoughts.",
+    ar: "نقدر وقتك لمشاركة رأيك معنا.",
+  },
+  ratingRequired: {
+    en: "Please choose a star rating.",
+    ar: "الرجاء اختيار تقييم بالنجوم.",
+  },
+  feedbackSubmitError: {
+    en: "Unable to submit feedback.",
+    ar: "تعذر إرسال الملاحظات.",
+  },
+  loadingFeedback: { en: "Loading…", ar: "جارٍ التحميل…" },
   viewCart: { en: "View Cart", ar: "عرض السلة" },
   continueShopping: { en: "Continue Browsing", ar: "متابعة التصفح" },
 } as const;

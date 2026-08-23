@@ -10,6 +10,7 @@ import { validateCreateOrder } from "@/lib/orders/validateCreateOrder";
 import { formatPublicPrice } from "@/lib/public-menu/format-price";
 import { t } from "@/lib/public-menu/i18n";
 import type { PublicLanguage, PublicRestaurant } from "@/lib/public-menu/types";
+import { CustomerFeedbackForm } from "./CustomerFeedbackForm";
 import {
   planAllowsLoyalty,
   planAllowsOnlineOrdering,
@@ -79,6 +80,9 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [placedOrderNumber, setPlacedOrderNumber] = useState<string | null>(null);
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [returningCustomer, setReturningCustomer] =
     useState<ReturningCustomer | null>(null);
   const [lookupPending, setLookupPending] = useState(false);
@@ -167,6 +171,9 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
     setError(null);
     setFieldErrors({});
     setPlacedOrderNumber(null);
+    setPlacedOrderId(null);
+    setShowFeedback(false);
+    setFeedbackSubmitted(false);
     setReturningCustomer(null);
     nameDirtyRef.current = false;
     emailDirtyRef.current = false;
@@ -275,6 +282,9 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
     }
 
     setPlacedOrderNumber(result.data.orderNumber);
+    setPlacedOrderId(result.data.id);
+    setShowFeedback(false);
+    setFeedbackSubmitted(false);
     cart.clearCart();
   };
 
@@ -368,9 +378,48 @@ export function OrderCart({ restaurant, cart, lang }: OrderCartProps) {
                       </p>
                       <p className="font-serif text-lg font-bold text-gold">{placedOrderNumber}</p>
                     </div>
-                    <button type="button" onClick={resetForm} className="menu-btn-primary mt-6">
-                      {t("startNewOrder", lang)}
-                    </button>
+                    {feedbackSubmitted ? (
+                      <>
+                        <h4 className="mt-6 font-serif text-lg font-bold text-white">
+                          {t("feedbackThankYou", lang)}
+                        </h4>
+                        <p className="mt-2 text-sm text-white/55">
+                          {t("feedbackThankYouDesc", lang)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={resetForm}
+                          className="menu-btn-primary mt-6"
+                        >
+                          {t("startNewOrder", lang)}
+                        </button>
+                      </>
+                    ) : showFeedback && placedOrderId ? (
+                      <div className="mt-6 w-full">
+                        <CustomerFeedbackForm
+                          orderId={placedOrderId}
+                          lang={lang}
+                          onSubmitted={() => setFeedbackSubmitted(true)}
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={resetForm}
+                          className="menu-btn-primary flex-1"
+                        >
+                          {t("startNewOrder", lang)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowFeedback(true)}
+                          className="menu-btn-secondary flex-1"
+                        >
+                          {t("feedback", lang)}
+                        </button>
+                      </div>
+                    )}
                   </motion.div>
                 ) : cart.lines.length === 0 ? (
                   <div className="flex flex-col items-center py-16 text-center">

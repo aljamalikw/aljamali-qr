@@ -688,12 +688,6 @@ function OrdersManagementContent() {
         onPaymentStatusChange={(order, paymentStatus) =>
           void handlePaymentStatusChange(order, paymentStatus)
         }
-        onCopyFeedbackLink={(order) => {
-          void navigator.clipboard.writeText(
-            `${window.location.origin}/review/${order.id}`,
-          );
-          showToast("Feedback link copied");
-        }}
       />
 
       <ConfirmModal
