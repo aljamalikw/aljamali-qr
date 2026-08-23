@@ -27,7 +27,10 @@ function serializeDescription(nameAr: string, icon: string): string {
   return JSON.stringify({ nameAr, icon });
 }
 
-export function mapCategoryRowToDashboard(row: CategoryRow): DashboardCategory {
+export function mapCategoryRowToDashboard(
+  row: CategoryRow,
+  itemCount = 0,
+): DashboardCategory {
   const { nameAr, icon } = parseDescription(row.description);
 
   return {
@@ -35,7 +38,7 @@ export function mapCategoryRowToDashboard(row: CategoryRow): DashboardCategory {
     nameEn: row.name,
     nameAr,
     icon,
-    itemCount: 0,
+    itemCount,
     visible: row.is_active,
     sortOrder: row.display_order,
   };
