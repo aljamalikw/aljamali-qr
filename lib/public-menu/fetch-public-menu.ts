@@ -7,7 +7,10 @@ import {
   getSubscriptionAccess,
   resolveFeaturePlan,
 } from "@/lib/subscriptions/engine";
-import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
+import {
+  locationEngineInput,
+  resolveEffectiveOwnerSubscription,
+} from "@/lib/subscriptions/owner-subscription";
 import {
   groupMenuItemsByCategory,
   mapCategoryRowToPublic,
@@ -102,14 +105,15 @@ export async function fetchPublicMenuBySlug(
       typedRestaurant.id,
     );
     if (effective) {
+      const location = locationEngineInput(effective);
       subscription = {
-        plan: effective.locationPlan,
-        status: effective.canonical.status,
-        trial_started_at: effective.canonical.trial_started_at,
-        trial_ends_at: effective.canonical.trial_ends_at,
-        grace_period_days: effective.canonical.grace_period_days,
-        renewal_date: effective.canonical.renewal_date,
-        cancelled_at: effective.canonical.cancelled_at,
+        plan: location.plan,
+        status: location.status,
+        trial_started_at: location.trialStartedAt,
+        trial_ends_at: location.trialEndsAt,
+        grace_period_days: location.gracePeriodDays,
+        renewal_date: location.renewalDate,
+        cancelled_at: location.cancelledAt,
       };
     }
   } catch {

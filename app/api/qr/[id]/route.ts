@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
-import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
+import {
+  locationEngineInput,
+  resolveEffectiveOwnerSubscription,
+} from "@/lib/subscriptions/owner-subscription";
 
 interface QrScanRouteProps {
   params: Promise<{ id: string }>;
@@ -51,15 +54,7 @@ async function isQrRestaurantOnline(
   const effective = await resolveEffectiveOwnerSubscription(admin, restaurantId);
   if (!effective) return true;
 
-  const access = getSubscriptionAccess({
-    plan: effective.locationPlan,
-    status: effective.canonical.status,
-    trialStartedAt: effective.canonical.trial_started_at,
-    trialEndsAt: effective.canonical.trial_ends_at,
-    gracePeriodDays: effective.canonical.grace_period_days,
-    renewalDate: effective.canonical.renewal_date,
-    cancelledAt: effective.canonical.cancelled_at,
-  });
+  const access = getSubscriptionAccess(locationEngineInput(effective));
 
   return access.publicMenuOnline;
 }

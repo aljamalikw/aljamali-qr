@@ -16,7 +16,6 @@ import { supabase } from "@/lib/supabase";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
   getSubscriptionAccess,
-  isEntitledSubscriptionStatus,
   isNavAllowed,
   type SubscriptionAccess,
 } from "@/lib/subscriptions/engine";
@@ -85,11 +84,9 @@ export function SubscriptionAccessProvider({
     }
 
     const sub = result.data;
-    const ownerPlan = effective?.ownerPlan ?? sub.plan;
     const locationCovered = effective?.locationCovered ?? true;
-    const coveredLocationPlan = effective?.locationPlan ?? ownerPlan;
-    const ownerAccess = getSubscriptionAccess({
-      plan: ownerPlan,
+    const restaurantAccess = getSubscriptionAccess({
+      plan: sub.plan,
       status: sub.status,
       trialStartedAt: sub.trialStartedAt,
       trialEndsAt: sub.trialEndsAt,
@@ -97,23 +94,13 @@ export function SubscriptionAccessProvider({
       renewalDate: sub.renewalDate,
       cancelledAt: sub.cancelledAt,
     });
-    const locationAccess = getSubscriptionAccess({
-      plan: coveredLocationPlan,
-      status: sub.status,
-      trialStartedAt: sub.trialStartedAt,
-      trialEndsAt: sub.trialEndsAt,
-      gracePeriodDays: sub.gracePeriodDays,
-      renewalDate: sub.renewalDate,
-      cancelledAt: sub.cancelledAt,
-    });
-    const featurePlan = isEntitledSubscriptionStatus(ownerAccess.effectiveStatus)
-      ? coveredLocationPlan
+    const featurePlan = locationCovered
+      ? restaurantAccess.locationPlan
       : "Starter";
     setAccess({
-      ...ownerAccess,
+      ...restaurantAccess,
       locationPlan: featurePlan,
       locationCovered,
-      publicMenuOnline: locationAccess.publicMenuOnline,
     });
     setLoading(false);
   }, [restaurant]);
@@ -121,6 +108,14 @@ export function SubscriptionAccessProvider({
   useEffect(() => {
     if (restaurantLoading) return;
     void refresh();
+  }, [restaurantLoading, refresh]);
+
+  useEffect(() => {
+    if (restaurantLoading) return;
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 60_000);
+    return () => window.clearInterval(timer);
   }, [restaurantLoading, refresh]);
 
   useEffect(() => {

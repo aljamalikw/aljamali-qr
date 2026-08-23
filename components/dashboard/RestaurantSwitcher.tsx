@@ -30,7 +30,10 @@ export function RestaurantSwitcher() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const allowedToCreate = canCreateRestaurant(access.plan, restaurantCount);
+  const allowedToCreate = canCreateRestaurant(
+    access.locationPlan,
+    restaurantCount,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -203,7 +206,7 @@ export function RestaurantSwitcher() {
                   Need another restaurant?
                 </p>
                 <p className="mt-1.5 text-xs leading-relaxed text-white/55">
-                  {access.plan === "Professional"
+                  {access.locationPlan === "Professional"
                     ? "Your Professional plan includes 2 restaurants. Upgrade to Enterprise to cover additional restaurants."
                     : "Upgrade your subscription to manage additional restaurant locations."}
                 </p>

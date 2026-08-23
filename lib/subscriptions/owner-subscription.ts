@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ADMIN_PLAN_RANK, pickPrimaryByPlan } from "@/lib/admin/group-by-owner";
+import { pickPrimaryByPlan } from "@/lib/admin/group-by-owner";
 import {
   getMaxRestaurants,
   normalizePlanId,
@@ -40,6 +40,11 @@ export type EffectiveOwnerSubscription = {
   ownerId: string;
   canonical: OwnerSubscriptionDbRow;
   ownerPlan: SubscriptionPlanId;
+  /**
+   * This restaurant's own subscription row. Feature access and public-menu
+   * dates must come from here — never from a sibling restaurant.
+   */
+  locationSubscription: OwnerSubscriptionDbRow;
   /** Plan used for this restaurant's features/public menu. */
   locationPlan: SubscriptionPlanId;
   locationCovered: boolean;
@@ -120,12 +125,19 @@ export function buildEffectiveOwnerSubscription(
   );
   const id = restaurantId?.trim() ?? "";
   const locationCovered = id ? coveredRestaurantIds.includes(id) : true;
+  const locationSubscription =
+    (id
+      ? subscriptions.find((row) => row.restaurant_id === id)
+      : undefined) ?? canonical;
 
   return {
     ownerId,
     canonical,
     ownerPlan,
-    locationPlan: locationCovered ? ownerPlan : "Starter",
+    locationSubscription,
+    locationPlan: locationCovered
+      ? normalizePlanId(locationSubscription.plan)
+      : "Starter",
     locationCovered,
     restaurantCount: restaurants.length,
     coveredCount: coveredRestaurantIds.length,
@@ -261,12 +273,27 @@ export function resolveCanonicalEffectiveStatus(
   return resolveEffectiveStatus(canonicalToEngineFields(row), now);
 }
 
-/** Feature plan after applying trial/paid entitlement. */
+/** Engine fields for the active restaurant only. */
+export function locationEngineInput(effective: EffectiveOwnerSubscription) {
+  const row = effective.locationSubscription ?? effective.canonical;
+  return {
+    plan: effective.locationPlan,
+    status: row.status,
+    trialStartedAt: row.trial_started_at,
+    trialEndsAt: row.trial_ends_at,
+    gracePeriodDays: row.grace_period_days,
+    renewalDate: row.renewal_date,
+    cancelledAt: row.cancelled_at,
+  };
+}
+
+/** Feature plan after applying this restaurant's trial/paid entitlement. */
 export function entitledLocationPlan(
   effective: EffectiveOwnerSubscription,
   now: Date = new Date(),
 ): SubscriptionPlanId {
-  const status = resolveCanonicalEffectiveStatus(effective.canonical, now);
+  const row = effective.locationSubscription ?? effective.canonical;
+  const status = resolveCanonicalEffectiveStatus(row, now);
   if (!isEntitledSubscriptionStatus(status)) return "Starter";
   return effective.locationPlan;
 }

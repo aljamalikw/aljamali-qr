@@ -25,7 +25,6 @@ import {
   formatPlanAmountKd,
   formatPlanPriceLabel,
   formatRestaurantUsage,
-  getPlanMonthlyAmount,
   isPayablePlan,
   isSubscriptionPlanId,
   type SubscriptionPlanId,
@@ -44,33 +43,6 @@ function planFeatureLabels(planId: SubscriptionPlanId): string[] {
     ...(marketing.premiumFeatures?.map((f) => f.label) ?? []),
   ];
 }
-
-const DEMO_HISTORY = [
-  {
-    id: "demo-1",
-    invoice: "INV-2026-001",
-    date: "2026-06-12",
-    plan: "Starter",
-    amount: getPlanMonthlyAmount("Starter") ?? 0,
-    status: "paid" as const,
-  },
-  {
-    id: "demo-2",
-    invoice: "INV-2026-002",
-    date: "2026-05-12",
-    plan: "Starter",
-    amount: getPlanMonthlyAmount("Starter") ?? 0,
-    status: "paid" as const,
-  },
-  {
-    id: "demo-3",
-    invoice: "INV-2026-003",
-    date: "2026-04-12",
-    plan: "Professional",
-    amount: getPlanMonthlyAmount("Professional") ?? 0,
-    status: "pending" as const,
-  },
-];
 
 function statusLabel(status: string): string {
   if (status === "suspended") return "Trial ended";
@@ -318,27 +290,15 @@ export function OwnerSubscriptionPage() {
   const isActive =
     effectiveStatus === "active" || effectiveStatus === "grace";
 
-  const historyRows =
-    invoices.length > 0
-      ? invoices.map((invoice) => ({
-          id: invoice.id,
-          invoice:
-            invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
-          date: formatDemoDate(invoice.paidAt ?? invoice.createdAt),
-          plan: currentPlan,
-          amount: formatPaymentAmount(invoice.amount, invoice.currency),
-          status: invoice.status,
-          demo: false,
-        }))
-      : DEMO_HISTORY.map((row) => ({
-          id: row.id,
-          invoice: row.invoice,
-          date: formatDemoDate(row.date),
-          plan: row.plan,
-          amount: formatPaymentAmount(row.amount, "KWD"),
-          status: row.status,
-          demo: true,
-        }));
+  const historyRows = invoices.map((invoice) => ({
+    id: invoice.id,
+    invoice:
+      invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
+    date: formatDemoDate(invoice.paidAt ?? invoice.createdAt),
+    plan: currentPlan,
+    amount: formatPaymentAmount(invoice.amount, invoice.currency),
+    status: invoice.status,
+  }));
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -413,6 +373,12 @@ export function OwnerSubscriptionPage() {
                 <p className="mt-2 max-w-xl text-sm text-white/55">
                   You are on a {currentPlan} trial with full {currentPlan}{" "}
                   features. You will not be charged until you choose a paid plan.
+                </p>
+              ) : null}
+              {effectiveStatus === "suspended" ? (
+                <p className="mt-2 max-w-xl text-sm text-white/55">
+                  Your trial has ended. This restaurant currently has
+                  Starter-level access until you choose a paid plan.
                 </p>
               ) : null}
             </div>
@@ -578,7 +544,7 @@ export function OwnerSubscriptionPage() {
           {pricingPlans.map((marketing) => {
             const plan = marketing.name as SubscriptionPlanId;
             const catalog = SUBSCRIPTION_PLANS[plan];
-            const isCurrent = plan === currentPlan;
+            const isCurrent = plan === currentPlan && !isExpired;
             const isEnterprise = catalog.contactSales;
             const isPopular = catalog.highlighted;
             const features = planFeatureLabels(plan);
@@ -671,22 +637,20 @@ export function OwnerSubscriptionPage() {
 
       {/* Payment History */}
       <section className="dashboard-card rounded-2xl p-6 sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+        <div>
             <h2 className="font-serif text-xl font-bold text-white">
               Payment History
             </h2>
             <p className="mt-1 text-sm text-white/45">
               Invoices and payment status for your restaurant.
             </p>
-          </div>
-          {invoices.length === 0 ? (
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-wider text-white/40">
-              Sample data
-            </span>
-          ) : null}
         </div>
 
+        {historyRows.length === 0 ? (
+          <p className="mt-5 text-sm text-white/45">
+            No payments yet. Invoices will appear here after you subscribe.
+          </p>
+        ) : (
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
@@ -724,6 +688,7 @@ export function OwnerSubscriptionPage() {
             </tbody>
           </table>
         </div>
+        )}
       </section>
 
       {/* Confirmation modal */}
