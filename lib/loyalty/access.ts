@@ -4,7 +4,10 @@ import {
   LOYALTY_UPGRADE_MESSAGE,
   planAllowsLoyalty,
 } from "@/lib/subscriptions/plans";
-import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
+import {
+  entitledLocationPlan,
+  resolveEffectiveOwnerSubscription,
+} from "@/lib/subscriptions/owner-subscription";
 
 export { LOYALTY_UPGRADE_MESSAGE, planAllowsLoyalty };
 
@@ -58,7 +61,7 @@ export async function resolveLoyaltyAccess(
   }
 
   const effective = await resolveEffectiveOwnerSubscription(client, restaurantId);
-  let plan = effective?.locationPlan ?? "";
+  let plan = effective ? entitledLocationPlan(effective) : "";
 
   if (!plan) {
     plan =

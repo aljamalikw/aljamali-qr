@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { useRestaurant } from "@/lib/restaurants/use-restaurant";
 import {
   getSubscriptionAccess,
+  isEntitledSubscriptionStatus,
   isNavAllowed,
   type SubscriptionAccess,
 } from "@/lib/subscriptions/engine";
@@ -85,7 +86,7 @@ export function SubscriptionAccessProvider({
     const sub = result.data;
     const ownerPlan = effective?.ownerPlan ?? sub.plan;
     const locationCovered = effective?.locationCovered ?? true;
-    const locationPlan = effective?.locationPlan ?? ownerPlan;
+    const coveredLocationPlan = effective?.locationPlan ?? ownerPlan;
     const ownerAccess = getSubscriptionAccess({
       plan: ownerPlan,
       status: sub.status,
@@ -96,7 +97,7 @@ export function SubscriptionAccessProvider({
       cancelledAt: sub.cancelledAt,
     });
     const locationAccess = getSubscriptionAccess({
-      plan: locationPlan,
+      plan: coveredLocationPlan,
       status: sub.status,
       trialStartedAt: sub.trialStartedAt,
       trialEndsAt: sub.trialEndsAt,
@@ -104,9 +105,12 @@ export function SubscriptionAccessProvider({
       renewalDate: sub.renewalDate,
       cancelledAt: sub.cancelledAt,
     });
+    const featurePlan = isEntitledSubscriptionStatus(ownerAccess.effectiveStatus)
+      ? coveredLocationPlan
+      : "Starter";
     setAccess({
       ...ownerAccess,
-      locationPlan,
+      locationPlan: featurePlan,
       locationCovered,
       publicMenuOnline: locationAccess.publicMenuOnline,
     });

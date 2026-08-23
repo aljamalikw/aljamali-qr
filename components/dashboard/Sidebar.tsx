@@ -29,7 +29,16 @@ export function Sidebar({
   const { restaurant, displayName, loading: restaurantLoading } = useRestaurant();
   const { access, canAccessNav } = useSubscriptionAccess();
 
-  const planLabel = access.plan || restaurant?.subscription_plan || DEFAULT_TRIAL_PLAN;
+  const planLabel = [
+    access.plan || restaurant?.subscription_plan || DEFAULT_TRIAL_PLAN,
+    access.effectiveStatus === "trial"
+      ? "Trial"
+      : access.effectiveStatus === "suspended"
+        ? "Trial ended"
+        : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const restaurantLabel = restaurantLoading ? "" : displayName;
   const visibleNav = dashboardNavItems.filter((item) => canAccessNav(item.id));
 

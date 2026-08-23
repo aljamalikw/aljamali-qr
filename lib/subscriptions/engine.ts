@@ -143,6 +143,26 @@ export function resolveEffectiveStatus(
   return "suspended";
 }
 
+/** Trial, paid-active, and the short grace window still unlock plan features. */
+export function isEntitledSubscriptionStatus(
+  status: SubscriptionStatus,
+): boolean {
+  return status === "trial" || status === "active" || status === "grace";
+}
+
+/**
+ * Plan used for feature gates and public Pro capabilities.
+ * After trial/subscription lapse, leftover Professional/Enterprise names
+ * must not keep unlocking paid features.
+ */
+export function resolveFeaturePlan(
+  plan: string | null | undefined,
+  status: SubscriptionStatus,
+): SubscriptionPlan {
+  if (!isEntitledSubscriptionStatus(status)) return "Starter";
+  return asPlan(plan);
+}
+
 export function getSubscriptionAccess(
   input: SubscriptionEngineInput,
   now: Date = new Date(),
@@ -185,7 +205,7 @@ export function getSubscriptionAccess(
 
   if (effectiveStatus === "suspended") {
     message =
-      "Your restaurant is suspended after the grace period. Renew billing to restore access.";
+      "Your trial has ended. Choose a plan to restore dashboard access and Professional features.";
   }
 
   if (effectiveStatus === "expired") {
@@ -213,13 +233,17 @@ export function getSubscriptionAccess(
 
   if (!inGoodStanding && !inGrace) {
     dashboardLocked = true;
-    publicMenuOnline = plan !== "Starter";
+    // Paid Professional/Enterprise that lapsed (`expired`) keep QR menus
+    // online. Expired trials resolve to `suspended` and must not keep
+    // unrestricted Professional public access.
+    publicMenuOnline =
+      effectiveStatus === "suspended" ? false : plan !== "Starter";
   }
 
   return {
     effectiveStatus,
     plan,
-    locationPlan: plan,
+    locationPlan: resolveFeaturePlan(plan, effectiveStatus),
     locationCovered: true,
     publicMenuOnline,
     dashboardLocked,

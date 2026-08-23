@@ -6,6 +6,7 @@ import {
   type SubscriptionPlanId,
 } from "@/lib/subscriptions/plans";
 import {
+  isEntitledSubscriptionStatus,
   resolveEffectiveStatus,
   type SubscriptionStatus,
 } from "@/lib/subscriptions/engine";
@@ -258,6 +259,16 @@ export function resolveCanonicalEffectiveStatus(
   now: Date = new Date(),
 ): SubscriptionStatus {
   return resolveEffectiveStatus(canonicalToEngineFields(row), now);
+}
+
+/** Feature plan after applying trial/paid entitlement. */
+export function entitledLocationPlan(
+  effective: EffectiveOwnerSubscription,
+  now: Date = new Date(),
+): SubscriptionPlanId {
+  const status = resolveCanonicalEffectiveStatus(effective.canonical, now);
+  if (!isEntitledSubscriptionStatus(status)) return "Starter";
+  return effective.locationPlan;
 }
 
 export function assertRestaurantsOwnedByOwner(

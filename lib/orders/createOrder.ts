@@ -8,7 +8,10 @@ import {
   planAllowsLoyalty,
   planAllowsOnlineOrdering,
 } from "@/lib/subscriptions/plans";
-import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
+import {
+  entitledLocationPlan,
+  resolveEffectiveOwnerSubscription,
+} from "@/lib/subscriptions/owner-subscription";
 import { mapOrderRow } from "./mappers";
 import type { CreateOrderInput, Order, OrderItemRecord, OrderRecord } from "./types";
 import { isMissingTableError } from "./utils";
@@ -102,16 +105,16 @@ export async function createOrderWithClient(
       client,
       input.restaurantId,
     );
-    const plan =
-      effective?.locationPlan ||
-      (typeof restaurant.subscription_plan === "string" &&
-        restaurant.subscription_plan.trim()) ||
-      "Starter";
+    const plan = effective
+      ? entitledLocationPlan(effective)
+      : (typeof restaurant.subscription_plan === "string" &&
+          restaurant.subscription_plan.trim()) ||
+        "Starter";
     if (!planAllowsOnlineOrdering(plan)) {
       return {
         ok: false,
         message:
-          "Online ordering is not available on the Starter plan. Please contact the restaurant.",
+          "Online ordering is not available right now. Please contact the restaurant.",
       };
     }
 

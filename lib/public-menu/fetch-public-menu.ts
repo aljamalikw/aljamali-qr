@@ -3,7 +3,10 @@ import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 import type { CategoryRow } from "@/lib/categories/types";
 import type { MenuItemRow } from "@/lib/menu-items/types";
 import type { Restaurant } from "@/lib/restaurants/types";
-import { getSubscriptionAccess } from "@/lib/subscriptions/engine";
+import {
+  getSubscriptionAccess,
+  resolveFeaturePlan,
+} from "@/lib/subscriptions/engine";
 import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
 import {
   groupMenuItemsByCategory,
@@ -124,12 +127,27 @@ export async function fetchPublicMenuBySlug(
     return null;
   }
 
+  const catalogPlan = resolvePublicSubscriptionPlan(
+    subscription?.plan,
+    typedRestaurant.subscription_plan,
+  );
+  const publicAccess = subscription
+    ? getSubscriptionAccess({
+        plan: catalogPlan,
+        status: subscription.status,
+        trialStartedAt: subscription.trial_started_at,
+        trialEndsAt: subscription.trial_ends_at,
+        gracePeriodDays: subscription.grace_period_days,
+        renewalDate: subscription.renewal_date,
+        cancelledAt: subscription.cancelled_at,
+      })
+    : null;
+
   const restaurant = mapRestaurantToPublic({
     ...typedRestaurant,
-    subscription_plan: resolvePublicSubscriptionPlan(
-      subscription?.plan,
-      typedRestaurant.subscription_plan,
-    ),
+    subscription_plan: publicAccess
+      ? resolveFeaturePlan(catalogPlan, publicAccess.effectiveStatus)
+      : catalogPlan,
   });
 
   // Use the service-role client for menu data so the public menu works

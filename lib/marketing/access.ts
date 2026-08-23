@@ -4,7 +4,10 @@ import {
   MARKETING_UPGRADE_MESSAGE,
   planAllowsMarketing,
 } from "@/lib/subscriptions/plans";
-import { resolveEffectiveOwnerSubscription } from "@/lib/subscriptions/owner-subscription";
+import {
+  entitledLocationPlan,
+  resolveEffectiveOwnerSubscription,
+} from "@/lib/subscriptions/owner-subscription";
 
 export { MARKETING_UPGRADE_MESSAGE, planAllowsMarketing };
 
@@ -34,7 +37,7 @@ export async function resolveMarketingAccess(
   }
 
   const effective = await resolveEffectiveOwnerSubscription(client, restaurantId);
-  let plan = effective?.locationPlan ?? "";
+  let plan = effective ? entitledLocationPlan(effective) : "";
 
   if (!plan) {
     const { data: restaurant } = await client

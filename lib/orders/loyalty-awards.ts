@@ -8,6 +8,10 @@ import {
 } from "@/lib/loyalty/earning-rules";
 import { supabase } from "@/lib/supabase";
 import { planAllowsLoyalty } from "@/lib/subscriptions/plans";
+import {
+  entitledLocationPlan,
+  resolveEffectiveOwnerSubscription,
+} from "@/lib/subscriptions/owner-subscription";
 import type { OrderRecord, OrderStatus, PaymentStatus } from "./types";
 
 type OrderAwardRow = Pick<
@@ -289,15 +293,13 @@ export async function maybeAwardLoyaltyPointsForOrder(
       return { ok: true, awarded: false, points: 0 };
     }
 
-    const { data: subscription } = await client
-      .from("restaurant_subscriptions")
-      .select("plan")
-      .eq("restaurant_id", order.restaurant_id)
-      .maybeSingle();
-    const plan =
-      typeof subscription?.plan === "string" && subscription.plan.trim()
-        ? subscription.plan.trim()
-        : (restaurant?.subscription_plan ?? "Starter");
+    const effective = await resolveEffectiveOwnerSubscription(
+      client,
+      order.restaurant_id,
+    );
+    const plan = effective
+      ? entitledLocationPlan(effective)
+      : (restaurant?.subscription_plan ?? "Starter");
     if (!planAllowsLoyalty(plan)) {
       traceEligibility({
         reason: "SKIP: plan disallows loyalty",

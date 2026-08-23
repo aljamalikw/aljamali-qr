@@ -73,6 +73,7 @@ const DEMO_HISTORY = [
 ];
 
 function statusLabel(status: string): string {
+  if (status === "suspended") return "Trial ended";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
@@ -86,6 +87,7 @@ function statusTone(status: string): string {
       return "border-amber-500/30 bg-amber-500/10 text-amber-300";
     case "expired":
     case "cancelled":
+    case "suspended":
       return "border-red-500/30 bg-red-500/10 text-red-300";
     default:
       return "border-white/10 bg-white/5 text-white/60";
@@ -309,7 +311,9 @@ export function OwnerSubscriptionPage() {
   const thisLocationCovered = subscription?.isCovered !== false;
 
   const isExpired =
-    effectiveStatus === "expired" || effectiveStatus === "cancelled";
+    effectiveStatus === "expired" ||
+    effectiveStatus === "cancelled" ||
+    effectiveStatus === "suspended";
   const isTrial = effectiveStatus === "trial";
   const isActive =
     effectiveStatus === "active" || effectiveStatus === "grace";
@@ -353,11 +357,15 @@ export function OwnerSubscriptionPage() {
             Subscription required
           </p>
           <h2 className="mt-3 font-serif text-2xl font-bold text-white sm:text-3xl">
-            Your trial has ended. Choose a subscription to continue.
+            {effectiveStatus === "suspended"
+              ? "Your trial has ended. Choose a plan to continue."
+              : "Your subscription has ended. Choose a plan to continue."}
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-white/55">
-            Select Starter or Professional below to restore full dashboard access
-            after successful payment.
+            Professional features are no longer available. Select Starter or
+            Professional below to restore access after successful payment.
+            Enterprise is contact-sales only. You will not be charged
+            automatically.
           </p>
           <button
             type="button"
