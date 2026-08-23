@@ -1,6 +1,6 @@
 import type { Customer } from "@/lib/customers/sync-customer";
 import { FALLBACK_RESTAURANT_NAME } from "@/lib/restaurants/display";
-import type { MarketingTemplate } from "./types";
+import type { CampaignType, MarketingTemplate } from "./types";
 
 /** System defaults — restaurants can override via marketing_templates (Enterprise). */
 export const DEFAULT_MARKETING_TEMPLATES: MarketingTemplate[] = [
@@ -75,6 +75,27 @@ export const DEFAULT_MARKETING_TEMPLATES: MarketingTemplate[] = [
       "Hello {{customer_name}} 👋\n\nWe have something special for you at {{restaurant_name}}.\n\nWe look forward to serving you!",
   },
 ];
+
+/** Campaign Type → existing default template slug. */
+const CAMPAIGN_TYPE_TEMPLATE_SLUG: Record<CampaignType, string> = {
+  Birthday: "birthday",
+  "Win Back": "win-back",
+  VIP: "vip",
+  Loyalty: "loyalty",
+  "New Customer": "welcome",
+  Custom: "custom",
+};
+
+export function defaultTemplateForCampaignType(
+  type: CampaignType,
+  catalog: MarketingTemplate[] = DEFAULT_MARKETING_TEMPLATES,
+): MarketingTemplate | undefined {
+  const slug = CAMPAIGN_TYPE_TEMPLATE_SLUG[type];
+  return (
+    catalog.find((template) => template.slug === slug) ??
+    DEFAULT_MARKETING_TEMPLATES.find((template) => template.slug === slug)
+  );
+}
 
 export type CampaignPlaceholderVars = {
   customerName?: string | null;

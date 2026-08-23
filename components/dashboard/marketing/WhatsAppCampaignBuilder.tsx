@@ -13,6 +13,7 @@ import {
 import {
   applyCampaignPlaceholders,
   buildPreviewVars,
+  defaultTemplateForCampaignType,
 } from "@/lib/marketing/templates";
 import {
   AUDIENCE_PRESET_LABELS,
@@ -129,7 +130,7 @@ export function WhatsAppCampaignBuilder({
   const [name, setName] = useState("");
   const [campaignType, setCampaignType] = useState<CampaignType>("Custom");
   const [message, setMessage] = useState(
-    "Hello {{first_name}} 👋\n\nWe have a special offer just for you!\nEnjoy 20% OFF this weekend.\n\nWe look forward to serving you!\n\n{{restaurant_name}}",
+    () => defaultTemplateForCampaignType("Custom")?.message ?? "",
   );
   const [preset, setPreset] = useState<AudiencePresetId>("all_opted_in");
   const [inactiveDays, setInactiveDays] = useState(30);
@@ -217,6 +218,7 @@ export function WhatsAppCampaignBuilder({
   const reset = () => {
     setName("");
     setCampaignType("Custom");
+    setMessage(defaultTemplateForCampaignType("Custom", templates)?.message ?? "");
     setPreset("all_opted_in");
     setCustomIds([]);
     setScheduleMode("draft");
@@ -224,6 +226,17 @@ export function WhatsAppCampaignBuilder({
     setScheduledTime("10:00");
     setEnableWhatsAppShare(true);
     setEnableCopy(true);
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  const applyCampaignType = (type: CampaignType) => {
+    setCampaignType(type);
+    const template = defaultTemplateForCampaignType(type, templates);
+    if (template) setMessage(template.message);
   };
 
   const insertPlaceholder = (token: string) => {
@@ -313,7 +326,7 @@ export function WhatsAppCampaignBuilder({
         type="button"
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         aria-label="Close campaign builder"
-        onClick={onClose}
+        onClick={handleClose}
       />
       <div
         role="dialog"
@@ -335,7 +348,7 @@ export function WhatsAppCampaignBuilder({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-white"
             aria-label="Close"
           >
@@ -363,7 +376,7 @@ export function WhatsAppCampaignBuilder({
                 <select
                   value={campaignType}
                   onChange={(e) =>
-                    setCampaignType(e.target.value as CampaignType)
+                    applyCampaignType(e.target.value as CampaignType)
                   }
                   className={inputClass}
                 >
@@ -699,7 +712,7 @@ export function WhatsAppCampaignBuilder({
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/10 px-5 py-4">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="menu-btn-secondary"
             disabled={busy}
           >
