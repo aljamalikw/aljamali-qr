@@ -103,6 +103,9 @@ export function RegisterForm() {
     );
 
     if (!restaurantResult.ok) {
+      if (data.session) {
+        await supabase.auth.signOut();
+      }
       setLoading(false);
       setFormError(restaurantResult.message);
       return;

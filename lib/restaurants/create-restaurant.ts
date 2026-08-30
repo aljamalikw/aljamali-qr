@@ -1,10 +1,9 @@
 import { logActivity } from "@/lib/admin/activity-log";
 import { supabase } from "@/lib/supabase";
 import { queueEmailNotification } from "@/lib/email/framework";
-import { DEFAULT_TRIAL_PLAN } from "@/lib/subscriptions/plans";
 
-const RESTAURANT_SETUP_ERROR =
-  "Your account was created, but we couldn't finish setting up your restaurant profile. Please try signing in or contact support.";
+const REGISTRATION_FAILED =
+  "Registration could not be completed. Please try again with the same email.";
 
 export async function createRestaurantForOwner(
   ownerId: string,
@@ -17,49 +16,44 @@ export async function createRestaurantForOwner(
   },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
-    const { error } = await supabase.rpc("create_restaurant_for_owner", {
-      p_owner_id: ownerId,
-      p_email: email.trim(),
-    });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (error) {
-      return { ok: false, message: RESTAURANT_SETUP_ERROR };
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
     }
 
-    const { data: created } = await supabase
-      .from("restaurants")
-      .select("id, restaurant_name")
-      .eq("owner_id", ownerId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const response = await fetch("/api/auth/complete-registration", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        ownerId,
+        email: email.trim(),
+        restaurantName: profile?.restaurantName?.trim() || "",
+        ownerName: profile?.ownerName?.trim() || "",
+        phone: profile?.phone?.trim() || "",
+        country: profile?.country?.trim() || "",
+      }),
+    });
+    const body = (await response.json().catch(() => ({}))) as {
+      ok?: boolean;
+      error?: string;
+      restaurantId?: string;
+    };
 
-    const restaurantName = profile?.restaurantName?.trim() || null;
-    const ownerName = profile?.ownerName?.trim() || null;
-    const phone = profile?.phone?.trim() || null;
-    const country = profile?.country?.trim() || null;
-    const createdId = (created as { id?: string } | null)?.id;
-
-    if (createdId) {
-      const profilePatch: Record<string, unknown> = {
-        subscription_plan: DEFAULT_TRIAL_PLAN,
-      };
-      if (restaurantName) profilePatch.restaurant_name = restaurantName;
-      if (ownerName) profilePatch.owner_name = ownerName;
-      if (phone) profilePatch.phone = phone;
-      if (country) profilePatch.country = country;
-
-      await supabase.from("restaurants").update(profilePatch).eq("id", createdId);
-
-      try {
-        await fetch("/api/restaurants/finalize-trial", {
+    if (!response.ok || !body.ok) {
+      if (response.status >= 500) {
+        await fetch("/api/auth/abort-registration", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ restaurantId: createdId, ownerId }),
-        });
-      } catch {
-        // Signup must still succeed if the trial mirror cannot be rewritten.
+          headers,
+          body: JSON.stringify({ ownerId, email: email.trim() }),
+        }).catch(() => undefined);
       }
+      return { ok: false, message: body.error || REGISTRATION_FAILED };
     }
 
     void logActivity({
@@ -68,18 +62,13 @@ export async function createRestaurantForOwner(
       actorId: ownerId,
       actorEmail: email.trim(),
       actorRole: "restaurant_owner",
-      restaurantId: (created as { id?: string } | null)?.id ?? null,
-      restaurantName:
-        restaurantName ??
-        (created as { restaurant_name?: string | null } | null)
-          ?.restaurant_name ??
-        null,
+      restaurantId: body.restaurantId ?? null,
+      restaurantName: profile?.restaurantName?.trim() || null,
       entityType: "restaurant",
-      entityId: (created as { id?: string } | null)?.id ?? null,
+      entityId: body.restaurantId ?? null,
       newValues: { email: email.trim() },
     });
 
-    // Framework-only: queue welcome / trial emails (no provider connected yet).
     void queueEmailNotification({
       templateId: "registration_successful",
       toEmail: email.trim(),
@@ -93,6 +82,11 @@ export async function createRestaurantForOwner(
 
     return { ok: true };
   } catch {
-    return { ok: false, message: RESTAURANT_SETUP_ERROR };
+    await fetch("/api/auth/abort-registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ownerId, email: email.trim() }),
+    }).catch(() => undefined);
+    return { ok: false, message: REGISTRATION_FAILED };
   }
 }
