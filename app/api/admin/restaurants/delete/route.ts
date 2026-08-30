@@ -9,7 +9,6 @@ import {
   unauthorized,
 } from "@/lib/admin/api-auth";
 import { logActivity } from "@/lib/admin/activity-log";
-import { isAdminRole, type AppRole } from "@/lib/auth/roles";
 import { createServiceSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -39,12 +38,6 @@ function createUserScopedClient(accessToken: string) {
       detectSessionInUrl: false,
     },
   });
-}
-
-function shouldDisableOwnerAccount(role: string | null | undefined): boolean {
-  if (!role) return true;
-  if (isAdminRole(role as AppRole)) return false;
-  return role !== "sales" && role !== "support";
 }
 
 export async function POST(request: NextRequest) {
@@ -123,37 +116,7 @@ export async function POST(request: NextRequest) {
     return badRequest(deleteError.message || "Unable to delete restaurant.");
   }
 
-  const { count: remainingCount, error: remainingError } = await service
-    .from("restaurants")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", ownerId);
-
-  if (remainingError) {
-    return serverError(
-      "Restaurant was deleted, but the owner account could not be verified.",
-    );
-  }
-
-  const remaining = remainingCount ?? 0;
-  let ownerAccountDisabled = false;
-  let shouldDisableOwner = false;
-
-  if (remaining === 0) {
-    const { data: profile } = await service
-      .from("profiles")
-      .select("role")
-      .eq("id", ownerId)
-      .maybeSingle();
-
-    const role = (profile as { role?: string } | null)?.role ?? null;
-    shouldDisableOwner = shouldDisableOwnerAccount(role);
-  }
-
   const ip = getRequestIp(request);
-  const restaurantName =
-    (restaurant.restaurant_name as string | null)?.trim() || null;
-
-  // Restaurant row is already gone, so restaurant_id cannot be stored as an FK.
   await logActivity({
     client: service,
     action: "restaurant_deleted",
@@ -161,7 +124,8 @@ export async function POST(request: NextRequest) {
     actorEmail: auth.email,
     actorRole: "super_admin",
     ownerId,
-    restaurantName,
+    restaurantName:
+      (restaurant.restaurant_name as string | null)?.trim() || null,
     entityType: "restaurant",
     entityId: restaurantId,
     ipAddress: ip,
@@ -169,41 +133,12 @@ export async function POST(request: NextRequest) {
     metadata: {
       confirmName,
       restaurantId,
-      ownerWillBeDisabled: shouldDisableOwner,
     },
   });
 
-  if (shouldDisableOwner) {
-    const { error: deleteUserError } = await service.auth.admin.deleteUser(
-      ownerId,
-      false,
-    );
-
-    if (deleteUserError) {
-      return serverError(
-        deleteUserError.message ||
-          "Restaurant was deleted, but the owner login could not be disabled.",
-      );
-    }
-
-    ownerAccountDisabled = true;
-
-    await logActivity({
-      client: service,
-      action: "owner_deleted",
-      actorId: auth.userId,
-      actorEmail: auth.email,
-      actorRole: "super_admin",
-      entityType: "owner",
-      entityId: ownerId,
-      ipAddress: ip,
-      userAgent: request.headers.get("user-agent"),
-      metadata: {
-        restaurantId,
-        reason: "Owner auth account removed after last restaurant deletion",
-      },
-    });
-  }
-
-  return NextResponse.json({ ok: true, ownerAccountDisabled });
+  return NextResponse.json({
+    ok: true,
+    ownerId,
+    ownerAccountRemoved: false,
+  });
 }

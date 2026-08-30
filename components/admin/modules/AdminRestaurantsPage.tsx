@@ -15,6 +15,7 @@ import { startImpersonation } from "@/lib/admin/impersonation-client";
 import {
   RESTAURANT_STATUS_FILTERS,
   permanentlyDeleteRestaurant,
+  permanentlyRemoveOwnerAccount,
   exportRestaurantsToCsv,
   fetchAdminRestaurantManagementRows,
   getRestaurantManagementKpis,
@@ -47,6 +48,17 @@ import { supabase } from "@/lib/supabase";
 import { csvTimestamp, downloadCsv } from "@/lib/utils/csv";
 
 const PAGE_SIZE = 10;
+const REMOVE_OWNER_CONFIRM_PHRASE = "Yes, permanently remove account";
+
+type DeletedRestaurantRecord = {
+  restaurantId: string;
+  restaurantName: string | null;
+  ownerId: string;
+  ownerName: string | null;
+  email: string | null;
+  canRemoveOwner: boolean;
+  ownerAccountRemoved: boolean;
+};
 
 type MenuAction =
   | "view"
@@ -137,6 +149,12 @@ export function AdminRestaurantsPage() {
   const [deleteTarget, setDeleteTarget] =
     useState<AdminRestaurantManagementRow | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deletedRecords, setDeletedRecords] = useState<DeletedRestaurantRecord[]>(
+    [],
+  );
+  const [removeOwnerTarget, setRemoveOwnerTarget] =
+    useState<DeletedRestaurantRecord | null>(null);
+  const [removeOwnerConfirm, setRemoveOwnerConfirm] = useState("");
   const [impersonateTarget, setImpersonateTarget] =
     useState<AdminRestaurantManagementRow | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -341,10 +359,66 @@ export function AdminRestaurantsPage() {
       return;
     }
 
+    const remainingForOwner = restaurants.filter(
+      (row) =>
+        row.ownerId === deleteTarget.ownerId && row.id !== deleteTarget.id,
+    );
+    const record: DeletedRestaurantRecord = {
+      restaurantId: deleteTarget.id,
+      restaurantName: deleteTarget.restaurantName,
+      ownerId: deleteTarget.ownerId,
+      ownerName: deleteTarget.ownerName,
+      email: deleteTarget.email,
+      canRemoveOwner: remainingForOwner.length === 0,
+      ownerAccountRemoved: false,
+    };
+
     setRestaurants((prev) => prev.filter((row) => row.id !== deleteTarget.id));
+    setDeletedRecords((prev) => [
+      record,
+      ...prev.filter((item) => item.restaurantId !== record.restaurantId),
+    ]);
     setDeleteTarget(null);
     setDeleteConfirmName("");
     showToast("Restaurant permanently deleted");
+  };
+
+  const handleRemoveOwnerAccount = async () => {
+    if (!removeOwnerTarget) return;
+    if (removeOwnerConfirm.trim() !== REMOVE_OWNER_CONFIRM_PHRASE) {
+      showToast(
+        `Type “${REMOVE_OWNER_CONFIRM_PHRASE}” to confirm.`,
+        "error",
+      );
+      return;
+    }
+    if (currentUserId && removeOwnerTarget.ownerId === currentUserId) {
+      showToast("You cannot permanently remove your own account.", "error");
+      return;
+    }
+
+    setActionLoading(true);
+    const result = await permanentlyRemoveOwnerAccount(
+      removeOwnerTarget.ownerId,
+      removeOwnerTarget.restaurantId,
+    );
+    setActionLoading(false);
+
+    if (!result.ok) {
+      showToast(result.message, "error");
+      return;
+    }
+
+    setDeletedRecords((prev) =>
+      prev.map((item) =>
+        item.ownerId === removeOwnerTarget.ownerId
+          ? { ...item, ownerAccountRemoved: true, canRemoveOwner: false }
+          : item,
+      ),
+    );
+    setRemoveOwnerTarget(null);
+    setRemoveOwnerConfirm("");
+    showToast("Owner account permanently removed");
   };
 
   const handleExport = () => {
@@ -512,6 +586,72 @@ export function AdminRestaurantsPage() {
             </button>
           </div>
         </div>
+
+        {deletedRecords.length > 0 ? (
+          <section className="rounded-2xl border border-red-500/20 bg-black/30 p-4 sm:p-5">
+            <h2 className="font-serif text-lg font-semibold text-white">
+              Recently deleted
+            </h2>
+            <p className="mt-1 text-sm text-white/50">
+              These restaurants are no longer active. Remove the owner account
+              only when you want that email available for a new registration.
+            </p>
+            <div className="mt-4 space-y-3">
+              {deletedRecords.map((record) => (
+                <div
+                  key={record.restaurantId}
+                  className="flex flex-col gap-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-white">
+                      {record.restaurantName || "Unnamed restaurant"}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm text-white/50">
+                      {record.ownerName || "Owner"}
+                      {record.email ? ` · ${record.email}` : ""}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="inline-flex rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/55">
+                        Restaurant: Deleted
+                      </span>
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                          record.ownerAccountRemoved
+                            ? "border-white/20 bg-white/5 text-white/50"
+                            : "border-amber-500/35 bg-amber-500/10 text-amber-200"
+                        }`}
+                      >
+                        Owner Account:{" "}
+                        {record.ownerAccountRemoved ? "Removed" : "Still exists"}
+                      </span>
+                    </div>
+                  </div>
+                  {record.ownerAccountRemoved ? (
+                    <p className="shrink-0 text-sm text-white/45">
+                      Email is available for a new registration.
+                    </p>
+                  ) : record.canRemoveOwner ? (
+                    <button
+                      type="button"
+                      className="menu-btn-danger shrink-0"
+                      disabled={actionLoading}
+                      onClick={() => {
+                        setRemoveOwnerTarget(record);
+                        setRemoveOwnerConfirm("");
+                      }}
+                    >
+                      Permanently Remove Owner Account
+                    </button>
+                  ) : (
+                    <p className="shrink-0 text-sm text-white/45">
+                      This owner still has other restaurants.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {loading ? (
           <TableSkeleton rows={6} />
@@ -941,6 +1081,107 @@ export function AdminRestaurantsPage() {
             router.push("/dashboard");
           }}
         />
+      ) : null}
+
+      {removeOwnerTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            aria-label="Close"
+            onClick={() =>
+              !actionLoading
+                ? (setRemoveOwnerTarget(null), setRemoveOwnerConfirm(""))
+                : undefined
+            }
+          />
+          <div className="relative z-10 w-full max-w-lg rounded-2xl border border-red-500/25 bg-[#0d0d0d] p-6 shadow-2xl sm:p-8">
+            <h2 className="text-center font-serif text-xl font-bold text-white">
+              Permanently Remove Owner Account
+            </h2>
+            <div className="mt-5 grid gap-2 rounded-xl border border-white/10 bg-black/30 p-4 text-sm">
+              <p className="flex justify-between gap-3">
+                <span className="text-white/45">Restaurant</span>
+                <span className="text-white">
+                  {removeOwnerTarget.restaurantName || "—"}
+                </span>
+              </p>
+              <p className="flex justify-between gap-3">
+                <span className="text-white/45">Owner</span>
+                <span className="text-white">
+                  {removeOwnerTarget.ownerName || "—"}
+                </span>
+              </p>
+              <p className="flex justify-between gap-3">
+                <span className="text-white/45">Email</span>
+                <span className="text-white">
+                  {removeOwnerTarget.email || "—"}
+                </span>
+              </p>
+              <p className="flex justify-between gap-3">
+                <span className="text-white/45">Restaurant</span>
+                <span className="text-white/70">Deleted</span>
+              </p>
+              <p className="flex justify-between gap-3">
+                <span className="text-white/45">Owner Account</span>
+                <span className="text-amber-200">Still exists</span>
+              </p>
+            </div>
+            <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200/90">
+              <p className="font-medium text-red-200">This action is permanent.</p>
+              <ul className="mt-2 list-inside list-disc space-y-0.5 text-red-200/75">
+                <li>The owner will no longer be able to log in.</li>
+                <li>
+                  Their authentication account will be removed from Supabase.
+                </li>
+                <li>
+                  This email will become available for a completely new
+                  registration.
+                </li>
+              </ul>
+              <p className="mt-3 font-medium text-red-100">
+                This cannot be undone.
+              </p>
+            </div>
+            <label className="mt-5 block text-sm">
+              <span className="mb-1.5 block text-xs uppercase tracking-wider text-white/40">
+                Type the confirmation phrase
+              </span>
+              <input
+                value={removeOwnerConfirm}
+                onChange={(event) => setRemoveOwnerConfirm(event.target.value)}
+                placeholder={REMOVE_OWNER_CONFIRM_PHRASE}
+                className="w-full rounded-xl border border-red-500/20 bg-black/40 px-3 py-2.5 text-white placeholder:text-white/25 focus:border-red-400/40 focus:outline-none"
+              />
+            </label>
+            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
+              <button
+                type="button"
+                className="menu-btn-secondary flex-1"
+                disabled={actionLoading}
+                onClick={() => {
+                  setRemoveOwnerTarget(null);
+                  setRemoveOwnerConfirm("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="menu-btn-danger flex-1 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={
+                  actionLoading ||
+                  removeOwnerConfirm.trim() !== REMOVE_OWNER_CONFIRM_PHRASE
+                }
+                onClick={() => void handleRemoveOwnerAccount()}
+              >
+                {actionLoading
+                  ? "Removing…"
+                  : "Yes, permanently remove account"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {deleteTarget ? (

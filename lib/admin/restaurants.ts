@@ -655,6 +655,46 @@ export async function permanentlyDeleteRestaurant(
   }
 }
 
+const REMOVE_OWNER_ERROR =
+  "Unable to permanently remove the owner account. Please try again.";
+
+export async function permanentlyRemoveOwnerAccount(
+  ownerId: string,
+  restaurantId?: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      return { ok: false, message: "You must be signed in." };
+    }
+
+    const response = await fetch("/api/admin/owners/delete-auth", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ownerId,
+        restaurantId: restaurantId || undefined,
+      }),
+    });
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+
+    if (!response.ok) {
+      return { ok: false, message: body.error || REMOVE_OWNER_ERROR };
+    }
+
+    return { ok: true };
+  } catch {
+    return { ok: false, message: REMOVE_OWNER_ERROR };
+  }
+}
+
 export async function bulkSetRestaurantsActive(
   restaurantIds: string[],
   isActive: boolean,
