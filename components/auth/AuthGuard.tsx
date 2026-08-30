@@ -5,7 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { DashboardShellSkeleton } from "@/components/ui/Skeleton";
 import { isEmailVerified } from "@/lib/auth/errors";
 import { fetchIsPlatformAdmin } from "@/lib/auth/get-user-role";
+import {
+  DELETED_OWNER_ACCOUNT_TOAST,
+  resolveOwnerRestaurantAccess,
+} from "@/lib/auth/owner-restaurant-access";
 import { fetchImpersonationState } from "@/lib/admin/impersonation-client";
+import { useToast } from "@/components/ui/ToastProvider";
 import { supabase } from "@/lib/supabase";
 
 interface AuthGuardProps {
@@ -16,6 +21,7 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { showToast } = useToast();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -23,24 +29,25 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     async function verifySession() {
       const {
-        data: { session },
+        data: { user },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getUser();
 
       if (!mounted) return;
 
-      if (error || !session?.user) {
+      if (error || !user) {
+        await supabase.auth.signOut();
         router.replace("/login");
         return;
       }
 
-      if (!isEmailVerified(session.user)) {
+      if (!isEmailVerified(user)) {
         await supabase.auth.signOut();
         router.replace("/verify-email");
         return;
       }
 
-      if (await fetchIsPlatformAdmin(session.user)) {
+      if (await fetchIsPlatformAdmin(user)) {
         const impersonation = await fetchImpersonationState();
         if (impersonation.ok && impersonation.data.active) {
           if (!mounted) return;
@@ -53,6 +60,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
           return;
         }
         router.replace("/admin/dashboard");
+        return;
+      }
+
+      const access = await resolveOwnerRestaurantAccess(user);
+      if (access === "no_restaurant") {
+        await supabase.auth.signOut();
+        showToast(DELETED_OWNER_ACCOUNT_TOAST, "error", { durationMs: 6000 });
+        router.replace("/login");
         return;
       }
 
@@ -77,7 +92,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [router, pathname]);
+  }, [router, pathname, showToast]);
 
   if (!ready) {
     return <DashboardShellSkeleton />;

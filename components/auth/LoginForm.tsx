@@ -20,6 +20,12 @@ import {
 } from "@/lib/auth/errors";
 import { supabase } from "@/lib/supabase";
 import { resolveAuthenticatedRedirect } from "@/lib/restaurants/setup";
+import {
+  DELETED_OWNER_ACCOUNT_DETAIL,
+  DELETED_OWNER_ACCOUNT_TITLE,
+  DELETED_OWNER_ACCOUNT_TOAST,
+  resolveOwnerRestaurantAccess,
+} from "@/lib/auth/owner-restaurant-access";
 import { useToast } from "@/components/ui/ToastProvider";
 import { AuthCardSkeleton } from "@/components/ui/Skeleton";
 
@@ -34,6 +40,20 @@ export function LoginForm() {
   const [formError, setFormError] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
+  const reportError = useCallback(
+    (message: string) => {
+      setFormError(message);
+      showToast(message, "error");
+    },
+    [showToast],
+  );
+
+  const rejectDeletedOwner = useCallback(async () => {
+    await supabase.auth.signOut();
+    setFormError(DELETED_OWNER_ACCOUNT_TITLE);
+    showToast(DELETED_OWNER_ACCOUNT_TOAST, "error", { durationMs: 6000 });
+  }, [showToast]);
+
   useEffect(() => {
     const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
     if (savedEmail) {
@@ -43,15 +63,21 @@ export function LoginForm() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user && isEmailVerified(session.user)) {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user && isEmailVerified(user)) {
+        const access = await resolveOwnerRestaurantAccess(user);
+        if (access === "no_restaurant") {
+          await rejectDeletedOwner();
+          setAuthChecking(false);
+          return;
+        }
         router.replace(await resolveAuthenticatedRedirect());
         return;
       }
 
       setAuthChecking(false);
     });
-  }, [router]);
+  }, [rejectDeletedOwner, router]);
 
   const validate = () => {
     const next: typeof errors = {};
@@ -62,14 +88,6 @@ export function LoginForm() {
     setErrors(next);
     return Object.keys(next).length === 0;
   };
-
-  const reportError = useCallback(
-    (message: string) => {
-      setFormError(message);
-      showToast(message, "error");
-    },
-    [showToast],
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +110,12 @@ export function LoginForm() {
       if (data.user && !isEmailVerified(data.user)) {
         await supabase.auth.signOut();
         reportError("Please verify your email before signing in.");
+        return;
+      }
+
+      const access = await resolveOwnerRestaurantAccess(data.user);
+      if (access === "no_restaurant") {
+        await rejectDeletedOwner();
         return;
       }
 
@@ -160,9 +184,14 @@ export function LoginForm() {
         </div>
 
         {formError && (
-          <p className="text-sm text-red-400" role="alert">
-            {formError}
-          </p>
+          <div className="space-y-1" role="alert">
+            <p className="text-sm text-red-400">{formError}</p>
+            {formError === DELETED_OWNER_ACCOUNT_TITLE ? (
+              <p className="text-sm text-red-400/80">
+                {DELETED_OWNER_ACCOUNT_DETAIL}
+              </p>
+            ) : null}
+          </div>
         )}
 
         <AuthButton type="submit" loading={loading}>

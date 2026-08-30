@@ -623,23 +623,31 @@ export async function permanentlyDeleteRestaurant(
   }
 
   try {
-    const { error } = await supabase.rpc("admin_delete_restaurant_permanently", {
-      p_restaurant_id: restaurantId,
-      p_confirm_name: confirmName.trim(),
-    });
-
-    if (error) {
-      return { ok: false, message: error.message || DELETE_ERROR };
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      return { ok: false, message: "You must be signed in." };
     }
 
-    void logActivity({
-      action: "restaurant_deleted",
-      restaurantId,
-      ownerId,
-      entityType: "restaurant",
-      entityId: restaurantId,
-      metadata: { confirmName: confirmName.trim() },
+    const response = await fetch("/api/admin/restaurants/delete", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        restaurantId,
+        confirmName: confirmName.trim(),
+      }),
     });
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+
+    if (!response.ok) {
+      return { ok: false, message: body.error || DELETE_ERROR };
+    }
 
     return { ok: true };
   } catch {
